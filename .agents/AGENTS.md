@@ -57,3 +57,5 @@ The action major version must support the Go version used by the module.
 ## 10. PR Merge Strategy
 Merge PRs with `gh pr merge --squash --delete-branch` to keep main history
 clean and auto-delete feature branches after merge.
+Never commit directly to main — all changes must go through a PR,
+including chore commits (rules, docs, config).
