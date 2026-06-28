@@ -8,7 +8,7 @@ Each directory is a standalone Go module with its own `go.mod`.
 
 | Module | Description | Status |
 |---|---|---|
-| slog-gcp | GCP Cloud Logging handler for `log/slog` | 🚧 Not yet created |
+| [slog-gcp](slog-gcp/) | GCP Cloud Logging handler for `log/slog` | 🚧 In development |
 
 ## Install
 
