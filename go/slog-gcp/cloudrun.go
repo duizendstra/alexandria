@@ -61,9 +61,9 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 	}
 	format := os.Getenv("LOG_FORMAT")
 
-	// If not running on GCP (no K_SERVICE or CLOUD_RUN_JOB), use a human-readable
-	// text handler unless JSON format is explicitly requested.
-	if os.Getenv("K_SERVICE") == "" && os.Getenv("CLOUD_RUN_JOB") == "" && !strings.EqualFold(format, "json") {
+	// If not running on GCP (no K_SERVICE, CLOUD_RUN_JOB, or KUBERNETES_SERVICE_HOST),
+	// use a human-readable text handler unless JSON format is explicitly requested.
+	if os.Getenv("K_SERVICE") == "" && os.Getenv("CLOUD_RUN_JOB") == "" && os.Getenv("KUBERNETES_SERVICE_HOST") == "" && !strings.EqualFold(format, "json") {
 		return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			Level: level,
 		})

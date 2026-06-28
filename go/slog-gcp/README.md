@@ -71,26 +71,23 @@ func processMessage(msg []byte) {
 
 ### Generic GCP & OpenTelemetry (e.g. GKE)
 
-If you use OpenTelemetry and deploy to generic GCP environments like GKE, you can wire the handler directly to extract W3C `traceparent` contexts:
+If you use OpenTelemetry and deploy to generic GCP environments like GKE, use the `otelgcp` subpackage to automatically extract W3C `traceparent` contexts:
 
 ```go
+import (
+    "log/slog"
+    "os"
+
+    sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
+    "github.com/duizendstra/alexandria/go/slog-gcp/otelgcp"
+)
+
 inner := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
     ReplaceAttr: sloggcp.GCPReplaceAttr,
 })
 
-resolver := func(ctx context.Context) sloggcp.TraceContext {
-    sc := trace.SpanContextFromContext(ctx) // from go.opentelemetry.io/otel/trace
-    if !sc.IsValid() {
-        return sloggcp.TraceContext{}
-    }
-    return sloggcp.TraceContext{
-        TraceID: sc.TraceID().String(),
-        SpanID:  sc.SpanID().String(),
-        Sampled: sc.IsSampled(),
-    }
-}
-
-handler := sloggcp.NewHandler(inner, resolver, "my-gcp-project")
+// otelgcp.NewResolver() extracts trace context from OpenTelemetry spans
+handler := sloggcp.NewHandler(inner, otelgcp.NewResolver(), "my-gcp-project")
 slog.SetDefault(slog.New(handler))
 ```
 
