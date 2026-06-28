@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Root `.golangci.yml` using the duizendstra-com Library Lint Standard
+
+
 ## [go/slog-gcp/v0.0.1] - 2026-06-28
 
 ### Added
