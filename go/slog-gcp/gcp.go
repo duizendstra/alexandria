@@ -13,11 +13,20 @@ import (
 )
 
 // GCPReplaceAttr maps Go slog field names and values to GCP Cloud
-// Logging equivalents: msg → message, level → severity with value
-// mapping (DEBUG/INFO/WARNING/ERROR).
+// Logging equivalents: msg → message, time → timestamp,
+// source → logging.googleapis.com/sourceLocation, and level → severity
+// with value mapping (DEBUG/INFO/NOTICE/WARNING/ERROR/CRITICAL/ALERT/EMERGENCY).
 func GCPReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 	if a.Key == slog.MessageKey {
 		a.Key = "message"
+	}
+
+	if a.Key == slog.TimeKey {
+		a.Key = "timestamp"
+	}
+
+	if a.Key == slog.SourceKey {
+		a.Key = "logging.googleapis.com/sourceLocation"
 	}
 
 	if a.Key == slog.LevelKey {
@@ -31,8 +40,14 @@ func GCPReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 				a.Value = slog.StringValue("INFO")
 			case level < slog.LevelError:
 				a.Value = slog.StringValue("WARNING")
-			default:
+			case level < slog.LevelError+4: //nolint:mnd // CRITICAL threshold.
 				a.Value = slog.StringValue("ERROR")
+			case level < slog.LevelError+8: //nolint:mnd // ALERT threshold.
+				a.Value = slog.StringValue("CRITICAL")
+			case level < slog.LevelError+12: //nolint:mnd // EMERGENCY threshold.
+				a.Value = slog.StringValue("ALERT")
+			default:
+				a.Value = slog.StringValue("EMERGENCY")
 			}
 		}
 	}
@@ -106,9 +121,9 @@ func ErrorAttrs(err error) []slog.Attr {
 }
 
 // ErrorAttrsAny returns error reporting attributes as []any for use
-// with slog's alternating key-value API (e.g. slog.Info("msg", attrs...)).
-func ErrorAttrsAny() []any {
-	return []any{
+// with slog's alternating key-value API (e.g. slog.Error("msg", attrs...)).
+func ErrorAttrsAny(err error) []any {
+	attrs := []any{
 		"@type",
 		"type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent",
 		slog.Group("serviceContext",
@@ -116,6 +131,12 @@ func ErrorAttrsAny() []any {
 			slog.String("version", os.Getenv("K_REVISION")),
 		),
 	}
+
+	if err != nil {
+		attrs = append(attrs, "error", err.Error())
+	}
+
+	return attrs
 }
 
 // detectProjectID reads the GCP project ID from environment variables.

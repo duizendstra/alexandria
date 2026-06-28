@@ -8,7 +8,7 @@ JSON in [Google Cloud Logging](https://cloud.google.com/logging/docs/structured-
 
 ## Features
 
-- Maps slog levels to GCP severity levels (`WARN` → `WARNING`)
+- Maps slog levels to GCP severity (DEBUG through EMERGENCY)
 - Injects `logging.googleapis.com/trace`, `spanId`, and `trace_sampled`
 - Auto-generates `event_id` for log correlation
 - Cloud Error Reporting integration via `ErrorAttrs()`
@@ -73,7 +73,7 @@ logger.Info("server started", "port", 8080)
 {
   "severity": "INFO",
   "message": "request received",
-  "time": "2026-06-28T09:00:00.000Z",
+  "timestamp": "2026-06-28T09:00:00.000Z",
   "logging.googleapis.com/trace": "projects/my-project/traces/abc123",
   "logging.googleapis.com/spanId": "def456",
   "logging.googleapis.com/trace_sampled": true,

@@ -275,7 +275,13 @@ func TestGCPReplaceAttr_SeverityMapping(t *testing.T) {
 		{slog.LevelWarn, "WARNING"},
 		{slog.LevelWarn + 1, "WARNING"},
 		{slog.LevelError, "ERROR"},
-		{slog.LevelError + 4, "ERROR"},
+		{slog.LevelError + 3, "ERROR"},
+		{slog.LevelError + 4, "CRITICAL"},
+		{slog.LevelError + 7, "CRITICAL"},
+		{slog.LevelError + 8, "ALERT"},
+		{slog.LevelError + 11, "ALERT"},
+		{slog.LevelError + 12, "EMERGENCY"},
+		{slog.LevelError + 20, "EMERGENCY"},
 	}
 
 	for _, tc := range tests {
@@ -304,6 +310,28 @@ func TestGCPReplaceAttr_NonLevel_Passthrough(t *testing.T) {
 
 	if got.Key != "custom" || got.Value.String() != "value" {
 		t.Error("non-level attribute should pass through unchanged")
+	}
+}
+
+func TestGCPReplaceAttr_TimestampMapping(t *testing.T) {
+	t.Parallel()
+
+	attr := slog.Attr{Key: slog.TimeKey, Value: slog.StringValue("2026-06-28T12:00:00Z")}
+	got := sloggcp.GCPReplaceAttr(nil, attr)
+
+	if got.Key != "timestamp" {
+		t.Errorf("key = %q, want timestamp", got.Key)
+	}
+}
+
+func TestGCPReplaceAttr_SourceLocationMapping(t *testing.T) {
+	t.Parallel()
+
+	attr := slog.Attr{Key: slog.SourceKey, Value: slog.StringValue("main.go:42")}
+	got := sloggcp.GCPReplaceAttr(nil, attr)
+
+	if got.Key != "logging.googleapis.com/sourceLocation" {
+		t.Errorf("key = %q, want logging.googleapis.com/sourceLocation", got.Key)
 	}
 }
 
@@ -657,11 +685,12 @@ func TestErrorAttrs_NilError(t *testing.T) {
 func TestErrorAttrsAny(t *testing.T) {
 	t.Parallel()
 
-	anyAttrs := sloggcp.ErrorAttrsAny()
+	testErr := errors.New("something failed")
+	anyAttrs := sloggcp.ErrorAttrsAny(testErr)
 
-	// Alternating key-value: "@type", value, slog.Group(...).
-	if len(anyAttrs) != 3 { //nolint:mnd // key + value + group.
-		t.Fatalf("got %d items, want 3", len(anyAttrs))
+	// Alternating key-value: "@type", value, slog.Group(...), "error", errorMsg.
+	if len(anyAttrs) != 5 { //nolint:mnd // key + value + group + error key + error value.
+		t.Fatalf("got %d items, want 5", len(anyAttrs))
 	}
 
 	// First should be the @type key.
@@ -672,6 +701,22 @@ func TestErrorAttrsAny(t *testing.T) {
 	// Second should be the @type value.
 	if val, ok := anyAttrs[1].(string); !ok || !strings.Contains(val, "ReportedErrorEvent") {
 		t.Errorf("second item = %v, want ReportedErrorEvent type", anyAttrs[1])
+	}
+
+	// Error key-value pair.
+	if key, ok := anyAttrs[3].(string); !ok || key != "error" {
+		t.Errorf("fourth item = %v, want error key", anyAttrs[3])
+	}
+}
+
+func TestErrorAttrsAny_NilError(t *testing.T) {
+	t.Parallel()
+
+	anyAttrs := sloggcp.ErrorAttrsAny(nil)
+
+	// Without error: "@type", value, slog.Group(...).
+	if len(anyAttrs) != 3 { //nolint:mnd // key + value + group.
+		t.Fatalf("got %d items, want 3", len(anyAttrs))
 	}
 }
 
