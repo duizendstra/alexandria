@@ -36,7 +36,7 @@ all relevant files and return a structured report.
 > You are reviewing the repository at {WORKSPACE_ROOT} for release readiness.
 > Your role: **Link & Reference Integrity**.
 >
-> Read every `.md` file in the repository. For each markdown link `[text](target)`:
+> Read every `.md` file in the repository. For each markdown link (syntax: text in brackets, URL in parens):
 > 1. If `target` is a relative path, verify the file or directory exists.
 > 2. If `target` contains an anchor `#heading`, verify the heading exists in the target file.
 > 3. If `target` is an external URL (http/https), note it but do not validate.
