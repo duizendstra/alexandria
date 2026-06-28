@@ -73,7 +73,7 @@ logger.Info("server started", "port", 8080)
 {
   "severity": "INFO",
   "message": "request received",
-  "timestamp": "2026-06-28T09:00:00.000Z",
+  "time": "2026-06-28T09:00:00.000Z",
   "logging.googleapis.com/trace": "projects/my-project/traces/abc123",
   "logging.googleapis.com/spanId": "def456",
   "logging.googleapis.com/trace_sampled": true,
@@ -88,7 +88,7 @@ logger.Info("server started", "port", 8080)
 Use `ErrorAttrs()` to generate Cloud Error Reporting fields:
 
 ```go
-slog.ErrorContext(ctx, "database connection failed",
+slog.LogAttrs(ctx, slog.LevelError, "database connection failed",
     append(sloggcp.ErrorAttrs(err), slog.String("db", "firestore"))...,
 )
 ```
