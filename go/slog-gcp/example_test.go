@@ -38,15 +38,15 @@ func ExampleErrorAttrs() {
 	err := fmt.Errorf("connection refused")
 	attrs := sloggcp.ErrorAttrs(err)
 
-	// attrs contains @type, serviceContext, and error fields
+	// attrs contains @type, serviceContext, stack_trace, and error fields
 	// for Cloud Error Reporting integration.
 	fmt.Println(len(attrs))
 	// Output:
-	// 3
+	// 4
 }
 
 func ExampleWithTrace() {
-	ctx := sloggcp.WithTrace(context.Background(), "my-project")
+	ctx := sloggcp.WithTrace(context.Background())
 	// Use ctx with any slog call — trace ID is injected automatically.
 	slog.InfoContext(ctx, "job started")
 }

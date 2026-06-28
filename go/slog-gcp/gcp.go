@@ -36,7 +36,7 @@ func GCPReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 		if source, ok := a.Value.Any().(*slog.Source); ok {
 			a.Value = slog.GroupValue(
 				slog.String("file", source.File),
-				slog.String("line", strconv.Itoa(source.Line)),
+				slog.Int("line", source.Line),
 				slog.String("function", source.Function),
 			)
 		}
@@ -49,8 +49,10 @@ func GCPReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 			switch {
 			case level < slog.LevelInfo:
 				a.Value = slog.StringValue("DEBUG")
-			case level < slog.LevelWarn:
+			case level < slog.LevelInfo+2: //nolint:mnd // NOTICE threshold.
 				a.Value = slog.StringValue("INFO")
+			case level < slog.LevelWarn:
+				a.Value = slog.StringValue("NOTICE")
 			case level < slog.LevelError:
 				a.Value = slog.StringValue("WARNING")
 			case level < slog.LevelError+4: //nolint:mnd // CRITICAL threshold.
@@ -115,7 +117,7 @@ func decimalToHexSpan(decimal string) string {
 
 // ErrorAttrs returns slog attributes for Cloud Error Reporting.
 // Attach these to error-level log lines so GCP Error Reporting
-// automatically picks them up.
+// automatically picks them up. Includes a stack trace for grouping.
 func ErrorAttrs(err error) []slog.Attr {
 	attrs := []slog.Attr{
 		slog.String("@type",
@@ -124,6 +126,7 @@ func ErrorAttrs(err error) []slog.Attr {
 			slog.String("service", os.Getenv("K_SERVICE")),
 			slog.String("version", os.Getenv("K_REVISION")),
 		),
+		slog.String("stack_trace", stackTrace(3)),
 	}
 
 	if err != nil {
@@ -143,6 +146,7 @@ func ErrorAttrsAny(err error) []any {
 			slog.String("service", os.Getenv("K_SERVICE")),
 			slog.String("version", os.Getenv("K_REVISION")),
 		),
+		"stack_trace", stackTrace(3),
 	}
 
 	if err != nil {

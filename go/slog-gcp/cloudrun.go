@@ -83,7 +83,7 @@ func TraceMiddleware(next http.Handler) http.Handler {
 // in non-HTTP environments (Cloud Run Jobs, workers, Pub/Sub handlers).
 // The generated trace context is picked up by the handler's IDResolver
 // transparently, just like TraceMiddleware does for HTTP requests.
-func WithTrace(ctx context.Context, projectID string) context.Context {
+func WithTrace(ctx context.Context) context.Context {
 	traceID := strings.ReplaceAll(uuid.New().String(), "-", "")
 	header := fmt.Sprintf("%s/0;o=1", traceID)
 

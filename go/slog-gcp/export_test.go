@@ -4,7 +4,10 @@
 
 package sloggcp
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 // TraceHeaderKeyType is an exported alias of traceHeaderKey for
 // use in external tests. This file is only compiled during testing.
@@ -33,4 +36,11 @@ func ParseCloudTraceHeaderForTest(header string) CloudTraceForTest {
 		SpanID:  info.spanID,
 		Sampled: info.sampled,
 	}
+}
+
+// ResetMetadataCacheForTest resets the metadata project ID cache,
+// allowing tests to re-trigger metadata detection.
+func ResetMetadataCacheForTest() {
+	metadataProjectID = ""
+	metadataOnce = sync.Once{}
 }

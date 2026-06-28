@@ -273,6 +273,8 @@ func TestGCPReplaceAttr_SeverityMapping(t *testing.T) {
 		{slog.LevelDebug + 2, "DEBUG"},
 		{slog.LevelInfo, "INFO"},
 		{slog.LevelInfo + 1, "INFO"},
+		{slog.LevelInfo + 2, "NOTICE"},
+		{slog.LevelInfo + 3, "NOTICE"},
 		{slog.LevelWarn, "WARNING"},
 		{slog.LevelWarn + 1, "WARNING"},
 		{slog.LevelError, "ERROR"},
@@ -328,7 +330,8 @@ func TestGCPReplaceAttr_TimestampMapping(t *testing.T) {
 func TestGCPReplaceAttr_SourceLocationMapping(t *testing.T) {
 	t.Parallel()
 
-	attr := slog.Attr{Key: slog.SourceKey, Value: slog.StringValue("main.go:42")}
+	source := &slog.Source{File: "main.go", Line: 42, Function: "main.main"}
+	attr := slog.Attr{Key: slog.SourceKey, Value: slog.AnyValue(source)}
 	got := sloggcp.GCPReplaceAttr(nil, attr)
 
 	if got.Key != "logging.googleapis.com/sourceLocation" {
@@ -659,8 +662,8 @@ func TestErrorAttrs(t *testing.T) {
 	testErr := errors.New("something failed")
 	attrs := sloggcp.ErrorAttrs(testErr)
 
-	if len(attrs) != 3 { //nolint:mnd // 3 attrs: @type, serviceContext, error.
-		t.Fatalf("got %d attrs, want 3", len(attrs))
+	if len(attrs) != 4 { //nolint:mnd // 4 attrs: @type, serviceContext, stack_trace, error.
+		t.Fatalf("got %d attrs, want 4", len(attrs))
 	}
 
 	if attrs[0].Key != "@type" {
@@ -677,9 +680,9 @@ func TestErrorAttrs_NilError(t *testing.T) {
 
 	attrs := sloggcp.ErrorAttrs(nil)
 
-	// Should have 2 attrs: @type and serviceContext (no error attr).
-	if len(attrs) != 2 { //nolint:mnd // 2 attrs.
-		t.Fatalf("got %d attrs, want 2", len(attrs))
+	// Should have 3 attrs: @type, serviceContext, stack_trace (no error attr).
+	if len(attrs) != 3 { //nolint:mnd // 3 attrs.
+		t.Fatalf("got %d attrs, want 3", len(attrs))
 	}
 }
 
@@ -689,9 +692,9 @@ func TestErrorAttrsAny(t *testing.T) {
 	testErr := errors.New("something failed")
 	anyAttrs := sloggcp.ErrorAttrsAny(testErr)
 
-	// Alternating key-value: "@type", value, slog.Group(...), "error", errorMsg.
-	if len(anyAttrs) != 5 { //nolint:mnd // key + value + group + error key + error value.
-		t.Fatalf("got %d items, want 5", len(anyAttrs))
+	// Alternating key-value: "@type", value, slog.Group(...), "stack_trace", trace, "error", errorMsg.
+	if len(anyAttrs) != 7 { //nolint:mnd // key + value + group + stack key + stack value + error key + error value.
+		t.Fatalf("got %d items, want 7", len(anyAttrs))
 	}
 
 	// First should be the @type key.
@@ -704,9 +707,9 @@ func TestErrorAttrsAny(t *testing.T) {
 		t.Errorf("second item = %v, want ReportedErrorEvent type", anyAttrs[1])
 	}
 
-	// Error key-value pair.
-	if key, ok := anyAttrs[3].(string); !ok || key != "error" {
-		t.Errorf("fourth item = %v, want error key", anyAttrs[3])
+	// Error key-value pair (after stack_trace key-value pair).
+	if key, ok := anyAttrs[5].(string); !ok || key != "error" {
+		t.Errorf("sixth item = %v, want error key", anyAttrs[5])
 	}
 }
 
@@ -715,9 +718,9 @@ func TestErrorAttrsAny_NilError(t *testing.T) {
 
 	anyAttrs := sloggcp.ErrorAttrsAny(nil)
 
-	// Without error: "@type", value, slog.Group(...).
-	if len(anyAttrs) != 3 { //nolint:mnd // key + value + group.
-		t.Fatalf("got %d items, want 3", len(anyAttrs))
+	// Without error: "@type", value, slog.Group(...), "stack_trace", trace.
+	if len(anyAttrs) != 5 { //nolint:mnd // key + value + group + stack key + stack value.
+		t.Fatalf("got %d items, want 5", len(anyAttrs))
 	}
 }
 
@@ -823,7 +826,7 @@ func TestWithTrace_InjectsTraceID(t *testing.T) {
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, resolver, "test-project"))
 
-	ctx := sloggcp.WithTrace(context.Background(), "test-project")
+	ctx := sloggcp.WithTrace(context.Background())
 	logger.InfoContext(ctx, "job started")
 
 	entries := sloggcp.LogEntries(buf)
