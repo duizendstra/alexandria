@@ -1,0 +1,6 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/go/slog-gcp/"
+    schedule:
+      interval: "weekly"

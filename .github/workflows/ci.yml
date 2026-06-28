@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  detect-modules:
+    name: Detect Go modules
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.find.outputs.modules }}
+      has_modules: ${{ steps.find.outputs.has_modules }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: find
+        name: Find Go modules
+        run: |
+          modules=$(find go/ -name 'go.mod' -printf '%h\n' 2>/dev/null | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          if [ "$modules" = "[]" ] || [ -z "$modules" ]; then
+            echo "has_modules=false" >> "$GITHUB_OUTPUT"
+            echo "modules=[]" >> "$GITHUB_OUTPUT"
+            echo "No Go modules found."
+          else
+            echo "has_modules=true" >> "$GITHUB_OUTPUT"
+            echo "modules=$modules" >> "$GITHUB_OUTPUT"
+            echo "Found modules: $modules"
+          fi
+
+  go:
+    name: Test ${{ matrix.module }}
+    needs: detect-modules
+    if: needs.detect-modules.outputs.has_modules == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.detect-modules.outputs.modules) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+
+      - name: Vet
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+
+      - name: Test
+        working-directory: ${{ matrix.module }}
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: ${{ matrix.module }}
+
+  docs:
+    name: Validate docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for broken internal links
+        run: |
+          status=0
+          while IFS= read -r file; do
+            while IFS= read -r link; do
+              # Skip URLs, anchors, and template placeholders
+              if echo "$link" | grep -qE '^(https?://|mailto:|#|\\<)'; then
+                continue
+              fi
+              # Strip anchor from link
+              target=$(echo "$link" | sed 's/#.*//')
+              if [ -z "$target" ]; then
+                continue
+              fi
+              # Resolve relative to the file's directory
+              dir=$(dirname "$file")
+              resolved="$dir/$target"
+              if [ ! -e "$resolved" ]; then
+                echo "::warning file=$file::Broken link: $link (resolved: $resolved)"
+                status=1
+              fi
+            done < <(grep -oP '\[.*?\]\(\K[^)]+' "$file" 2>/dev/null)
+          done < <(find . -name '*.md' -not -path './.git/*')
+          exit $status
