@@ -53,9 +53,15 @@ prose descriptions or backtick-escaped syntax instead.
 ## 9. CI Tool Compatibility
 When updating Go versions, also verify `golangci-lint-action` version compatibility.
 The action major version must support the Go version used by the module.
+In multi-module monorepos where submodules use local `replace` directives in `go.mod` for development, add an exclusion path for their `go.mod` files under the `gomoddirectives` linter in `.golangci.yml` rather than globally disabling it.
 
 ## 10. PR Merge Strategy
 Merge PRs with `gh pr merge --squash --delete-branch` to keep main history
 clean and auto-delete feature branches after merge.
 Never commit directly to main — all changes must go through a PR,
 including chore commits (rules, docs, config).
+
+## 11. Go Context & HTTP Testing Linting
+When writing tests that execute HTTP requests or verify contexts:
+- Always use `httptest.NewRequestWithContext(context.Background(), ...)` instead of `httptest.NewRequest` to satisfy the `noctx` linter.
+- Avoid capturing parent variables inside inline handler closures to verify context propagation, as it triggers `fatcontext`. Instead, define a small helper handler struct (e.g., `captureHandler`) that implements `http.Handler` and stores context values in struct fields.
