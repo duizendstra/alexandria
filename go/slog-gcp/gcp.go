@@ -5,11 +5,16 @@
 package sloggcp
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // GCPReplaceAttr maps Go slog field names and values to GCP Cloud
@@ -27,6 +32,14 @@ func GCPReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 
 	if a.Key == slog.SourceKey {
 		a.Key = "logging.googleapis.com/sourceLocation"
+
+		if source, ok := a.Value.Any().(*slog.Source); ok {
+			a.Value = slog.GroupValue(
+				slog.String("file", source.File),
+				slog.String("line", strconv.Itoa(source.Line)),
+				slog.String("function", source.Function),
+			)
+		}
 	}
 
 	if a.Key == slog.LevelKey {
@@ -139,9 +152,15 @@ func ErrorAttrsAny(err error) []any {
 	return attrs
 }
 
-// detectProjectID reads the GCP project ID from environment variables.
-// Checks common GCP environment variables in priority order.
+var (
+	metadataProjectID string
+	metadataOnce      sync.Once
+)
+
+// detectProjectID reads the GCP project ID from environment variables,
+// then falls back to the GCE metadata service on managed GCP platforms.
 func detectProjectID() string {
+	// Priority 1: Environment variables (fast, overridable).
 	for _, key := range []string{
 		"GCP_PROJECT_ID",
 		"GOOGLE_CLOUD_PROJECT",
@@ -153,5 +172,46 @@ func detectProjectID() string {
 		}
 	}
 
+	// Priority 2: GCE metadata service (available on Cloud Run, GKE, etc.).
+	metadataOnce.Do(func() {
+		metadataProjectID = queryMetadataProjectID()
+	})
+
+	if metadataProjectID != "" {
+		return metadataProjectID
+	}
+
 	return "unknown-project"
+}
+
+// queryMetadataProjectID queries the GCE metadata service for the project ID.
+// Uses a short timeout to avoid blocking on non-GCP environments.
+func queryMetadataProjectID() string {
+	const metadataURL = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
+
+	client := &http.Client{Timeout: 500 * time.Millisecond} //nolint:mnd // Short timeout for non-GCP fallback.
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, metadataURL, nil)
+	if err != nil {
+		return ""
+	}
+
+	req.Header.Set("Metadata-Flavor", "Google")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(string(body))
 }

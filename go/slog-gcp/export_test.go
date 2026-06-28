@@ -4,9 +4,17 @@
 
 package sloggcp
 
-// TraceHeaderKeyForTest is an exported alias of traceHeaderKey for
+import "context"
+
+// TraceHeaderKeyType is an exported alias of traceHeaderKey for
 // use in external tests. This file is only compiled during testing.
-type TraceHeaderKeyForTest = traceHeaderKey
+type TraceHeaderKeyType = traceHeaderKey
+
+// TraceHeaderKeyForTest extracts the trace header value from context for testing.
+func TraceHeaderKeyForTest(ctx context.Context) string {
+	v, _ := ctx.Value(traceHeaderKey{}).(string)
+	return v
+}
 
 // CloudTraceForTest holds parsed trace context, exported for tests.
 type CloudTraceForTest struct {

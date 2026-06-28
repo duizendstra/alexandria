@@ -5,9 +5,11 @@
 package sloggcp_test
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
 )
@@ -41,4 +43,20 @@ func ExampleErrorAttrs() {
 	fmt.Println(len(attrs))
 	// Output:
 	// 3
+}
+
+func ExampleWithTrace() {
+	ctx := sloggcp.WithTrace(context.Background(), "my-project")
+	// Use ctx with any slog call — trace ID is injected automatically.
+	slog.InfoContext(ctx, "job started")
+}
+
+func ExampleHTTPRequestAttr() {
+	reqAttr := sloggcp.HTTPRequestAttr(sloggcp.HTTPRequest{
+		Method:  "GET",
+		URL:     "/api/health",
+		Status:  200,
+		Latency: 42 * time.Millisecond,
+	})
+	_ = reqAttr
 }

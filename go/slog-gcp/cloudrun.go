@@ -6,10 +6,13 @@ package sloggcp
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // traceHeaderKey is the context key for the X-Cloud-Trace-Context
@@ -74,6 +77,17 @@ func TraceMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// WithTrace returns a context with a new trace ID for correlating logs
+// in non-HTTP environments (Cloud Run Jobs, workers, Pub/Sub handlers).
+// The generated trace context is picked up by the handler's IDResolver
+// transparently, just like TraceMiddleware does for HTTP requests.
+func WithTrace(ctx context.Context, projectID string) context.Context {
+	traceID := strings.ReplaceAll(uuid.New().String(), "-", "")
+	header := fmt.Sprintf("%s/0;o=1", traceID)
+
+	return context.WithValue(ctx, traceHeaderKey{}, header)
 }
 
 // traceHeaderFromCtx retrieves the X-Cloud-Trace-Context header value

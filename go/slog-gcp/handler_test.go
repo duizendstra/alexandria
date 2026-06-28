@@ -15,6 +15,7 @@ import (
 	"sync"
 	"testing"
 	"testing/slogtest"
+	"time"
 
 	sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
 
@@ -464,7 +465,7 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 
 	// Now create a resolver that reads from context (mimicking InitCloudRun's resolver).
 	resolver := func(ctx context.Context) (string, string, bool) {
-		traceHeader, _ := ctx.Value(sloggcp.TraceHeaderKeyForTest{}).(string)
+		traceHeader, _ := ctx.Value(sloggcp.TraceHeaderKeyType{}).(string)
 		if traceHeader == "" {
 			return "", "", false
 		}
@@ -519,7 +520,7 @@ func TestTraceMiddleware_SetsContext(t *testing.T) {
 	var gotHeader string
 
 	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyForTest{}).(string)
+		gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyType{}).(string)
 	})
 
 	traced := sloggcp.TraceMiddleware(inner)
@@ -539,7 +540,7 @@ func TestTraceMiddleware_NoHeader(t *testing.T) {
 	var gotHeader string
 
 	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyForTest{}).(string)
+		gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyType{}).(string)
 	})
 
 	traced := sloggcp.TraceMiddleware(inner)
@@ -806,6 +807,112 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 
 	if entry["logging.googleapis.com/trace_sampled"] != true {
 		t.Errorf("trace_sampled = %v, want true", entry["logging.googleapis.com/trace_sampled"])
+	}
+}
+
+// --- WithTrace ---
+
+func TestWithTrace_InjectsTraceID(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcp.SyncBuffer{}
+	resolver := func(ctx context.Context) (string, string, bool) {
+		info := sloggcp.ParseCloudTraceHeaderForTest(sloggcp.TraceHeaderKeyForTest(ctx))
+		return info.TraceID, info.SpanID, info.Sampled
+	}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, resolver, "test-project"))
+
+	ctx := sloggcp.WithTrace(context.Background(), "test-project")
+	logger.InfoContext(ctx, "job started")
+
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	traceField, ok := entries[0]["logging.googleapis.com/trace"].(string)
+	if !ok || traceField == "" {
+		t.Error("WithTrace should inject trace ID")
+	}
+
+	if !strings.Contains(traceField, "projects/test-project/traces/") {
+		t.Errorf("trace = %q, want projects/test-project/traces/...", traceField)
+	}
+}
+
+// --- HTTPRequestAttr ---
+
+func TestHTTPRequestAttr_FullFields(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcp.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
+
+	reqAttr := sloggcp.HTTPRequestAttr(sloggcp.HTTPRequest{
+		Method:       "GET",
+		URL:          "/api/health",
+		Status:       200,
+		Latency:      150 * time.Millisecond,
+		RemoteIP:     "10.0.0.1",
+		UserAgent:    "curl/8.0",
+		RequestSize:  0,
+		ResponseSize: 42,
+	})
+
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "request served", reqAttr)
+
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	httpReq, ok := entries[0]["httpRequest"].(map[string]any)
+	if !ok {
+		t.Fatal("httpRequest field missing or not a map")
+	}
+
+	if httpReq["requestMethod"] != "GET" {
+		t.Errorf("requestMethod = %v, want GET", httpReq["requestMethod"])
+	}
+
+	if httpReq["requestUrl"] != "/api/health" {
+		t.Errorf("requestUrl = %v, want /api/health", httpReq["requestUrl"])
+	}
+
+	// Status comes back as float64 from JSON.
+	if status, ok := httpReq["status"].(float64); !ok || int(status) != 200 {
+		t.Errorf("status = %v, want 200", httpReq["status"])
+	}
+}
+
+func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcp.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
+
+	reqAttr := sloggcp.HTTPRequestAttr(sloggcp.HTTPRequest{
+		Method: "POST",
+		URL:    "/api/data",
+		Status: 201,
+	})
+
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "created", reqAttr)
+
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	httpReq, ok := entries[0]["httpRequest"].(map[string]any)
+	if !ok {
+		t.Fatal("httpRequest field missing")
+	}
+
+	// Optional fields should be absent when zero.
+	if _, ok := httpReq["remoteIp"]; ok {
+		t.Error("remoteIp should be omitted when empty")
+	}
+
+	if _, ok := httpReq["userAgent"]; ok {
+		t.Error("userAgent should be omitted when empty")
 	}
 }
 
