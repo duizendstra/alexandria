@@ -18,14 +18,19 @@ import (
 	"time"
 
 	sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
+	sloggcptest "github.com/duizendstra/alexandria/go/slog-gcp/sloggcptest"
 
 	"log/slog"
 )
 
 // testResolver returns a fixed IDResolver for testing.
 func testResolver(traceID, spanID string, sampled bool) sloggcp.IDResolver {
-	return func(_ context.Context) (string, string, bool) {
-		return traceID, spanID, sampled
+	return func(_ context.Context) sloggcp.TraceContext {
+		return sloggcp.TraceContext{
+			TraceID: traceID,
+			SpanID:  spanID,
+			Sampled: sampled,
+		}
 	}
 }
 
@@ -34,14 +39,14 @@ func testResolver(traceID, spanID string, sampled bool) sloggcp.IDResolver {
 func TestHandler_InjectsAllFields(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", "00000000deadbeef", true), "my-project"))
 
 	logger.InfoContext(context.Background(), "test message")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	entry := entries[0]
 
@@ -66,15 +71,15 @@ func TestHandler_InjectsAllFields(t *testing.T) {
 func TestHandler_EventIDUnique(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "", false), "proj"))
 
 	logger.InfoContext(context.Background(), "first")
 	logger.InfoContext(context.Background(), "second")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 2)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 2)
 
 	if entries[0]["event_id"] == entries[1]["event_id"] {
 		t.Error("event_id not unique across lines")
@@ -84,14 +89,14 @@ func TestHandler_EventIDUnique(t *testing.T) {
 func TestHandler_NoResolver(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, nil, "proj"))
 
 	logger.InfoContext(context.Background(), "no resolver")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	if _, ok := entries[0]["event_id"]; !ok {
 		t.Error("event_id should always be present")
@@ -105,13 +110,13 @@ func TestHandler_NoResolver(t *testing.T) {
 func TestHandler_WithEventID_Disabled(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, nil, "", sloggcp.WithEventID(false)))
 
 	logger.InfoContext(context.Background(), "no event id")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	if _, ok := entries[0]["event_id"]; ok {
 		t.Error("event_id should not be present when disabled")
@@ -121,13 +126,13 @@ func TestHandler_WithEventID_Disabled(t *testing.T) {
 func TestHandler_EmptyIDs_NotInjected(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("", "", false), "proj"))
 
 	logger.InfoContext(context.Background(), "empty")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	if _, ok := entries[0]["logging.googleapis.com/trace"]; ok {
 		t.Error("empty traceID should not produce trace field")
@@ -145,13 +150,13 @@ func TestHandler_EmptyIDs_NotInjected(t *testing.T) {
 func TestHandler_TraceSampled_False(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), "proj"))
 
 	logger.InfoContext(context.Background(), "sampled false")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	if got := entries[0]["logging.googleapis.com/trace_sampled"]; got != false {
 		t.Errorf("trace_sampled = %v, want false", got)
@@ -161,7 +166,7 @@ func TestHandler_TraceSampled_False(t *testing.T) {
 func TestHandler_Enabled_Delegates(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, &slog.HandlerOptions{
 		Level: slog.LevelWarn,
 	})
@@ -211,7 +216,7 @@ func (f *failHandler) WithGroup(string) slog.Handler { return f }
 func TestHandler_WithAttrs(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	h := sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj")
 	wrapped := h.WithAttrs([]slog.Attr{
@@ -221,7 +226,7 @@ func TestHandler_WithAttrs(t *testing.T) {
 
 	logger.InfoContext(context.Background(), "with attrs")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	if entries[0]["service"] != "test" {
 		t.Error("pre-set attr not preserved")
@@ -235,7 +240,7 @@ func TestHandler_WithAttrs(t *testing.T) {
 func TestHandler_WithGroup(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	h := sloggcp.NewHandler(inner, nil, "proj")
 	grouped := h.WithGroup("req")
@@ -243,7 +248,7 @@ func TestHandler_WithGroup(t *testing.T) {
 
 	logger.InfoContext(context.Background(), "grouped", "method", "GET") //nolint:sloglint // Test format.
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	if _, ok := entries[0]["req"]; !ok {
 		t.Error("group not applied")
@@ -368,17 +373,21 @@ func TestParseCloudTraceHeader_EmptyHeader(t *testing.T) {
 	t.Parallel()
 
 	// Empty header: middleware doesn't set context, so no trace fields.
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, func(ctx context.Context) (string, string, bool) {
+	logger := slog.New(sloggcp.NewHandler(inner, func(ctx context.Context) sloggcp.TraceContext {
 		info := sloggcp.ParseCloudTraceHeaderForTest("")
 
-		return info.TraceID, info.SpanID, info.Sampled
+		return sloggcp.TraceContext{
+			TraceID: info.TraceID,
+			SpanID:  info.SpanID,
+			Sampled: info.Sampled,
+		}
 	}, "test-project"))
 
 	logger.InfoContext(context.Background(), "empty header")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 	if len(entries) == 0 {
 		t.Fatal("no log entries")
 	}
@@ -448,7 +457,7 @@ func TestParseCloudTraceHeader_HexSpanPassthrough(t *testing.T) {
 func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string, wantSampled bool) {
 	t.Helper()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 
 	var captured context.Context
@@ -467,15 +476,19 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 	traced.ServeHTTP(httptest.NewRecorder(), req)
 
 	// Now create a resolver that reads from context (mimicking InitCloudRun's resolver).
-	resolver := func(ctx context.Context) (string, string, bool) {
+	resolver := func(ctx context.Context) sloggcp.TraceContext {
 		traceHeader, _ := ctx.Value(sloggcp.TraceHeaderKeyType{}).(string)
 		if traceHeader == "" {
-			return "", "", false
+			return sloggcp.TraceContext{}
 		}
 
 		info := sloggcp.ParseCloudTraceHeaderForTest(traceHeader)
 
-		return info.TraceID, info.SpanID, info.Sampled
+		return sloggcp.TraceContext{
+			TraceID: info.TraceID,
+			SpanID:  info.SpanID,
+			Sampled: info.Sampled,
+		}
 	}
 
 	// Use our captured context to log.
@@ -490,7 +503,7 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 	logger := slog.New(sloggcp.NewHandler(inner, resolver, "test-project"))
 	logger.InfoContext(captured, "trace test")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 	if len(entries) == 0 {
 		t.Fatal("no log entries")
 	}
@@ -577,7 +590,7 @@ func TestInitCloudRun_ReturnsHandler(t *testing.T) {
 func TestHandler_ConcurrentWrites(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj"))
 
@@ -596,8 +609,8 @@ func TestHandler_ConcurrentWrites(t *testing.T) {
 
 	wg.Wait()
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, goroutines)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, goroutines)
 
 	// Verify all event_ids are unique.
 	seen := make(map[string]bool, goroutines)
@@ -623,7 +636,7 @@ func TestHandler_ConcurrentWrites(t *testing.T) {
 func TestHandler_SlogTestCompliance(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 
 	newHandler := func(t *testing.T) slog.Handler {
 		t.Helper()
@@ -641,7 +654,7 @@ func TestHandler_SlogTestCompliance(t *testing.T) {
 	result := func(t *testing.T) map[string]any {
 		t.Helper()
 
-		entries := sloggcp.LogEntries(buf)
+		entries := sloggcptest.LogEntries(buf)
 		if len(entries) == 0 {
 			return nil
 		}
@@ -656,11 +669,8 @@ func TestHandler_SlogTestCompliance(t *testing.T) {
 // --- ErrorAttrs ---
 
 func TestErrorAttrs(t *testing.T) {
-	t.Setenv("K_SERVICE", "my-service")
-	t.Setenv("K_REVISION", "my-service-00001")
-
 	testErr := errors.New("something failed")
-	attrs := sloggcp.ErrorAttrs(testErr)
+	attrs := sloggcp.ErrorAttrs(testErr, sloggcp.ServiceContext{Service: "my-service", Version: "my-service-00001"})
 
 	if len(attrs) != 4 { //nolint:mnd // 4 attrs: @type, serviceContext, stack_trace, error.
 		t.Fatalf("got %d attrs, want 4", len(attrs))
@@ -678,7 +688,7 @@ func TestErrorAttrs(t *testing.T) {
 func TestErrorAttrs_NilError(t *testing.T) {
 	t.Parallel()
 
-	attrs := sloggcp.ErrorAttrs(nil)
+	attrs := sloggcp.ErrorAttrs(nil, sloggcp.ServiceContext{})
 
 	// Should have 3 attrs: @type, serviceContext, stack_trace (no error attr).
 	if len(attrs) != 3 { //nolint:mnd // 3 attrs.
@@ -690,7 +700,7 @@ func TestErrorAttrsAny(t *testing.T) {
 	t.Parallel()
 
 	testErr := errors.New("something failed")
-	anyAttrs := sloggcp.ErrorAttrsAny(testErr)
+	anyAttrs := sloggcp.ErrorAttrsAny(testErr, sloggcp.ServiceContext{Service: "my-service", Version: "my-service-00001"})
 
 	// Alternating key-value: "@type", value, slog.Group(...), "stack_trace", trace, "error", errorMsg.
 	if len(anyAttrs) != 7 { //nolint:mnd // key + value + group + stack key + stack value + error key + error value.
@@ -716,7 +726,7 @@ func TestErrorAttrsAny(t *testing.T) {
 func TestErrorAttrsAny_NilError(t *testing.T) {
 	t.Parallel()
 
-	anyAttrs := sloggcp.ErrorAttrsAny(nil)
+	anyAttrs := sloggcp.ErrorAttrsAny(nil, sloggcp.ServiceContext{})
 
 	// Without error: "@type", value, slog.Group(...), "stack_trace", trace.
 	if len(anyAttrs) != 5 { //nolint:mnd // key + value + group + stack key + stack value.
@@ -730,13 +740,13 @@ func TestDetectProjectID_GCPProjectID(t *testing.T) {
 	t.Setenv("GCP_PROJECT_ID", "my-project")
 	t.Setenv("GOOGLE_CLOUD_PROJECT", "should-not-use")
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
 
 	logger.InfoContext(context.Background(), "detect test")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	got, _ := entries[0]["logging.googleapis.com/trace"].(string)
 	if !strings.HasPrefix(got, "projects/my-project/") {
@@ -750,13 +760,13 @@ func TestDetectProjectID_Fallback(t *testing.T) {
 	t.Setenv("GCP_PROJECT", "")
 	t.Setenv("PROJECT_ID", "")
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
 
 	logger.InfoContext(context.Background(), "fallback test")
 
-	entries := sloggcp.LogEntries(buf)
+	entries := sloggcptest.LogEntries(buf)
 
 	got, _ := entries[0]["logging.googleapis.com/trace"].(string)
 	if !strings.HasPrefix(got, "projects/unknown-project/") {
@@ -791,14 +801,14 @@ func TestDetectProjectID_MetadataFallback(t *testing.T) {
 		sloggcp.ResetMetadataCacheForTest()
 	}()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
 
 	logger.Info("test")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	trace, _ := entries[0]["logging.googleapis.com/trace"].(string)
 	if !strings.Contains(trace, "metadata-project-id") {
@@ -826,14 +836,14 @@ func TestDetectProjectID_MetadataUnavailable(t *testing.T) {
 		sloggcp.ResetMetadataCacheForTest()
 	}()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
 
 	logger.Info("test")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	trace, _ := entries[0]["logging.googleapis.com/trace"].(string)
 	if !strings.Contains(trace, "unknown-project") {
@@ -858,14 +868,14 @@ func TestDetectProjectID_EnvTakesPrecedenceOverMetadata(t *testing.T) {
 		sloggcp.ResetMetadataCacheForTest()
 	}()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
 
 	logger.Info("test")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	trace, _ := entries[0]["logging.googleapis.com/trace"].(string)
 	if !strings.Contains(trace, "env-project") {
@@ -878,7 +888,7 @@ func TestDetectProjectID_EnvTakesPrecedenceOverMetadata(t *testing.T) {
 func TestFullChain_CloudLoggingJSON(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 
 	inner := slog.NewJSONHandler(buf, &slog.HandlerOptions{
 		ReplaceAttr: sloggcp.GCPReplaceAttr,
@@ -890,8 +900,8 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 
 	logger.WarnContext(context.Background(), "sync failed")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	entry := entries[0]
 
@@ -927,10 +937,14 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 func TestWithTrace_InjectsTraceID(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
-	resolver := func(ctx context.Context) (string, string, bool) {
+	buf := &sloggcptest.SyncBuffer{}
+	resolver := func(ctx context.Context) sloggcp.TraceContext {
 		info := sloggcp.ParseCloudTraceHeaderForTest(sloggcp.TraceHeaderKeyForTest(ctx))
-		return info.TraceID, info.SpanID, info.Sampled
+		return sloggcp.TraceContext{
+			TraceID: info.TraceID,
+			SpanID:  info.SpanID,
+			Sampled: info.Sampled,
+		}
 	}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, resolver, "test-project"))
@@ -938,8 +952,8 @@ func TestWithTrace_InjectsTraceID(t *testing.T) {
 	ctx := sloggcp.WithTrace(context.Background())
 	logger.InfoContext(ctx, "job started")
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	traceField, ok := entries[0]["logging.googleapis.com/trace"].(string)
 	if !ok || traceField == "" {
@@ -956,7 +970,7 @@ func TestWithTrace_InjectsTraceID(t *testing.T) {
 func TestHTTPRequestAttr_FullFields(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
 
@@ -973,8 +987,8 @@ func TestHTTPRequestAttr_FullFields(t *testing.T) {
 
 	logger.LogAttrs(context.Background(), slog.LevelInfo, "request served", reqAttr)
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	httpReq, ok := entries[0]["httpRequest"].(map[string]any)
 	if !ok {
@@ -998,7 +1012,7 @@ func TestHTTPRequestAttr_FullFields(t *testing.T) {
 func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
 	t.Parallel()
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
 
@@ -1010,8 +1024,8 @@ func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
 
 	logger.LogAttrs(context.Background(), slog.LevelInfo, "created", reqAttr)
 
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	httpReq, ok := entries[0]["httpRequest"].(map[string]any)
 	if !ok {
@@ -1036,7 +1050,7 @@ func TestWithLevelVar_DynamicLevelChange(t *testing.T) {
 	var level slog.LevelVar
 	level.Set(slog.LevelInfo)
 
-	buf := &sloggcp.SyncBuffer{}
+	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, &slog.HandlerOptions{
 		Level:       &level,
 		ReplaceAttr: sloggcp.GCPReplaceAttr,
@@ -1045,19 +1059,19 @@ func TestWithLevelVar_DynamicLevelChange(t *testing.T) {
 
 	// Should log at INFO.
 	logger.Info("visible")
-	entries := sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1)
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
 
 	// Change to ERROR — INFO should now be filtered.
 	level.Set(slog.LevelError)
 	logger.Info("hidden")
-	entries = sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 1) // Still 1.
+	entries = sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1) // Still 1.
 
 	// ERROR should still log.
 	logger.Error("still visible")
-	entries = sloggcp.LogEntries(buf)
-	sloggcp.AssertLogCount(t, entries, 2) // Now 2.
+	entries = sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 2) // Now 2.
 }
 
 // --- Fuzz tests ---
@@ -1084,7 +1098,7 @@ func FuzzHandle(f *testing.F) {
 	f.Add("special chars: \n\t\r\x00")
 
 	f.Fuzz(func(t *testing.T, msg string) {
-		buf := &sloggcp.SyncBuffer{}
+		buf := &sloggcptest.SyncBuffer{}
 		inner := slog.NewJSONHandler(buf, nil)
 		h := sloggcp.NewHandler(inner, nil, "fuzz-project")
 		logger := slog.New(h)

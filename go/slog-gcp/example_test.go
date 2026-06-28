@@ -36,7 +36,7 @@ func ExampleNewHandler() {
 
 func ExampleErrorAttrs() {
 	err := fmt.Errorf("connection refused")
-	attrs := sloggcp.ErrorAttrs(err)
+	attrs := sloggcp.ErrorAttrs(err, sloggcp.ServiceContextFromEnv())
 
 	// attrs contains @type, serviceContext, stack_trace, and error fields
 	// for Cloud Error Reporting integration.

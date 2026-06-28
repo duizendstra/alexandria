@@ -15,7 +15,7 @@ import (
 // IDResolver extracts trace and span IDs from context.
 // The log package does not know how traces are stored — callers provide
 // the bridge via this function type.
-type IDResolver func(ctx context.Context) (traceID, spanID string, sampled bool)
+type IDResolver func(ctx context.Context) TraceContext
 
 // handler wraps an inner slog.Handler and auto-injects event_id and
 // GCP Cloud Logging trace fields into every log record.
@@ -80,21 +80,15 @@ func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:
 	}
 
 	if h.resolve != nil {
-		traceID, spanID, sampled := h.resolve(ctx)
+		tc := h.resolve(ctx)
 
-		if traceID != "" {
+		if !tc.IsEmpty() {
 			rec.AddAttrs(
 				slog.String(FieldTrace,
-					fmt.Sprintf("projects/%s/traces/%s", h.projectID, traceID)),
+					fmt.Sprintf("projects/%s/traces/%s", h.projectID, tc.TraceID)),
+				slog.String(FieldSpanID, tc.SpanID),
+				slog.Bool(FieldTraceSampled, tc.Sampled),
 			)
-		}
-
-		if spanID != "" {
-			rec.AddAttrs(slog.String(FieldSpanID, spanID))
-		}
-
-		if traceID != "" {
-			rec.AddAttrs(slog.Bool(FieldTraceSampled, sampled))
 		}
 	}
 

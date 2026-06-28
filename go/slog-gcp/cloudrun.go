@@ -75,10 +75,14 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 		})
 	}
 
-	resolver := func(ctx context.Context) (string, string, bool) {
+	resolver := func(ctx context.Context) TraceContext {
 		info := parseCloudTraceHeader(traceHeaderFromCtx(ctx))
 
-		return info.traceID, info.spanID, info.sampled
+		return TraceContext{
+			TraceID: info.traceID,
+			SpanID:  info.spanID,
+			Sampled: info.sampled,
+		}
 	}
 
 	inner := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
