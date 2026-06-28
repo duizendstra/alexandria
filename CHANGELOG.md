@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Optimized trace prefix parsing (pre-computed in handler creation) to reduce hot-path allocations.
 
 
+## [go/slog-gcp/otelgcp/v0.0.1] - 2026-06-28
+
+### Added
+
+- Initial release of the `slog-gcp/otelgcp` module
+- OpenTelemetry span context integration as a resolver for `slog-gcp`
+
 ## [go/slog-gcp/v0.0.1] - 2026-06-28
 
 ### Added

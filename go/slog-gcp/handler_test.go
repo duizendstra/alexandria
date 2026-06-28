@@ -780,6 +780,30 @@ func TestDetectProjectID_Fallback(t *testing.T) {
 	}
 }
 
+func TestDetectProjectID_BypassMetadataEnv(t *testing.T) {
+	t.Setenv("GCP_METADATA_DISABLED", "true")
+	t.Setenv("GCP_PROJECT_ID", "")
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "")
+	t.Setenv("GCP_PROJECT", "")
+	t.Setenv("PROJECT_ID", "")
+
+	sloggcp.ResetMetadataCacheForTest()
+	defer sloggcp.ResetMetadataCacheForTest()
+
+	buf := &sloggcptest.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
+
+	logger.InfoContext(context.Background(), "bypass metadata test")
+
+	entries := sloggcptest.LogEntries(buf)
+
+	got, _ := entries[0]["logging.googleapis.com/trace"].(string)
+	if !strings.HasPrefix(got, "projects/unknown-project/") {
+		t.Errorf("trace = %q, want prefix projects/unknown-project/", got)
+	}
+}
+
 // --- queryMetadataProjectID ---.
 
 func TestDetectProjectID_MetadataFallback(t *testing.T) {
@@ -1041,6 +1065,15 @@ func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
 
 	if _, ok := httpReq["userAgent"]; ok {
 		t.Error("userAgent should be omitted when empty")
+	}
+}
+
+func TestHTTPRequestAttr_Nil(t *testing.T) {
+	t.Parallel()
+
+	attr := sloggcp.HTTPRequestAttr(nil)
+	if attr.Key != "" {
+		t.Errorf("expected empty attr key, got %q", attr.Key)
 	}
 }
 

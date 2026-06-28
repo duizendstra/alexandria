@@ -39,6 +39,9 @@ type HTTPRequest struct {
 //	    }),
 //	)
 func HTTPRequestAttr(req *HTTPRequest) slog.Attr {
+	if req == nil {
+		return slog.Attr{}
+	}
 	attrs := []any{
 		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		slog.String("requestMethod", req.Method),

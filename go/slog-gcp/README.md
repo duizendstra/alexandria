@@ -71,7 +71,7 @@ func processMessage(msg []byte) {
 
 ### Generic GCP & OpenTelemetry (e.g. GKE)
 
-If you use OpenTelemetry and deploy to generic GCP environments like GKE, use the `otelgcp` subpackage to automatically extract W3C `traceparent` contexts:
+If you use OpenTelemetry and deploy to generic GCP environments like GKE, use the `otelgcp` module to automatically extract W3C `traceparent` contexts:
 
 ```go
 import (
