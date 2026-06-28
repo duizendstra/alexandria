@@ -37,3 +37,9 @@ modifications in another).
 - All other top-level directories use `README.md`
 - Every `docs/` markdown file must have the full Alexandria frontmatter schema
   (see `docs/08-reference/okf-profile.md`)
+
+## 7. CI Link Checker Awareness
+The CI docs job scans all `.md` files for markdown links and verifies targets
+exist. Avoid writing example markdown link syntax like `[text](target)` in
+documentation — the grep pattern will match it as a real link. Use prose
+descriptions or backtick-escaped syntax instead.
