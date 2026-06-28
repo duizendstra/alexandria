@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp
 
@@ -31,37 +31,44 @@ type HTTPRequest struct {
 // the UI with method, URL, status, latency, and more.
 //
 //	slog.LogAttrs(ctx, slog.LevelInfo, "request served",
-//	    sloggcp.HTTPRequestAttr(sloggcp.HTTPRequest{
+//	    sloggcp.HTTPRequestAttr(&sloggcp.HTTPRequest{
 //	        Method:  r.Method,
 //	        URL:     r.URL.String(),
 //	        Status:  statusCode,
 //	        Latency: duration,
 //	    }),
 //	)
-func HTTPRequestAttr(req HTTPRequest) slog.Attr {
+func HTTPRequestAttr(req *HTTPRequest) slog.Attr {
 	attrs := []any{
+		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		slog.String("requestMethod", req.Method),
+		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		slog.String("requestUrl", req.URL),
 		slog.Int("status", req.Status),
 		slog.String("latency", fmt.Sprintf("%fs", req.Latency.Seconds())),
 	}
 
 	if req.RemoteIP != "" {
+		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		attrs = append(attrs, slog.String("remoteIp", req.RemoteIP))
 	}
 
 	if req.UserAgent != "" {
+		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		attrs = append(attrs, slog.String("userAgent", req.UserAgent))
 	}
 
 	if req.RequestSize > 0 {
+		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		attrs = append(attrs, slog.Int64("requestSize", req.RequestSize))
 	}
 
 	if req.ResponseSize > 0 {
+		//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase keys.
 		attrs = append(attrs, slog.Int64("responseSize", req.ResponseSize))
 	}
 
+	//nolint:sloglint // GCP Cloud Logging HTTP request payload requires camelCase group name.
 	return slog.Group("httpRequest", attrs...)
 }
 
@@ -85,7 +92,8 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	}
 	size, err := r.ResponseWriter.Write(b)
 	r.Size += int64(size)
-	return size, err
+
+	return size, err //nolint:wrapcheck // implementing http.ResponseWriter, must return the unwrapped error.
 }
 
 // RequestLoggerMiddleware returns an http.Handler that logs each request
@@ -111,6 +119,7 @@ func RequestLoggerMiddleware(next http.Handler) http.Handler {
 			RequestSize:  r.ContentLength,
 		}
 
-		slog.LogAttrs(r.Context(), slog.LevelInfo, "HTTP Request", HTTPRequestAttr(reqAttr))
+		slog.LogAttrs(r.Context(), slog.LevelInfo, "HTTP Request", HTTPRequestAttr(&reqAttr))
 	})
 }
+

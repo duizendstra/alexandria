@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp
 
@@ -26,16 +26,16 @@ const (
 // by the standard slog.LevelDebug/Info/Warn/Error constants.
 const (
 	// LevelNotice maps to Cloud Logging NOTICE severity.
-	LevelNotice = slog.LevelInfo + 2 //nolint:mnd // GCP NOTICE threshold.
+	LevelNotice = slog.LevelInfo + 2
 
 	// LevelCritical maps to Cloud Logging CRITICAL severity.
-	LevelCritical = slog.LevelError + 4 //nolint:mnd // GCP CRITICAL threshold.
+	LevelCritical = slog.LevelError + 4
 
 	// LevelAlert maps to Cloud Logging ALERT severity.
-	LevelAlert = slog.LevelError + 8 //nolint:mnd // GCP ALERT threshold.
+	LevelAlert = slog.LevelError + 8
 
 	// LevelEmergency maps to Cloud Logging EMERGENCY severity.
-	LevelEmergency = slog.LevelError + 12 //nolint:mnd // GCP EMERGENCY threshold.
+	LevelEmergency = slog.LevelError + 12
 )
 
 // ErrorReportingType is the protobuf type URL for Cloud Error Reporting events.
@@ -52,3 +52,4 @@ type TraceContext struct {
 func (tc TraceContext) IsEmpty() bool {
 	return tc.TraceID == ""
 }
+

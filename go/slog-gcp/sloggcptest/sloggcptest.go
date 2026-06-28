@@ -1,7 +1,8 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
+// Package sloggcptest provides test utilities for verifying slog-gcp logging outputs.
 package sloggcptest
 
 import (
@@ -23,10 +24,11 @@ type SyncBuffer struct {
 }
 
 // Write implements io.Writer with mutex protection.
-func (b *SyncBuffer) Write(p []byte) (n int, err error) {
+func (b *SyncBuffer) Write(p []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	//nolint:wrapcheck // bytes.Buffer.Write error wrapping is not necessary in test buffers.
 	return b.buf.Write(p)
 }
 
@@ -73,7 +75,7 @@ func NewTestLogger(t *testing.T) (*slog.Logger, *SyncBuffer) {
 func LogEntries(buf *SyncBuffer) []map[string]any {
 	var entries []map[string]any
 
-	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
 		if line == "" {
 			continue
 		}
@@ -116,3 +118,4 @@ func AssertLogCount(t *testing.T, entries []map[string]any, want int) {
 		t.Errorf("got %d log entries, want %d", len(entries), want)
 	}
 }
+

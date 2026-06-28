@@ -1,12 +1,11 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -20,10 +19,11 @@ type IDResolver func(ctx context.Context) TraceContext
 // handler wraps an inner slog.Handler and auto-injects event_id and
 // GCP Cloud Logging trace fields into every log record.
 type handler struct {
-	inner     slog.Handler
-	resolve   IDResolver
-	projectID string
-	eventID   bool
+	inner       slog.Handler
+	resolve     IDResolver
+	projectID   string
+	tracePrefix string
+	eventID     bool
 }
 
 // Option configures [NewHandler].
@@ -54,10 +54,11 @@ func NewHandler(inner slog.Handler, resolve IDResolver, projectID string, opts .
 	}
 
 	h := &handler{
-		inner:     inner,
-		resolve:   resolve,
-		projectID: projectID,
-		eventID:   true,
+		inner:       inner,
+		resolve:     resolve,
+		projectID:   projectID,
+		tracePrefix: "projects/" + projectID + "/traces/",
+		eventID:     true,
 	}
 
 	for _, opt := range opts {
@@ -84,8 +85,7 @@ func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:
 
 		if !tc.IsEmpty() {
 			rec.AddAttrs(
-				slog.String(FieldTrace,
-					fmt.Sprintf("projects/%s/traces/%s", h.projectID, tc.TraceID)),
+				slog.String(FieldTrace, h.tracePrefix+tc.TraceID),
 				slog.String(FieldSpanID, tc.SpanID),
 				slog.Bool(FieldTraceSampled, tc.Sampled),
 			)
@@ -98,19 +98,22 @@ func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:
 // WithAttrs returns a new handler with the given attributes.
 func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &handler{
-		inner:     h.inner.WithAttrs(attrs),
-		resolve:   h.resolve,
-		projectID: h.projectID,
-		eventID:   h.eventID,
+		inner:       h.inner.WithAttrs(attrs),
+		resolve:     h.resolve,
+		projectID:   h.projectID,
+		tracePrefix: h.tracePrefix,
+		eventID:     h.eventID,
 	}
 }
 
 // WithGroup returns a new handler with the given group name.
 func (h *handler) WithGroup(name string) slog.Handler {
 	return &handler{
-		inner:     h.inner.WithGroup(name),
-		resolve:   h.resolve,
-		projectID: h.projectID,
-		eventID:   h.eventID,
+		inner:       h.inner.WithGroup(name),
+		resolve:     h.resolve,
+		projectID:   h.projectID,
+		tracePrefix: h.tracePrefix,
+		eventID:     h.eventID,
 	}
 }
+

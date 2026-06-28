@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp_test
 
@@ -23,6 +23,13 @@ import (
 	"log/slog"
 )
 
+const (
+	testSpanID      = "00000000deadbeef"
+	levelDebugStr   = "DEBUG"
+	levelWarningStr = "WARNING"
+	testHealthURL   = "/api/health"
+)
+
 // testResolver returns a fixed IDResolver for testing.
 func testResolver(traceID, spanID string, sampled bool) sloggcp.IDResolver {
 	return func(_ context.Context) sloggcp.TraceContext {
@@ -34,14 +41,14 @@ func testResolver(traceID, spanID string, sampled bool) sloggcp.IDResolver {
 	}
 }
 
-// --- Handler core tests ---
+// --- Handler core tests ---.
 
 func TestHandler_InjectsAllFields(t *testing.T) {
 	t.Parallel()
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", "00000000deadbeef", true), "my-project"))
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "my-project"))
 
 	logger.InfoContext(context.Background(), "test message")
 
@@ -59,8 +66,8 @@ func TestHandler_InjectsAllFields(t *testing.T) {
 		t.Errorf("trace = %v, want %v", got, wantTrace)
 	}
 
-	if got := entry["logging.googleapis.com/spanId"]; got != "00000000deadbeef" {
-		t.Errorf("spanId = %v, want 00000000deadbeef", got)
+	if got := entry["logging.googleapis.com/spanId"]; got != testSpanID {
+		t.Errorf("spanId = %v, want %s", got, testSpanID)
 	}
 
 	if got := entry["logging.googleapis.com/trace_sampled"]; got != true {
@@ -211,7 +218,7 @@ func (f *failHandler) WithAttrs([]slog.Attr) slog.Handler { return f }
 
 func (f *failHandler) WithGroup(string) slog.Handler { return f }
 
-// --- WithAttrs / WithGroup ---
+// --- WithAttrs / WithGroup ---.
 
 func TestHandler_WithAttrs(t *testing.T) {
 	t.Parallel()
@@ -255,7 +262,7 @@ func TestHandler_WithGroup(t *testing.T) {
 	}
 }
 
-// --- GCPReplaceAttr ---
+// --- GCPReplaceAttr ---.
 
 func TestGCPReplaceAttr_MessageKey(t *testing.T) {
 	t.Parallel()
@@ -273,15 +280,15 @@ func TestGCPReplaceAttr_SeverityMapping(t *testing.T) {
 		level slog.Level
 		want  string
 	}{
-		{slog.LevelDebug - 4, "DEBUG"},
-		{slog.LevelDebug, "DEBUG"},
-		{slog.LevelDebug + 2, "DEBUG"},
+		{slog.LevelDebug - 4, levelDebugStr},
+		{slog.LevelDebug, levelDebugStr},
+		{slog.LevelDebug + 2, levelDebugStr},
 		{slog.LevelInfo, "INFO"},
 		{slog.LevelInfo + 1, "INFO"},
 		{slog.LevelInfo + 2, "NOTICE"},
 		{slog.LevelInfo + 3, "NOTICE"},
-		{slog.LevelWarn, "WARNING"},
-		{slog.LevelWarn + 1, "WARNING"},
+		{slog.LevelWarn, levelWarningStr},
+		{slog.LevelWarn + 1, levelWarningStr},
 		{slog.LevelError, "ERROR"},
 		{slog.LevelError + 3, "ERROR"},
 		{slog.LevelError + 4, "CRITICAL"},
@@ -344,12 +351,12 @@ func TestGCPReplaceAttr_SourceLocationMapping(t *testing.T) {
 	}
 }
 
-// --- parseCloudTraceHeader (via integration) ---
+// --- parseCloudTraceHeader (via integration) ---.
 
 func TestParseCloudTraceHeader_FullHeader(t *testing.T) {
 	t.Parallel()
 
-	// Span 456 decimal = 0x1c8 → "00000000000001c8"
+	// Span 456 decimal = 0x1c8 → "00000000000001c8".
 	testTraceViaMiddleware(t,
 		"abc123/456;o=1",
 		"abc123",
@@ -378,11 +385,7 @@ func TestParseCloudTraceHeader_EmptyHeader(t *testing.T) {
 	logger := slog.New(sloggcp.NewHandler(inner, func(ctx context.Context) sloggcp.TraceContext {
 		info := sloggcp.ParseCloudTraceHeaderForTest("")
 
-		return sloggcp.TraceContext{
-			TraceID: info.TraceID,
-			SpanID:  info.SpanID,
-			Sampled: info.Sampled,
-		}
+		return sloggcp.TraceContext(info)
 	}, "test-project"))
 
 	logger.InfoContext(context.Background(), "empty header")
@@ -452,28 +455,35 @@ func TestParseCloudTraceHeader_HexSpanPassthrough(t *testing.T) {
 	)
 }
 
+type captureHandler struct {
+	ctx context.Context
+}
+
+func (c *captureHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
+	c.ctx = r.Context()
+}
+
 // testTraceViaMiddleware exercises the full middleware→resolver→handler chain
 // and asserts on the resulting log entry.
+//nolint:unparam // Parameter flexibility useful for future test cases.
 func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string, wantSampled bool) {
 	t.Helper()
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 
-	var captured context.Context
+	var capture captureHandler
 
-	h := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		captured = r.Context()
-	})
-
-	traced := sloggcp.TraceMiddleware(h)
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	traced := sloggcp.TraceMiddleware(&capture)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 
 	if header != "" {
 		req.Header.Set("X-Cloud-Trace-Context", header)
 	}
 
 	traced.ServeHTTP(httptest.NewRecorder(), req)
+
+	captured := capture.ctx
 
 	// Now create a resolver that reads from context (mimicking InitCloudRun's resolver).
 	resolver := func(ctx context.Context) sloggcp.TraceContext {
@@ -484,11 +494,7 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 
 		info := sloggcp.ParseCloudTraceHeaderForTest(traceHeader)
 
-		return sloggcp.TraceContext{
-			TraceID: info.TraceID,
-			SpanID:  info.SpanID,
-			Sampled: info.Sampled,
-		}
+		return sloggcp.TraceContext(info)
 	}
 
 	// Use our captured context to log.
@@ -528,48 +534,48 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 	}
 }
 
-// --- TraceMiddleware ---
+// --- TraceMiddleware ---.
+
+type captureHeaderHandler struct {
+	gotHeader string
+}
+
+func (c *captureHeaderHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
+	c.gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyType{}).(string)
+}
 
 func TestTraceMiddleware_SetsContext(t *testing.T) {
 	t.Parallel()
 
-	var gotHeader string
+	var capture captureHeaderHandler
 
-	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyType{}).(string)
-	})
+	traced := sloggcp.TraceMiddleware(&capture)
 
-	traced := sloggcp.TraceMiddleware(inner)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	req.Header.Set("X-Cloud-Trace-Context", "abc/123;o=1")
 	traced.ServeHTTP(httptest.NewRecorder(), req)
 
-	if gotHeader != "abc/123;o=1" {
-		t.Errorf("context header = %q, want abc/123;o=1", gotHeader)
+	if capture.gotHeader != "abc/123;o=1" {
+		t.Errorf("context header = %q, want abc/123;o=1", capture.gotHeader)
 	}
 }
 
 func TestTraceMiddleware_NoHeader(t *testing.T) {
 	t.Parallel()
 
-	var gotHeader string
+	var capture captureHeaderHandler
 
-	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyType{}).(string)
-	})
+	traced := sloggcp.TraceMiddleware(&capture)
 
-	traced := sloggcp.TraceMiddleware(inner)
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	traced.ServeHTTP(httptest.NewRecorder(), req)
 
-	if gotHeader != "" {
-		t.Errorf("expected empty header, got %q", gotHeader)
+	if capture.gotHeader != "" {
+		t.Errorf("expected empty header, got %q", capture.gotHeader)
 	}
 }
 
-// --- InitCloudRun ---
+// --- InitCloudRun ---.
 
 func TestInitCloudRun_ReturnsHandler(t *testing.T) {
 	t.Parallel()
@@ -585,7 +591,7 @@ func TestInitCloudRun_ReturnsHandler(t *testing.T) {
 	}
 }
 
-// --- Concurrent writes ---
+// --- Concurrent writes ---.
 
 func TestHandler_ConcurrentWrites(t *testing.T) {
 	t.Parallel()
@@ -631,7 +637,7 @@ func TestHandler_ConcurrentWrites(t *testing.T) {
 	}
 }
 
-// --- slogtest compliance ---
+// --- slogtest compliance ---.
 
 func TestHandler_SlogTestCompliance(t *testing.T) {
 	t.Parallel()
@@ -666,13 +672,13 @@ func TestHandler_SlogTestCompliance(t *testing.T) {
 	slogtest.Run(t, newHandler, result)
 }
 
-// --- ErrorAttrs ---
+// --- ErrorAttrs ---.
 
 func TestErrorAttrs(t *testing.T) {
 	testErr := errors.New("something failed")
 	attrs := sloggcp.ErrorAttrs(testErr, sloggcp.ServiceContext{Service: "my-service", Version: "my-service-00001"})
 
-	if len(attrs) != 4 { //nolint:mnd // 4 attrs: @type, serviceContext, stack_trace, error.
+	if len(attrs) != 4 {
 		t.Fatalf("got %d attrs, want 4", len(attrs))
 	}
 
@@ -691,7 +697,7 @@ func TestErrorAttrs_NilError(t *testing.T) {
 	attrs := sloggcp.ErrorAttrs(nil, sloggcp.ServiceContext{})
 
 	// Should have 3 attrs: @type, serviceContext, stack_trace (no error attr).
-	if len(attrs) != 3 { //nolint:mnd // 3 attrs.
+	if len(attrs) != 3 {
 		t.Fatalf("got %d attrs, want 3", len(attrs))
 	}
 }
@@ -703,7 +709,7 @@ func TestErrorAttrsAny(t *testing.T) {
 	anyAttrs := sloggcp.ErrorAttrsAny(testErr, sloggcp.ServiceContext{Service: "my-service", Version: "my-service-00001"})
 
 	// Alternating key-value: "@type", value, slog.Group(...), "stack_trace", trace, "error", errorMsg.
-	if len(anyAttrs) != 7 { //nolint:mnd // key + value + group + stack key + stack value + error key + error value.
+	if len(anyAttrs) != 7 {
 		t.Fatalf("got %d items, want 7", len(anyAttrs))
 	}
 
@@ -729,12 +735,12 @@ func TestErrorAttrsAny_NilError(t *testing.T) {
 	anyAttrs := sloggcp.ErrorAttrsAny(nil, sloggcp.ServiceContext{})
 
 	// Without error: "@type", value, slog.Group(...), "stack_trace", trace.
-	if len(anyAttrs) != 5 { //nolint:mnd // key + value + group + stack key + stack value.
+	if len(anyAttrs) != 5 {
 		t.Fatalf("got %d items, want 5", len(anyAttrs))
 	}
 }
 
-// --- detectProjectID ---
+// --- detectProjectID ---.
 
 func TestDetectProjectID_GCPProjectID(t *testing.T) {
 	t.Setenv("GCP_PROJECT_ID", "my-project")
@@ -774,7 +780,7 @@ func TestDetectProjectID_Fallback(t *testing.T) {
 	}
 }
 
-// --- queryMetadataProjectID ---
+// --- queryMetadataProjectID ---.
 
 func TestDetectProjectID_MetadataFallback(t *testing.T) {
 	// Start a fake metadata server.
@@ -883,7 +889,7 @@ func TestDetectProjectID_EnvTakesPrecedenceOverMetadata(t *testing.T) {
 	}
 }
 
-// --- Full chain integration ---
+// --- Full chain integration ---.
 
 func TestFullChain_CloudLoggingJSON(t *testing.T) {
 	t.Parallel()
@@ -894,7 +900,7 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 		ReplaceAttr: sloggcp.GCPReplaceAttr,
 	})
 
-	resolver := testResolver("abc123def456", "00000000deadbeef", true)
+	resolver := testResolver("abc123def456", testSpanID, true)
 	h := sloggcp.NewHandler(inner, resolver, "my-gcp-project")
 	logger := slog.New(h)
 
@@ -923,7 +929,7 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 		t.Errorf("trace = %v, want %v", entry["logging.googleapis.com/trace"], wantTrace)
 	}
 
-	if entry["logging.googleapis.com/spanId"] != "00000000deadbeef" {
+	if entry["logging.googleapis.com/spanId"] != testSpanID {
 		t.Errorf("spanId = %v", entry["logging.googleapis.com/spanId"])
 	}
 
@@ -932,7 +938,7 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 	}
 }
 
-// --- WithTrace ---
+// --- WithTrace ---.
 
 func TestWithTrace_InjectsTraceID(t *testing.T) {
 	t.Parallel()
@@ -940,11 +946,7 @@ func TestWithTrace_InjectsTraceID(t *testing.T) {
 	buf := &sloggcptest.SyncBuffer{}
 	resolver := func(ctx context.Context) sloggcp.TraceContext {
 		info := sloggcp.ParseCloudTraceHeaderForTest(sloggcp.TraceHeaderKeyForTest(ctx))
-		return sloggcp.TraceContext{
-			TraceID: info.TraceID,
-			SpanID:  info.SpanID,
-			Sampled: info.Sampled,
-		}
+		return sloggcp.TraceContext(info)
 	}
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, resolver, "test-project"))
@@ -965,7 +967,7 @@ func TestWithTrace_InjectsTraceID(t *testing.T) {
 	}
 }
 
-// --- HTTPRequestAttr ---
+// --- HTTPRequestAttr ---.
 
 func TestHTTPRequestAttr_FullFields(t *testing.T) {
 	t.Parallel()
@@ -974,9 +976,9 @@ func TestHTTPRequestAttr_FullFields(t *testing.T) {
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
 
-	reqAttr := sloggcp.HTTPRequestAttr(sloggcp.HTTPRequest{
+	reqAttr := sloggcp.HTTPRequestAttr(&sloggcp.HTTPRequest{
 		Method:       "GET",
-		URL:          "/api/health",
+		URL:          testHealthURL,
 		Status:       200,
 		Latency:      150 * time.Millisecond,
 		RemoteIP:     "10.0.0.1",
@@ -999,8 +1001,8 @@ func TestHTTPRequestAttr_FullFields(t *testing.T) {
 		t.Errorf("requestMethod = %v, want GET", httpReq["requestMethod"])
 	}
 
-	if httpReq["requestUrl"] != "/api/health" {
-		t.Errorf("requestUrl = %v, want /api/health", httpReq["requestUrl"])
+	if httpReq["requestUrl"] != testHealthURL {
+		t.Errorf("requestUrl = %v, want %s", httpReq["requestUrl"], testHealthURL)
 	}
 
 	// Status comes back as float64 from JSON.
@@ -1016,7 +1018,7 @@ func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
 
-	reqAttr := sloggcp.HTTPRequestAttr(sloggcp.HTTPRequest{
+	reqAttr := sloggcp.HTTPRequestAttr(&sloggcp.HTTPRequest{
 		Method: "POST",
 		URL:    "/api/data",
 		Status: 201,
@@ -1042,7 +1044,7 @@ func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
 	}
 }
 
-// --- LevelVar ---
+// --- LevelVar ---.
 
 func TestWithLevelVar_DynamicLevelChange(t *testing.T) {
 	t.Parallel()
@@ -1074,7 +1076,7 @@ func TestWithLevelVar_DynamicLevelChange(t *testing.T) {
 	sloggcptest.AssertLogCount(t, entries, 2) // Now 2.
 }
 
-// --- Fuzz tests ---
+// --- Fuzz tests ---.
 
 func FuzzParseCloudTraceHeader(f *testing.F) {
 	f.Add("abc/def;o=1")

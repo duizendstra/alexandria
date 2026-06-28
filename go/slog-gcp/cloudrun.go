@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp
 
@@ -23,7 +23,11 @@ type traceHeaderKey struct{}
 type SetupOption func(*setupConfig)
 
 type setupConfig struct {
-	levelVar *slog.LevelVar
+	levelVar  *slog.LevelVar
+	projectID string
+	eventID   *bool
+	resolver  IDResolver
+	labels    map[string]string
 }
 
 // WithLevelVar configures the logger to use the given [slog.LevelVar]
@@ -37,6 +41,35 @@ type setupConfig struct {
 func WithLevelVar(lv *slog.LevelVar) SetupOption {
 	return func(cfg *setupConfig) {
 		cfg.levelVar = lv
+	}
+}
+
+// WithProjectID configures the logger with an explicit GCP project ID.
+// If set, it bypasses the auto-detection metadata server query.
+func WithProjectID(id string) SetupOption {
+	return func(cfg *setupConfig) {
+		cfg.projectID = id
+	}
+}
+
+// WithEventIDEnabled configures whether a unique event_id is generated per log line.
+func WithEventIDEnabled(enabled bool) SetupOption {
+	return func(cfg *setupConfig) {
+		cfg.eventID = &enabled
+	}
+}
+
+// WithTraceResolver configures a custom trace ID resolver.
+func WithTraceResolver(resolver IDResolver) SetupOption {
+	return func(cfg *setupConfig) {
+		cfg.resolver = resolver
+	}
+}
+
+// WithLabels configures a map of global labels injected into all log entries.
+func WithLabels(labels map[string]string) SetupOption {
+	return func(cfg *setupConfig) {
+		cfg.labels = labels
 	}
 }
 
@@ -76,13 +109,18 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 		})
 	}
 
-	resolver := func(ctx context.Context) TraceContext {
-		info := parseCloudTraceHeader(traceHeaderFromCtx(ctx))
+	var resolver IDResolver
+	if cfg.resolver != nil {
+		resolver = cfg.resolver
+	} else {
+		resolver = func(ctx context.Context) TraceContext {
+			info := parseCloudTraceHeader(traceHeaderFromCtx(ctx))
 
-		return TraceContext{
-			TraceID: info.traceID,
-			SpanID:  info.spanID,
-			Sampled: info.sampled,
+			return TraceContext{
+				TraceID: info.traceID,
+				SpanID:  info.spanID,
+				Sampled: info.sampled,
+			}
 		}
 	}
 
@@ -92,7 +130,22 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 		ReplaceAttr: GCPReplaceAttr,
 	})
 
-	return NewHandler(inner, resolver, "")
+	var handlerOpts []Option
+	if cfg.eventID != nil {
+		handlerOpts = append(handlerOpts, WithEventID(*cfg.eventID))
+	}
+
+	h := NewHandler(inner, resolver, cfg.projectID, handlerOpts...)
+
+	if len(cfg.labels) > 0 {
+		var labelAttrs []any
+		for k, v := range cfg.labels {
+			labelAttrs = append(labelAttrs, slog.String(k, v))
+		}
+		h = h.WithAttrs([]slog.Attr{slog.Group("logging.googleapis.com/labels", labelAttrs...)}) //nolint:sloglint // GCP Logging uses this exact group name.
+	}
+
+	return h
 }
 
 // Setup configures the default slog logger for the current environment.
@@ -121,7 +174,20 @@ func TraceMiddleware(next http.Handler) http.Handler {
 // transparently, just like TraceMiddleware does for HTTP requests.
 func WithTrace(ctx context.Context) context.Context {
 	traceID := strings.ReplaceAll(uuid.New().String(), "-", "")
-	header := fmt.Sprintf("%s/0;o=1", traceID)
+	header := traceID + "/0;o=1"
+
+	return context.WithValue(ctx, traceHeaderKey{}, header)
+}
+
+// WithTraceContext returns a context containing the given TraceContext.
+// This allows background workers (e.g. Pub/Sub processors) to propagate
+// trace context received from external systems.
+func WithTraceContext(ctx context.Context, tc TraceContext) context.Context {
+	sampledVal := "0"
+	if tc.Sampled {
+		sampledVal = "1"
+	}
+	header := fmt.Sprintf("%s/%s;o=%s", tc.TraceID, tc.SpanID, sampledVal)
 
 	return context.WithValue(ctx, traceHeaderKey{}, header)
 }
@@ -154,3 +220,4 @@ func parseLogLevel() slog.Level {
 		return slog.LevelDebug
 	}
 }
+

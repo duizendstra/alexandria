@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp
 
@@ -48,11 +48,11 @@ func ServiceContextFromEnv() ServiceContext {
 func ErrorAttrs(err error, sc ServiceContext) []slog.Attr {
 	attrs := []slog.Attr{
 		slog.String("@type", ErrorReportingType),
-		slog.Group("serviceContext",
+		slog.Group("serviceContext", //nolint:sloglint // GCP Error Reporting expects camelCase key.
 			slog.String("service", sc.Service),
 			slog.String("version", sc.Version),
 		),
-		slog.String("stack_trace", stackTrace(3)),
+		slog.String("stack_trace", stackTrace(3)), //nolint:mnd // Skip count for caller stack frames.
 	}
 
 	if err != nil {
@@ -68,11 +68,11 @@ func ErrorAttrsAny(err error, sc ServiceContext) []any {
 	attrs := []any{
 		"@type",
 		ErrorReportingType,
-		slog.Group("serviceContext",
+		slog.Group("serviceContext", //nolint:sloglint // GCP Error Reporting expects camelCase key.
 			slog.String("service", sc.Service),
 			slog.String("version", sc.Version),
 		),
-		"stack_trace", stackTrace(3),
+		"stack_trace", stackTrace(3), //nolint:mnd // Skip count for caller stack frames.
 	}
 
 	if err != nil {

@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp
 
@@ -15,9 +15,12 @@ import (
 )
 
 var (
+	//nolint:gochecknoglobals // Package-level cache for metadata project ID.
 	metadataProjectID string
-	metadataOnce      sync.Once
-	metadataURL       = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
+	//nolint:gochecknoglobals // sync.Once to guard metadata resolution.
+	metadataOnce sync.Once
+	//nolint:gochecknoglobals // Default GCE metadata URL.
+	metadataURL = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
 )
 
 // detectProjectID reads the GCP project ID from environment variables,
@@ -33,6 +36,11 @@ func detectProjectID() string {
 		if id := os.Getenv(key); id != "" {
 			return id
 		}
+	}
+
+	// Bypass metadata server check if explicitly disabled (prevents 500ms block on AWS/local).
+	if strings.EqualFold(os.Getenv("GCP_METADATA_DISABLED"), "true") {
+		return "unknown-project"
 	}
 
 	// Priority 2: GCE metadata service (available on Cloud Run, GKE, etc.).
@@ -52,7 +60,7 @@ func detectProjectID() string {
 func queryMetadataProjectID() string {
 	client := &http.Client{Timeout: 500 * time.Millisecond} //nolint:mnd // Short timeout for non-GCP fallback.
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, metadataURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, metadataURL, http.NoBody)
 	if err != nil {
 		return ""
 	}
@@ -63,7 +71,9 @@ func queryMetadataProjectID() string {
 	if err != nil {
 		return ""
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return ""
@@ -76,3 +86,4 @@ func queryMetadataProjectID() string {
 
 	return strings.TrimSpace(string(body))
 }
+
