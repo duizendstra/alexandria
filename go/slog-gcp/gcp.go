@@ -119,8 +119,7 @@ func ErrorAttrsAny() []any {
 }
 
 // detectProjectID reads the GCP project ID from environment variables.
-// Checks GCP_PROJECT_ID (Boozed convention) in addition to the
-// standard GCP environment variables.
+// Checks common GCP environment variables in priority order.
 func detectProjectID() string {
 	for _, key := range []string{
 		"GCP_PROJECT_ID",

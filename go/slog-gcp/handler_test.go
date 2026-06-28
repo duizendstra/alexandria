@@ -1,3 +1,7 @@
+// Copyright 2026 Jasper Duizendstra. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+// SPDX-License-Identifier: Apache-2.0
+
 package sloggcp_test
 
 import (
@@ -620,8 +624,8 @@ func TestHandler_SlogTestCompliance(t *testing.T) {
 // --- ErrorAttrs ---
 
 func TestErrorAttrs(t *testing.T) {
-	t.Setenv("K_SERVICE", "bws-api")
-	t.Setenv("K_REVISION", "bws-api-00042")
+	t.Setenv("K_SERVICE", "my-service")
+	t.Setenv("K_REVISION", "my-service-00001")
 
 	testErr := errors.New("something failed")
 	attrs := sloggcp.ErrorAttrs(testErr)
@@ -674,7 +678,7 @@ func TestErrorAttrsAny(t *testing.T) {
 // --- detectProjectID ---
 
 func TestDetectProjectID_GCPProjectID(t *testing.T) {
-	t.Setenv("GCP_PROJECT_ID", "boozed-prod")
+	t.Setenv("GCP_PROJECT_ID", "my-project")
 	t.Setenv("GOOGLE_CLOUD_PROJECT", "should-not-use")
 
 	buf := &sloggcp.SyncBuffer{}
@@ -686,8 +690,8 @@ func TestDetectProjectID_GCPProjectID(t *testing.T) {
 	entries := sloggcp.LogEntries(buf)
 
 	got, _ := entries[0]["logging.googleapis.com/trace"].(string)
-	if !strings.HasPrefix(got, "projects/boozed-prod/") {
-		t.Errorf("trace = %q, want prefix projects/boozed-prod/", got)
+	if !strings.HasPrefix(got, "projects/my-project/") {
+		t.Errorf("trace = %q, want prefix projects/my-project/", got)
 	}
 }
 

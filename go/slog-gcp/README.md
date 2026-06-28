@@ -58,9 +58,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 ### Custom handler
 
 ```go
-handler := sloggcp.NewHandler(os.Stderr, &slog.HandlerOptions{
-    Level: slog.LevelDebug,
+inner := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+    Level:       slog.LevelDebug,
+    ReplaceAttr: sloggcp.GCPReplaceAttr,
 })
+handler := sloggcp.NewHandler(inner, nil, "my-gcp-project")
 logger := slog.New(handler)
 logger.Info("server started", "port", 8080)
 ```
@@ -91,7 +93,7 @@ slog.ErrorContext(ctx, "database connection failed",
 )
 ```
 
-This adds `@type`, `stack_trace`, and `serviceContext` fields that Cloud
+This adds `@type`, `serviceContext`, and `error` fields that Cloud
 Error Reporting uses for grouping and alerting.
 
 ## Testing
@@ -100,15 +102,13 @@ Use the built-in test helpers to assert log output:
 
 ```go
 func TestMyHandler(t *testing.T) {
-    buf := &sloggcp.SyncBuffer{}
-    logger := sloggcp.NewTestLogger(buf, slog.LevelDebug)
+    logger, buf := sloggcp.NewTestLogger(t)
 
     logger.Info("test message", "key", "value")
 
-    entries := sloggcp.LogEntries(t, buf)
-    if len(entries) != 1 {
-        t.Fatalf("got %d entries, want 1", len(entries))
-    }
+    entries := sloggcp.LogEntries(buf)
+    sloggcp.AssertLogCount(t, entries, 1)
+    sloggcp.AssertLogContains(t, entries, "message", "test message")
 }
 ```
 
