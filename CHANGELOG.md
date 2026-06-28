@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [go/slog-gcp/v0.0.1] - 2026-06-28
+
+### Added
+
+- Initial release of the `slog-gcp` module
+- `slog.Handler` decorator with GCP Cloud Logging JSON output
+- Cloud Trace header extraction via HTTP middleware
+- Cloud Error Reporting integration via `ErrorAttrs()`
+- One-call `Setup()` for Cloud Run services
+- Test helpers (`SyncBuffer`, `LogEntries`, assertion functions)
+- Godoc examples (`ExampleSetup`, `ExampleNewHandler`, `ExampleErrorAttrs`)
+
+## [repository] - 2026-06-28
+
 ### Added
 
 - Initial repository structure with 5-concern layout (`go/`, `contracts/`, `skills/`, `blueprints/`, `docs/`)
