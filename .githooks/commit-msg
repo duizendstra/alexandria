@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg — Validates conventional commit format.
+#
+# Format: <type>(<scope>): <description>
+# The scope is optional.
+
+set -euo pipefail
+
+commit_msg_file="$1"
+commit_msg=$(head -n 1 "$commit_msg_file")
+
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo ""
+  echo "❌  Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "    Expected:  <type>(<scope>): <description>"
+  echo "    Received:  $commit_msg"
+  echo ""
+  echo "    Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo "    Example:    feat(slog-gcp): add JSON output support"
+  echo ""
+  exit 1
+fi

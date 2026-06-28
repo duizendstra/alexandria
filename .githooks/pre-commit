@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit — Scans staged files for leaked secrets.
+#
+# Blocks commits containing:
+#   - GitHub PATs (ghp_)
+#   - GitHub OAuth tokens (gho_)
+#   - GCP API keys (AIza)
+#   - AWS access keys (AKIA)
+#   - Private keys (-----BEGIN ... PRIVATE KEY)
+
+set -euo pipefail
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+found=0
+
+while IFS= read -r file; do
+  # Skip binary files
+  if ! git diff --cached --diff-filter=ACM -p -- "$file" | head -1 | grep -q "^diff"; then
+    continue
+  fi
+
+  staged_content=$(git show ":$file" 2>/dev/null) || continue
+
+  # GitHub Personal Access Tokens
+  if echo "$staged_content" | grep -qE 'ghp_[A-Za-z0-9]{36,}'; then
+    echo "🔑  Leaked GitHub PAT (ghp_) detected in: $file"
+    found=1
+  fi
+
+  # GitHub OAuth tokens
+  if echo "$staged_content" | grep -qE 'gho_[A-Za-z0-9]{36,}'; then
+    echo "🔑  Leaked GitHub OAuth token (gho_) detected in: $file"
+    found=1
+  fi
+
+  # GCP API keys
+  if echo "$staged_content" | grep -qE 'AIza[A-Za-z0-9_\\-]{35}'; then
+    echo "🔑  Leaked GCP API key (AIza) detected in: $file"
+    found=1
+  fi
+
+  # AWS access keys
+  if echo "$staged_content" | grep -qE 'AKIA[A-Z0-9]{16}'; then
+    echo "🔑  Leaked AWS access key (AKIA) detected in: $file"
+    found=1
+  fi
+
+  # Private keys
+  if echo "$staged_content" | grep -qE '-----BEGIN.*PRIVATE KEY'; then
+    echo "🔑  Private key detected in: $file"
+    found=1
+  fi
+
+done <<< "$staged_files"
+
+if [ "$found" -ne 0 ]; then
+  echo ""
+  echo "❌  Commit blocked: secret(s) detected in staged files."
+  echo "    Remove the sensitive content and try again."
+  echo ""
+  exit 1
+fi

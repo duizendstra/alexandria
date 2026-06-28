@@ -1,0 +1,32 @@
+name: ✨ Feature Request
+description: Suggest a new feature or module for Alexandria.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which module does this apply to, or is this a new module proposal?
+      options:
+        - go/slog-gcp
+        - New module (describe below)
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the feature you'd like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe the problem this feature would solve or the workflow it would improve.
+    validations:
+      required: true
