@@ -5,7 +5,7 @@ workflow for the multi-module repository.
 
 ## Prerequisites
 
-- Go 1.26.4+
+- Go 1.26+
 - [buf](https://buf.build/) (for proto contracts)
 - [golangci-lint](https://golangci-lint.run/)
 
@@ -21,7 +21,7 @@ Use a `go.work` file (not committed) for cross-module development:
 ```bash
 # Create a local workspace (one-time setup)
 cat > go.work << 'EOF'
-go 1.26.4
+go 1.26
 use (
     ./go/slog-gcp
 )
@@ -105,6 +105,9 @@ Before publishing a new Go module:
 - [ ] Apache-2.0 header in every `.go` file
 - [ ] `golangci-lint` clean
 - [ ] Per-module `README.md` with install + usage
+- [ ] README code examples must compile against the actual API signatures
+- [ ] Output examples must match actual handler output
+- [ ] No internal company, project, or team names in source or tests
 
 ## Issues & Pull Requests
 

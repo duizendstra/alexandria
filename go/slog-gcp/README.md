@@ -8,7 +8,7 @@ JSON in [Google Cloud Logging](https://cloud.google.com/logging/docs/structured-
 
 ## Features
 
-- Maps slog levels to GCP severity levels (`WARN` → `WARNING`)
+- Maps slog levels to GCP severity (DEBUG through EMERGENCY)
 - Injects `logging.googleapis.com/trace`, `spanId`, and `trace_sampled`
 - Auto-generates `event_id` for log correlation
 - Cloud Error Reporting integration via `ErrorAttrs()`
@@ -55,6 +55,42 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### Cloud Run Jobs & Batch Workers
+
+For background jobs that process messages (e.g., from Pub/Sub) without an HTTP request:
+
+```go
+sloggcp.Setup() // Auto-detects CLOUD_RUN_JOB and enables JSON logging
+
+func processMessage(msg []byte) {
+    // Generate a trace context for the message processing lifecycle
+    ctx := sloggcp.WithTrace(context.Background())
+    slog.InfoContext(ctx, "processing started", "size", len(msg))
+}
+```
+
+### Generic GCP & OpenTelemetry (e.g. GKE)
+
+If you use OpenTelemetry and deploy to generic GCP environments like GKE, use the `otelgcp` module to automatically extract W3C `traceparent` contexts:
+
+```go
+import (
+    "log/slog"
+    "os"
+
+    sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
+    "github.com/duizendstra/alexandria/go/slog-gcp/otelgcp"
+)
+
+inner := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+    ReplaceAttr: sloggcp.GCPReplaceAttr,
+})
+
+// otelgcp.NewResolver() extracts trace context from OpenTelemetry spans
+handler := sloggcp.NewHandler(inner, otelgcp.NewResolver(), "my-gcp-project")
+slog.SetDefault(slog.New(handler))
+```
+
 ### Custom handler
 
 ```go
@@ -73,7 +109,7 @@ logger.Info("server started", "port", 8080)
 {
   "severity": "INFO",
   "message": "request received",
-  "time": "2026-06-28T09:00:00.000Z",
+  "timestamp": "2026-06-28T09:00:00.000Z",
   "logging.googleapis.com/trace": "projects/my-project/traces/abc123",
   "logging.googleapis.com/spanId": "def456",
   "logging.googleapis.com/trace_sampled": true,
@@ -89,7 +125,7 @@ Use `ErrorAttrs()` to generate Cloud Error Reporting fields:
 
 ```go
 slog.LogAttrs(ctx, slog.LevelError, "database connection failed",
-    append(sloggcp.ErrorAttrs(err), slog.String("db", "firestore"))...,
+    append(sloggcp.ErrorAttrs(err, sloggcp.ServiceContextFromEnv()), slog.String("db", "firestore"))...,
 )
 ```
 
@@ -101,14 +137,16 @@ Error Reporting uses for grouping and alerting.
 Use the built-in test helpers to assert log output:
 
 ```go
+import sloggcptest "github.com/duizendstra/alexandria/go/slog-gcp/sloggcptest"
+
 func TestMyHandler(t *testing.T) {
-    logger, buf := sloggcp.NewTestLogger(t)
+    logger, buf := sloggcptest.NewTestLogger(t)
 
     logger.Info("test message", "key", "value")
 
-    entries := sloggcp.LogEntries(buf)
-    sloggcp.AssertLogCount(t, entries, 1)
-    sloggcp.AssertLogContains(t, entries, "message", "test message")
+    entries := sloggcptest.LogEntries(buf)
+    sloggcptest.AssertLogCount(t, entries, 1)
+    sloggcptest.AssertLogContains(t, entries, "message", "test message")
 }
 ```
 

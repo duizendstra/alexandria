@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp_test
 
@@ -15,9 +15,10 @@ import (
 )
 
 func BenchmarkHandler_Handle(b *testing.B) {
+	//nolint:sloglint // Benchmark requires JSON formatting to io.Discard.
 	inner := slog.NewJSONHandler(io.Discard, nil)
-	h := sloggcp.NewHandler(inner, func(_ context.Context) (string, string, bool) {
-		return "abc123", "def456", true
+	h := sloggcp.NewHandler(inner, func(_ context.Context) sloggcp.TraceContext {
+		return sloggcp.TraceContext{TraceID: "abc123", SpanID: "def456", Sampled: true}
 	}, "bench-project")
 
 	ctx := context.Background()
@@ -32,11 +33,12 @@ func BenchmarkHandler_Handle(b *testing.B) {
 }
 
 func BenchmarkFullChain_Handle(b *testing.B) {
+	//nolint:sloglint // Benchmark requires JSON formatting to io.Discard.
 	inner := slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
 		ReplaceAttr: sloggcp.GCPReplaceAttr,
 	})
-	h := sloggcp.NewHandler(inner, func(_ context.Context) (string, string, bool) {
-		return "abc123def456", "00000000deadbeef", true
+	h := sloggcp.NewHandler(inner, func(_ context.Context) sloggcp.TraceContext {
+		return sloggcp.TraceContext{TraceID: "abc123def456", SpanID: "00000000deadbeef", Sampled: true}
 	}, "bench-project")
 
 	ctx := context.Background()
@@ -51,9 +53,10 @@ func BenchmarkFullChain_Handle(b *testing.B) {
 }
 
 func BenchmarkHandler_WithEventID_Disabled(b *testing.B) {
+	//nolint:sloglint // Benchmark requires JSON formatting to io.Discard.
 	inner := slog.NewJSONHandler(io.Discard, nil)
-	h := sloggcp.NewHandler(inner, func(_ context.Context) (string, string, bool) {
-		return "abc", "def", false
+	h := sloggcp.NewHandler(inner, func(_ context.Context) sloggcp.TraceContext {
+		return sloggcp.TraceContext{TraceID: "abc", SpanID: "def", Sampled: false}
 	}, "proj", sloggcp.WithEventID(false))
 
 	ctx := context.Background()
@@ -63,11 +66,12 @@ func BenchmarkHandler_WithEventID_Disabled(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		logger.InfoContext(ctx, "no event id") //nolint:sloglint // Benchmark format.
+		logger.InfoContext(ctx, "no event id")
 	}
 }
 
 func BenchmarkHandler_NoResolver(b *testing.B) {
+	//nolint:sloglint // Benchmark requires JSON formatting to io.Discard.
 	inner := slog.NewJSONHandler(io.Discard, nil)
 	h := sloggcp.NewHandler(inner, nil, "proj")
 
@@ -78,6 +82,7 @@ func BenchmarkHandler_NoResolver(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		logger.InfoContext(ctx, "no resolver") //nolint:sloglint // Benchmark format.
+		logger.InfoContext(ctx, "no resolver")
 	}
 }
+

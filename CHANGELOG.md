@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Root `.golangci.yml` using the duizendstra-com Library Lint Standard
+
+### Changed
+
+- **slog-gcp** refactoring and feature additions:
+  - Added `WithProjectID`, `WithEventIDEnabled`, `WithTraceResolver`, and `WithLabels` setup options.
+  - Added `WithTraceContext` public helper for context propagation in async workers.
+  - Added `GCP_METADATA_DISABLED=true` environment variable bypass for metadata query.
+  - Optimized trace prefix parsing (pre-computed in handler creation) to reduce hot-path allocations.
+
+
+## [go/slog-gcp/otelgcp/v0.0.1] - 2026-06-28
+
+### Added
+
+- Initial release of the `slog-gcp/otelgcp` module
+- OpenTelemetry span context integration as a resolver for `slog-gcp`
+
 ## [go/slog-gcp/v0.0.1] - 2026-06-28
 
 ### Added
