@@ -43,3 +43,19 @@ The CI docs job scans all `.md` files for markdown links and verifies targets
 exist. Avoid writing example markdown link syntax (text in brackets, URL in
 parens) in documentation — the grep pattern will match it as a real link. Use
 prose descriptions or backtick-escaped syntax instead.
+
+## 8. Go Module Tagging
+- Use path-prefixed annotated tags: `git tag -a go/<module>/v<semver> -m "<message>"`
+- The tag path prefix must match the module's subdirectory relative to repo root.
+- Libraries should pin `go.mod` to minor version only (e.g., `go 1.26`), not patch.
+- Use `v0.0.x` for modules with foreseeable API changes; `v0.1.x` when API stabilizes.
+
+## 9. CI Tool Compatibility
+When updating Go versions, also verify `golangci-lint-action` version compatibility.
+The action major version must support the Go version used by the module.
+
+## 10. PR Merge Strategy
+Merge PRs with `gh pr merge --squash --delete-branch` to keep main history
+clean and auto-delete feature branches after merge.
+Never commit directly to main — all changes must go through a PR,
+including chore commits (rules, docs, config).

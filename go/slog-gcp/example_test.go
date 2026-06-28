@@ -1,13 +1,17 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 package sloggcp_test
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
+	"time"
 
 	sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
 )
@@ -17,7 +21,7 @@ func ExampleSetup() {
 	// On Cloud Run (K_SERVICE set), outputs JSON; locally, outputs text.
 	sloggcp.Setup()
 
-	slog.Info("server started", "port", 8080)
+	slog.Info("server started", slog.Int("port", 8080))
 	// Output is environment-dependent.
 }
 
@@ -33,12 +37,38 @@ func ExampleNewHandler() {
 }
 
 func ExampleErrorAttrs() {
-	err := fmt.Errorf("connection refused")
-	attrs := sloggcp.ErrorAttrs(err)
+	err := errors.New("connection refused")
+	attrs := sloggcp.ErrorAttrs(err, sloggcp.ServiceContextFromEnv())
 
-	// attrs contains @type, serviceContext, and error fields
+	// attrs contains @type, serviceContext, stack_trace, and error fields
 	// for Cloud Error Reporting integration.
 	fmt.Println(len(attrs))
 	// Output:
-	// 3
+	// 4
 }
+
+func ExampleWithTrace() {
+	ctx := sloggcp.WithTrace(context.Background())
+	// Use ctx with any slog call — trace ID is injected automatically.
+	slog.InfoContext(ctx, "job started")
+}
+
+func ExampleHTTPRequestAttr() {
+	reqAttr := sloggcp.HTTPRequestAttr(&sloggcp.HTTPRequest{
+		Method:  http.MethodGet,
+		URL:     "/api/health",
+		Status:  200,
+		Latency: 42 * time.Millisecond,
+	})
+	_ = reqAttr
+}
+
+func ExampleWithLevelVar() {
+	var level slog.LevelVar
+	level.Set(slog.LevelInfo)
+
+	// Pass the LevelVar to Setup for dynamic control.
+	// In production: sloggcp.Setup(sloggcp.WithLevelVar(&level)).
+	_ = &level
+}
+

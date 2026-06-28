@@ -9,6 +9,7 @@ Each directory is a standalone Go module with its own `go.mod`.
 | Module | Description | Status |
 |---|---|---|
 | [slog-gcp](slog-gcp/) | GCP Cloud Logging handler for `log/slog` | v0.0.1 |
+| [slog-gcp/otelgcp](slog-gcp/otelgcp/) | OpenTelemetry trace context resolver for `slog-gcp` | v0.0.1 |
 
 ## Install
 
