@@ -22,7 +22,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 
 | Module | Import Path | Status |
 |---|---|---|
-| [slog-gcp](go/) | `github.com/duizendstra/alexandria/go/slog-gcp` | 🚧 In development |
+| [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.0.1 |
 
 ## Documentation
 
