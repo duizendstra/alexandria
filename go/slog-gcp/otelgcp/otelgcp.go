@@ -1,6 +1,6 @@
 // Copyright 2026 Jasper Duizendstra. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0.
 
 // Package otelgcp provides OpenTelemetry integration for slog-gcp.
 // It bridges OpenTelemetry trace contexts into the slog-gcp TraceContext

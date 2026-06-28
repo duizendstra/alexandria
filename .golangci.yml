@@ -291,6 +291,11 @@ linters:
       - linters: [wrapcheck]
         source: "return ctx\\.Err\\(\\)"
 
+      # slog-gcp/otelgcp uses local replace for development in the monorepo.
+      - path: go/slog-gcp/otelgcp/go.mod
+        linters:
+          - gomoddirectives
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
