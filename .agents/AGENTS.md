@@ -40,6 +40,6 @@ modifications in another).
 
 ## 7. CI Link Checker Awareness
 The CI docs job scans all `.md` files for markdown links and verifies targets
-exist. Avoid writing example markdown link syntax like `[text](target)` in
-documentation — the grep pattern will match it as a real link. Use prose
-descriptions or backtick-escaped syntax instead.
+exist. Avoid writing example markdown link syntax (text in brackets, URL in
+parens) in documentation — the grep pattern will match it as a real link. Use
+prose descriptions or backtick-escaped syntax instead.
