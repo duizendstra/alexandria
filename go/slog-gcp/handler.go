@@ -84,17 +84,17 @@ func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:
 
 		if traceID != "" {
 			rec.AddAttrs(
-				slog.String("logging.googleapis.com/trace",
+				slog.String(FieldTrace,
 					fmt.Sprintf("projects/%s/traces/%s", h.projectID, traceID)),
 			)
 		}
 
 		if spanID != "" {
-			rec.AddAttrs(slog.String("logging.googleapis.com/spanId", spanID))
+			rec.AddAttrs(slog.String(FieldSpanID, spanID))
 		}
 
 		if traceID != "" {
-			rec.AddAttrs(slog.Bool("logging.googleapis.com/trace_sampled", sampled))
+			rec.AddAttrs(slog.Bool(FieldTraceSampled, sampled))
 		}
 	}
 
