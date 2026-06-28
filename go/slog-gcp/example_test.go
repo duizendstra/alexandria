@@ -60,3 +60,12 @@ func ExampleHTTPRequestAttr() {
 	})
 	_ = reqAttr
 }
+
+func ExampleWithLevelVar() {
+	var level slog.LevelVar
+	level.Set(slog.LevelInfo)
+
+	// Pass the LevelVar to Setup for dynamic control.
+	// In production: sloggcp.Setup(sloggcp.WithLevelVar(&level))
+	_ = &level
+}

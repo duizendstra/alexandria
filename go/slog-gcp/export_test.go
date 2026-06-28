@@ -44,3 +44,8 @@ func ResetMetadataCacheForTest() {
 	metadataProjectID = ""
 	metadataOnce = sync.Once{}
 }
+
+// SetMetadataURLForTest overrides the metadata service URL for testing.
+func SetMetadataURLForTest(url string) {
+	metadataURL = url
+}

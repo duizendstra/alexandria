@@ -159,6 +159,7 @@ func ErrorAttrsAny(err error) []any {
 var (
 	metadataProjectID string
 	metadataOnce      sync.Once
+	metadataURL       = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
 )
 
 // detectProjectID reads the GCP project ID from environment variables,
@@ -191,7 +192,6 @@ func detectProjectID() string {
 // queryMetadataProjectID queries the GCE metadata service for the project ID.
 // Uses a short timeout to avoid blocking on non-GCP environments.
 func queryMetadataProjectID() string {
-	const metadataURL = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
 
 	client := &http.Client{Timeout: 500 * time.Millisecond} //nolint:mnd // Short timeout for non-GCP fallback.
 

@@ -19,6 +19,27 @@ import (
 // header value stored by [TraceMiddleware].
 type traceHeaderKey struct{}
 
+// SetupOption configures [Setup] and [InitCloudRun].
+type SetupOption func(*setupConfig)
+
+type setupConfig struct {
+	levelVar *slog.LevelVar
+}
+
+// WithLevelVar configures the logger to use the given [slog.LevelVar]
+// for dynamic level control. The level can be changed at runtime
+// without redeploying the service.
+//
+//	var level slog.LevelVar
+//	sloggcp.Setup(sloggcp.WithLevelVar(&level))
+//	// Later, dynamically change:
+//	level.Set(slog.LevelError)
+func WithLevelVar(lv *slog.LevelVar) SetupOption {
+	return func(cfg *setupConfig) {
+		cfg.levelVar = lv
+	}
+}
+
 // InitCloudRun creates and returns a slog.Handler configured for Cloud
 // Run structured logging. On Cloud Run (K_SERVICE set), it outputs
 // JSON with GCP Cloud Logging field names. Locally, it uses the
@@ -26,8 +47,18 @@ type traceHeaderKey struct{}
 //
 // This function returns the handler for testability. Use [Setup] for
 // the common case of calling slog.SetDefault.
-func InitCloudRun() slog.Handler {
-	level := parseLogLevel()
+func InitCloudRun(opts ...SetupOption) slog.Handler {
+	cfg := &setupConfig{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	var level slog.Leveler
+	if cfg.levelVar != nil {
+		level = cfg.levelVar
+	} else {
+		level = parseLogLevel()
+	}
 	format := os.Getenv("LOG_FORMAT")
 
 	// Local development: text handler unless explicitly overridden.
@@ -61,8 +92,8 @@ func InitCloudRun() slog.Handler {
 
 // Setup configures the default slog logger for the current environment.
 // It calls [InitCloudRun] and sets the result as the default logger.
-func Setup() {
-	slog.SetDefault(slog.New(InitCloudRun()))
+func Setup(opts ...SetupOption) {
+	slog.SetDefault(slog.New(InitCloudRun(opts...)))
 }
 
 // TraceMiddleware extracts X-Cloud-Trace-Context from HTTP requests

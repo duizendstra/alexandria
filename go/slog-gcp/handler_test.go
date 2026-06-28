@@ -764,6 +764,115 @@ func TestDetectProjectID_Fallback(t *testing.T) {
 	}
 }
 
+// --- queryMetadataProjectID ---
+
+func TestDetectProjectID_MetadataFallback(t *testing.T) {
+	// Start a fake metadata server.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Metadata-Flavor") != "Google" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.Write([]byte("metadata-project-id"))
+	}))
+	defer server.Close()
+
+	// Clear env vars so metadata is the only source.
+	t.Setenv("GCP_PROJECT_ID", "")
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "")
+	t.Setenv("GCP_PROJECT", "")
+	t.Setenv("PROJECT_ID", "")
+
+	// Point at our test server and reset cache.
+	sloggcp.SetMetadataURLForTest(server.URL)
+	sloggcp.ResetMetadataCacheForTest()
+	defer func() {
+		sloggcp.SetMetadataURLForTest("http://metadata.google.internal/computeMetadata/v1/project/project-id")
+		sloggcp.ResetMetadataCacheForTest()
+	}()
+
+	buf := &sloggcp.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
+
+	logger.Info("test")
+
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	trace, _ := entries[0]["logging.googleapis.com/trace"].(string)
+	if !strings.Contains(trace, "metadata-project-id") {
+		t.Errorf("trace = %q, want to contain metadata-project-id", trace)
+	}
+}
+
+func TestDetectProjectID_MetadataUnavailable(t *testing.T) {
+	// Start a server that always fails.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	// Clear env vars.
+	t.Setenv("GCP_PROJECT_ID", "")
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "")
+	t.Setenv("GCP_PROJECT", "")
+	t.Setenv("PROJECT_ID", "")
+
+	sloggcp.SetMetadataURLForTest(server.URL)
+	sloggcp.ResetMetadataCacheForTest()
+	defer func() {
+		sloggcp.SetMetadataURLForTest("http://metadata.google.internal/computeMetadata/v1/project/project-id")
+		sloggcp.ResetMetadataCacheForTest()
+	}()
+
+	buf := &sloggcp.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
+
+	logger.Info("test")
+
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	trace, _ := entries[0]["logging.googleapis.com/trace"].(string)
+	if !strings.Contains(trace, "unknown-project") {
+		t.Errorf("trace = %q, want to contain unknown-project", trace)
+	}
+}
+
+func TestDetectProjectID_EnvTakesPrecedenceOverMetadata(t *testing.T) {
+	// Start a metadata server that returns a different project.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte("metadata-project"))
+	}))
+	defer server.Close()
+
+	// Set env var — should take precedence.
+	t.Setenv("GCP_PROJECT_ID", "env-project")
+
+	sloggcp.SetMetadataURLForTest(server.URL)
+	sloggcp.ResetMetadataCacheForTest()
+	defer func() {
+		sloggcp.SetMetadataURLForTest("http://metadata.google.internal/computeMetadata/v1/project/project-id")
+		sloggcp.ResetMetadataCacheForTest()
+	}()
+
+	buf := &sloggcp.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-1", "span-1", false), ""))
+
+	logger.Info("test")
+
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	trace, _ := entries[0]["logging.googleapis.com/trace"].(string)
+	if !strings.Contains(trace, "env-project") {
+		t.Errorf("trace = %q, want to contain env-project", trace)
+	}
+}
+
 // --- Full chain integration ---
 
 func TestFullChain_CloudLoggingJSON(t *testing.T) {
@@ -917,6 +1026,38 @@ func TestHTTPRequestAttr_MinimalFields(t *testing.T) {
 	if _, ok := httpReq["userAgent"]; ok {
 		t.Error("userAgent should be omitted when empty")
 	}
+}
+
+// --- LevelVar ---
+
+func TestWithLevelVar_DynamicLevelChange(t *testing.T) {
+	t.Parallel()
+
+	var level slog.LevelVar
+	level.Set(slog.LevelInfo)
+
+	buf := &sloggcp.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, &slog.HandlerOptions{
+		Level:       &level,
+		ReplaceAttr: sloggcp.GCPReplaceAttr,
+	})
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "test-project", sloggcp.WithEventID(false)))
+
+	// Should log at INFO.
+	logger.Info("visible")
+	entries := sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1)
+
+	// Change to ERROR — INFO should now be filtered.
+	level.Set(slog.LevelError)
+	logger.Info("hidden")
+	entries = sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 1) // Still 1.
+
+	// ERROR should still log.
+	logger.Error("still visible")
+	entries = sloggcp.LogEntries(buf)
+	sloggcp.AssertLogCount(t, entries, 2) // Now 2.
 }
 
 // --- Fuzz tests ---
