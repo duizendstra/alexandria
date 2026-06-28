@@ -55,6 +55,45 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### Cloud Run Jobs & Batch Workers
+
+For background jobs that process messages (e.g., from Pub/Sub) without an HTTP request:
+
+```go
+sloggcp.Setup() // Auto-detects CLOUD_RUN_JOB and enables JSON logging
+
+func processMessage(msg []byte) {
+    // Generate a trace context for the message processing lifecycle
+    ctx := sloggcp.WithTrace(context.Background())
+    slog.InfoContext(ctx, "processing started", "size", len(msg))
+}
+```
+
+### Generic GCP & OpenTelemetry (e.g. GKE)
+
+If you use OpenTelemetry and deploy to generic GCP environments like GKE, you can wire the handler directly to extract W3C `traceparent` contexts:
+
+```go
+inner := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+    ReplaceAttr: sloggcp.GCPReplaceAttr,
+})
+
+resolver := func(ctx context.Context) sloggcp.TraceContext {
+    sc := trace.SpanContextFromContext(ctx) // from go.opentelemetry.io/otel/trace
+    if !sc.IsValid() {
+        return sloggcp.TraceContext{}
+    }
+    return sloggcp.TraceContext{
+        TraceID: sc.TraceID().String(),
+        SpanID:  sc.SpanID().String(),
+        Sampled: sc.IsSampled(),
+    }
+}
+
+handler := sloggcp.NewHandler(inner, resolver, "my-gcp-project")
+slog.SetDefault(slog.New(handler))
+```
+
 ### Custom handler
 
 ```go
@@ -89,7 +128,7 @@ Use `ErrorAttrs()` to generate Cloud Error Reporting fields:
 
 ```go
 slog.LogAttrs(ctx, slog.LevelError, "database connection failed",
-    append(sloggcp.ErrorAttrs(err), slog.String("db", "firestore"))...,
+    append(sloggcp.ErrorAttrs(err, sloggcp.ServiceContextFromEnv()), slog.String("db", "firestore"))...,
 )
 ```
 
@@ -101,14 +140,16 @@ Error Reporting uses for grouping and alerting.
 Use the built-in test helpers to assert log output:
 
 ```go
+import sloggcptest "github.com/duizendstra/alexandria/go/slog-gcp/sloggcptest"
+
 func TestMyHandler(t *testing.T) {
-    logger, buf := sloggcp.NewTestLogger(t)
+    logger, buf := sloggcptest.NewTestLogger(t)
 
     logger.Info("test message", "key", "value")
 
-    entries := sloggcp.LogEntries(buf)
-    sloggcp.AssertLogCount(t, entries, 1)
-    sloggcp.AssertLogContains(t, entries, "message", "test message")
+    entries := sloggcptest.LogEntries(buf)
+    sloggcptest.AssertLogCount(t, entries, 1)
+    sloggcptest.AssertLogContains(t, entries, "message", "test message")
 }
 ```
 

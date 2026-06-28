@@ -16,11 +16,22 @@ type ServiceContext struct {
 }
 
 // ServiceContextFromEnv reads service context from Cloud Run environment
-// variables (K_SERVICE and K_REVISION).
+// variables. It checks K_SERVICE/K_REVISION first, falling back to
+// CLOUD_RUN_JOB/CLOUD_RUN_EXECUTION for Cloud Run Jobs.
 func ServiceContextFromEnv() ServiceContext {
+	svc := os.Getenv("K_SERVICE")
+	if svc == "" {
+		svc = os.Getenv("CLOUD_RUN_JOB")
+	}
+
+	ver := os.Getenv("K_REVISION")
+	if ver == "" {
+		ver = os.Getenv("CLOUD_RUN_EXECUTION")
+	}
+
 	return ServiceContext{
-		Service: os.Getenv("K_SERVICE"),
-		Version: os.Getenv("K_REVISION"),
+		Service: svc,
+		Version: ver,
 	}
 }
 

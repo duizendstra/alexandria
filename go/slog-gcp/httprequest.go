@@ -7,6 +7,7 @@ package sloggcp
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 )
 
@@ -62,4 +63,54 @@ func HTTPRequestAttr(req HTTPRequest) slog.Attr {
 	}
 
 	return slog.Group("httpRequest", attrs...)
+}
+
+// responseRecorder is a minimal wrapper to capture status and size.
+type responseRecorder struct {
+	http.ResponseWriter
+	Status int
+	Size   int64
+}
+
+// WriteHeader captures the status code before delegating.
+func (r *responseRecorder) WriteHeader(status int) {
+	r.Status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
+// Write captures the response size and delegates.
+func (r *responseRecorder) Write(b []byte) (int, error) {
+	if r.Status == 0 {
+		r.WriteHeader(http.StatusOK)
+	}
+	size, err := r.ResponseWriter.Write(b)
+	r.Size += int64(size)
+	return size, err
+}
+
+// RequestLoggerMiddleware returns an http.Handler that logs each request
+// using sloggcp.HTTPRequestAttr. It intercepts the response to capture
+// the status code and response size.
+func RequestLoggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &responseRecorder{ResponseWriter: w, Status: http.StatusOK}
+
+		next.ServeHTTP(rec, r)
+
+		latency := time.Since(start)
+
+		reqAttr := HTTPRequest{
+			Method:       r.Method,
+			URL:          r.URL.String(),
+			Status:       rec.Status,
+			UserAgent:    r.UserAgent(),
+			RemoteIP:     r.RemoteAddr,
+			Latency:      latency,
+			ResponseSize: rec.Size,
+			RequestSize:  r.ContentLength,
+		}
+
+		slog.LogAttrs(r.Context(), slog.LevelInfo, "HTTP Request", HTTPRequestAttr(reqAttr))
+	})
 }
