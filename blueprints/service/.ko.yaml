@@ -1,5 +1,5 @@
 # ko build configuration.
-# ko replaces the Dockerfile — builds Go source directly into distroless images.
+# ko replaces the Dockerfile — builds Go source directly into minimal container images.
 #
 # Usage:
 #   ko build .                     — build + push to KO_DOCKER_REPO

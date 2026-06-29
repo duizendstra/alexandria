@@ -15,7 +15,8 @@ without a Dockerfile or Docker daemon.
 
 ## Golden Template
 
-Copy the template from `blueprints/service/.ko.yaml` into the service root:
+Copy the template from `blueprints/service/.ko.yaml` into the service root.
+This path is relative to the Alexandria monorepo root:
 
 ```bash
 cp blueprints/service/.ko.yaml ./
@@ -123,8 +124,9 @@ No Docker daemon needed on the runner. No service account JSON keys.
 # Get latest digest
 crane digest cgr.dev/chainguard/static:latest
 
-# Update .ko.yaml
-sed -i '' "s/@sha256:.*/@sha256:$(crane digest cgr.dev/chainguard/static:latest)/" .ko.yaml
+# Update .ko.yaml (portable across macOS and Linux)
+NEW_DIGEST=$(crane digest cgr.dev/chainguard/static:latest)
+sed -i.bak "s/@sha256:.*/@sha256:$NEW_DIGEST/" .ko.yaml && rm -f .ko.yaml.bak
 ```
 
 Use Renovate or Dependabot to automate this.
