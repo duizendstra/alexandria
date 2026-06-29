@@ -22,6 +22,7 @@ Consumer repos inherit skills via `skills.json`:
 | Skill | Description |
 |---|---|
 | [dialectical-review](dialectical-review/) | Adversarial expert review using thesis/antithesis/mediator pattern |
+| [ko-build](ko-build/) | Ko container build setup for Go services targeting GCP Cloud Run |
 | [release-review](release-review/) | Pre-release repository review with 6 specialized parallel agents |
 
 ## Creating a Skill

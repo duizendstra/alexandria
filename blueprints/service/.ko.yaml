@@ -1,0 +1,33 @@
+# Ko build configuration.
+# Ko replaces the Dockerfile — builds Go source directly into distroless images.
+#
+# Usage:
+#   ko build .                     — build + push to KO_DOCKER_REPO
+#   ko build . --local             — build to local Docker daemon
+#   ko build . --tarball=<name>    — build to OCI tarball
+#
+# See: https://ko.build/configuration/
+#
+# IMPORTANT: Ensure every service imports time/tzdata in main.go:
+#   import _ "time/tzdata"
+# The static distroless image has no /usr/share/zoneinfo.
+
+# Base image — distroless static for minimal attack surface.
+# Pinned to digest for reproducible builds. Update with:
+#   crane digest gcr.io/distroless/static-debian13:nonroot
+defaultBaseImage: gcr.io/distroless/static-debian13:nonroot@sha256:963fa6c544fe5ce420f1f54fb88b6fb01479f054c8056d0f74cc2c6000df5240
+
+defaultPlatforms:
+  - linux/amd64
+
+builds:
+  - dir: .
+    main: .
+    flags:
+      - -trimpath
+    ldflags:
+      - -w
+    env:
+      - CGO_ENABLED=0
+    labels:
+      org.opencontainers.image.source: https://github.com/duizendstra-com/REPO
