@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Root `.golangci.yml` using the duizendstra-com Library Lint Standard
+- **skills/diffract-review**: Agentic Diffract review skill with 9 parallel tool-equipped lens agents and CHECK mediator, based on contextvibes/diffract
 
 ### Changed
 
