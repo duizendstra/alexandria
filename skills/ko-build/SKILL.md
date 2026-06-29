@@ -3,14 +3,14 @@ name: ko-build
 description: >
   Sets up ko container builds for Go services targeting GCP Cloud Run.
   Uses the Alexandria golden .ko.yaml template with pinned distroless base
-  image, reproducible build flags, and OCI labels. Trigger: "set up ko",
+  image and reproducible build flags. Trigger: "set up ko",
   "add ko build", "container build", "ko configuration", "deploy to Cloud Run".
 ---
 
-# Ko Build for Go Cloud Run Services
+# ko Build for Go Cloud Run Services
 
 Use ko as the container build tool for all pure-Go services deploying to
-GCP Cloud Run. Ko builds Go source directly into minimal distroless images
+GCP Cloud Run. ko builds Go source directly into minimal distroless images
 without a Dockerfile or Docker daemon.
 
 ## Golden Template
@@ -20,8 +20,6 @@ Copy the template from `blueprints/service/.ko.yaml` into the service root:
 ```bash
 cp blueprints/service/.ko.yaml ./
 ```
-
-Then update the OCI source label to match the repo.
 
 ## Template Anatomy
 
@@ -39,13 +37,16 @@ builds:
     flags:
       - -trimpath        # reproducible builds (strips local paths)
     ldflags:
-      - -w               # strip DWARF (saves ~15-20% binary size)
+      - -w               # strip DWARF (saves ~10-15% binary size)
                           # -s intentionally omitted to keep symbol table
                           # for pprof profiling and readable panic traces
     env:
-      - CGO_ENABLED=0    # pure-Go static binary
-    labels:
-      org.opencontainers.image.source: https://github.com/duizendstra-com/REPO
+      - CGO_ENABLED=0    # explicit (ko default) — pure-Go static binary
+```
+
+OCI labels are applied via CLI flags in CI (not in `.ko.yaml`):
+```bash
+ko build --image-label org.opencontainers.image.source=https://github.com/OWNER/REPO .
 ```
 
 ## Design Decisions
@@ -54,10 +55,11 @@ builds:
 |---|---|
 | No `-buildvcs=false` | Preserves git commit provenance in binary (~200 bytes) |
 | No `-s` ldflag | Keeps symbol table for pprof and readable panic stack traces |
-| Keep `-w` ldflag | Strips DWARF debug info (rarely needed in prod, saves ~15-20%) |
+| Keep `-w` ldflag | Strips DWARF debug info (rarely needed in prod, saves ~10-15%) |
 | Pinned digest | Floating tags break reproducibility silently |
 | `linux/amd64` only | Cloud Run runs amd64; add `linux/arm64` when needed |
 | No build `id` | Not needed for single-service repos; add for multi-binary repos |
+| Labels via CLI | ko `.ko.yaml` does not support `labels` in `builds`; use `--image-label` |
 
 ## Required: Timezone Data
 
@@ -95,7 +97,8 @@ ko build . --tarball=my-service.tar
 - name: Build and push
   run: |
     export KO_DOCKER_REPO=europe-west1-docker.pkg.dev/$PROJECT/$REPO
-    IMAGE=$(ko build --platform=linux/amd64 .)
+    IMAGE=$(ko build --platform=linux/amd64 \
+      --image-label org.opencontainers.image.source=https://github.com/OWNER/$REPO .)
     echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 ```
 
@@ -113,7 +116,7 @@ sed -i '' "s/@sha256:.*/@sha256:$(crane digest gcr.io/distroless/static-debian13
 
 Use Renovate or Dependabot to automate this.
 
-## When NOT to Use Ko
+## When NOT to Use ko
 
 Fall back to a Dockerfile when:
 

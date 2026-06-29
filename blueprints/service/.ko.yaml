@@ -1,5 +1,5 @@
-# Ko build configuration.
-# Ko replaces the Dockerfile — builds Go source directly into distroless images.
+# ko build configuration.
+# ko replaces the Dockerfile — builds Go source directly into distroless images.
 #
 # Usage:
 #   ko build .                     — build + push to KO_DOCKER_REPO
@@ -28,6 +28,4 @@ builds:
     ldflags:
       - -w
     env:
-      - CGO_ENABLED=0
-    labels:
-      org.opencontainers.image.source: https://github.com/duizendstra-com/REPO
+      - CGO_ENABLED=0 # explicit (ko default)
