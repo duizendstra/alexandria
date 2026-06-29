@@ -2,7 +2,7 @@
 name: ko-build
 description: >
   Sets up ko container builds for Go services targeting GCP Cloud Run.
-  Uses the Alexandria golden .ko.yaml template with pinned distroless base
+  Uses the Alexandria golden .ko.yaml template with pinned Chainguard base
   image and reproducible build flags. Trigger: "set up ko",
   "add ko build", "container build", "ko configuration", "deploy to Cloud Run".
 ---
@@ -10,7 +10,7 @@ description: >
 # ko Build for Go Cloud Run Services
 
 Use ko as the container build tool for all pure-Go services deploying to
-GCP Cloud Run. ko builds Go source directly into minimal distroless images
+GCP Cloud Run. ko builds Go source directly into minimal container images
 without a Dockerfile or Docker daemon.
 
 ## Golden Template
@@ -24,12 +24,17 @@ cp blueprints/service/.ko.yaml ./
 ## Template Anatomy
 
 ```yaml
-# Base image — pinned to digest for reproducible builds
-# Update digest: crane digest gcr.io/distroless/static-debian13:nonroot
-defaultBaseImage: gcr.io/distroless/static-debian13:nonroot@sha256:<digest>
+# Base image — Chainguard static for minimal attack surface.
+# This is ko's own default; being explicit for documentation.
+# Pinned to digest for reproducible builds. Update with:
+#   crane digest cgr.dev/chainguard/static:latest
+defaultBaseImage: cgr.dev/chainguard/static:latest@sha256:<digest>
 
 defaultPlatforms:
   - linux/amd64
+
+# Explicit SBOM generation (ko default, declared for visibility).
+sbom: spdx
 
 builds:
   - dir: .
@@ -53,9 +58,11 @@ ko build --image-label org.opencontainers.image.source=https://github.com/OWNER/
 
 | Decision | Rationale |
 |---|---|
+| Chainguard over distroless | ko's own default base; more actively maintained, faster CVE response than distroless |
 | No `-buildvcs=false` | Preserves git commit provenance in binary (~200 bytes) |
 | No `-s` ldflag | Keeps symbol table for pprof and readable panic stack traces |
 | Keep `-w` ldflag | Strips DWARF debug info (rarely needed in prod, saves ~10-15%) |
+| Explicit `sbom: spdx` | ko generates SBOMs by default; explicit declaration documents intent |
 | Pinned digest | Floating tags break reproducibility silently |
 | `linux/amd64` only | Cloud Run runs amd64; add `linux/arm64` when needed |
 | No build `id` | Not needed for single-service repos; add for multi-binary repos |
@@ -63,7 +70,7 @@ ko build --image-label org.opencontainers.image.source=https://github.com/OWNER/
 
 ## Required: Timezone Data
 
-The static distroless image has no `/usr/share/zoneinfo`. Every service
+The static base image has no `/usr/share/zoneinfo`. Every service
 must import the embedded timezone database:
 
 ```go
@@ -98,9 +105,15 @@ ko build . --tarball=my-service.tar
   run: |
     export KO_DOCKER_REPO=europe-west1-docker.pkg.dev/$PROJECT/$REPO
     IMAGE=$(ko build --platform=linux/amd64 \
+      --bare --tags=$(git rev-parse --short HEAD) \
       --image-label org.opencontainers.image.source=https://github.com/OWNER/$REPO .)
     echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 ```
+
+Key flags:
+- `--bare`: Use repo path as image name (no hash suffix)
+- `--tags=<git-sha>`: Reproducible tags instead of `:latest`
+- `--image-label`: OCI metadata (applied via CLI, not `.ko.yaml`)
 
 No Docker daemon needed on the runner. No service account JSON keys.
 
@@ -108,10 +121,10 @@ No Docker daemon needed on the runner. No service account JSON keys.
 
 ```bash
 # Get latest digest
-crane digest gcr.io/distroless/static-debian13:nonroot
+crane digest cgr.dev/chainguard/static:latest
 
 # Update .ko.yaml
-sed -i '' "s/@sha256:.*/@sha256:$(crane digest gcr.io/distroless/static-debian13:nonroot)/" .ko.yaml
+sed -i '' "s/@sha256:.*/@sha256:$(crane digest cgr.dev/chainguard/static:latest)/" .ko.yaml
 ```
 
 Use Renovate or Dependabot to automate this.
@@ -130,4 +143,4 @@ Fall back to a Dockerfile when:
 - [ko.build documentation](https://ko.build)
 - [ko GitHub](https://github.com/ko-build/ko)
 - [setup-ko action](https://github.com/ko-build/setup-ko)
-- [distroless images](https://github.com/GoogleContainerTools/distroless)
+- [Chainguard static image](https://images.chainguard.dev/directory/image/static/overview)
