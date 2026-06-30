@@ -10,8 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Root `.golangci.yml` using the duizendstra-com Library Lint Standard
-- **blueprints/service/.ko.yaml**: Golden ko build template for Go Cloud Run services (pinned Chainguard static base, reproducible builds)
-- **skills/ko-build**: Antigravity skill for setting up ko container builds with CI/CD patterns and troubleshooting
 
 ### Changed
 
