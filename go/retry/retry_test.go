@@ -155,3 +155,26 @@ func TestDo_ContextCanceled(t *testing.T) {
 		t.Errorf("expected execution to cancel after 2 calls, got %d", calls)
 	}
 }
+
+type customTransientError struct {
+	msg string
+}
+
+func (e customTransientError) Error() string {
+	return e.msg
+}
+
+func (e customTransientError) Permanent() bool {
+	return false
+}
+
+func TestIsPermanent_NestedOverride(t *testing.T) {
+	inner := customTransientError{msg: "temporary transient db failure"}
+
+	// If we wrap it via Permanent, it MUST be recognized as permanent!
+	wrapped := Permanent(inner)
+
+	if !IsPermanent(wrapped) {
+		t.Error("expected wrapped error to be permanent even if inner implements Permanent() bool false")
+	}
+}
