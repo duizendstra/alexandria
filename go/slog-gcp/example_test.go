@@ -16,6 +16,8 @@ import (
 	sloggcp "github.com/duizendstra/alexandria/go/slog-gcp"
 )
 
+var errConnectionRefused = errors.New("connection refused")
+
 func ExampleSetup() {
 	// Setup configures the default slog logger for GCP Cloud Logging.
 	// On Cloud Run (K_SERVICE set), outputs JSON; locally, outputs text.
@@ -37,7 +39,7 @@ func ExampleNewHandler() {
 }
 
 func ExampleErrorAttrs() {
-	err := errors.New("connection refused")
+	err := errConnectionRefused
 	attrs := sloggcp.ErrorAttrs(err, sloggcp.ServiceContextFromEnv())
 
 	// attrs contains @type, serviceContext, stack_trace, and error fields
@@ -71,4 +73,3 @@ func ExampleWithLevelVar() {
 	// In production: sloggcp.Setup(sloggcp.WithLevelVar(&level)).
 	_ = &level
 }
-

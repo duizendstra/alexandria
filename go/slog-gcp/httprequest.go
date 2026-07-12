@@ -125,9 +125,14 @@ func RequestLoggerMiddleware(next http.Handler) http.Handler {
 
 		latency := time.Since(start)
 
+		var urlStr string
+		if r.URL != nil {
+			urlStr = r.URL.String()
+		}
+
 		reqAttr := HTTPRequest{
 			Method:       r.Method,
-			URL:          r.URL.String(),
+			URL:          urlStr,
 			Status:       rec.Status,
 			UserAgent:    r.UserAgent(),
 			RemoteIP:     r.RemoteAddr,
@@ -155,5 +160,3 @@ type flushHijackRecorder struct {
 	http.Flusher
 	http.Hijacker
 }
-
-

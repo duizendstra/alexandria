@@ -23,6 +23,11 @@ import (
 	"log/slog"
 )
 
+var (
+	errInnerHandler  = errors.New("inner handler failed")
+	errSomethingFailed = errors.New("something failed")
+)
+
 const (
 	testSpanID      = "00000000deadbeef"
 	levelDebugStr   = "DEBUG"
@@ -195,7 +200,7 @@ func TestHandler_Enabled_Delegates(t *testing.T) {
 func TestHandler_Handle_ErrorPropagation(t *testing.T) {
 	t.Parallel()
 
-	errInner := errors.New("inner handler failed")
+	errInner := errInnerHandler
 	h := sloggcp.NewHandler(&failHandler{err: errInner}, nil, "proj")
 
 	err := h.Handle(context.Background(), slog.Record{})
@@ -465,6 +470,7 @@ func (c *captureHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 
 // testTraceViaMiddleware exercises the full middleware→resolver→handler chain
 // and asserts on the resulting log entry.
+//
 //nolint:unparam // Parameter flexibility useful for future test cases.
 func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string, wantSampled bool) {
 	t.Helper()
@@ -487,14 +493,11 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 
 	// Now create a resolver that reads from context (mimicking InitCloudRun's resolver).
 	resolver := func(ctx context.Context) sloggcp.TraceContext {
-		traceHeader, _ := ctx.Value(sloggcp.TraceHeaderKeyType{}).(string)
-		if traceHeader == "" {
-			return sloggcp.TraceContext{}
+		if tc, ok := ctx.Value(sloggcp.TraceContextKeyType{}).(sloggcp.TraceContext); ok {
+			return tc
 		}
 
-		info := sloggcp.ParseCloudTraceHeaderForTest(traceHeader)
-
-		return sloggcp.TraceContext(info)
+		return sloggcp.TraceContext{}
 	}
 
 	// Use our captured context to log.
@@ -537,11 +540,11 @@ func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string
 // --- TraceMiddleware ---.
 
 type captureHeaderHandler struct {
-	gotHeader string
+	gotContext sloggcp.TraceContext
 }
 
 func (c *captureHeaderHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
-	c.gotHeader, _ = r.Context().Value(sloggcp.TraceHeaderKeyType{}).(string)
+	c.gotContext, _ = r.Context().Value(sloggcp.TraceContextKeyType{}).(sloggcp.TraceContext)
 }
 
 func TestTraceMiddleware_SetsContext(t *testing.T) {
@@ -555,8 +558,37 @@ func TestTraceMiddleware_SetsContext(t *testing.T) {
 	req.Header.Set("X-Cloud-Trace-Context", "abc/123;o=1")
 	traced.ServeHTTP(httptest.NewRecorder(), req)
 
-	if capture.gotHeader != "abc/123;o=1" {
-		t.Errorf("context header = %q, want abc/123;o=1", capture.gotHeader)
+	if capture.gotContext.TraceID != "abc" {
+		t.Errorf("TraceID = %q, want abc", capture.gotContext.TraceID)
+	}
+	if capture.gotContext.SpanID != "000000000000007b" {
+		t.Errorf("SpanID = %q, want 000000000000007b", capture.gotContext.SpanID)
+	}
+	if !capture.gotContext.Sampled {
+		t.Error("Sampled = false, want true")
+	}
+}
+
+func TestTraceMiddleware_Traceparent(t *testing.T) {
+	t.Parallel()
+
+	var capture captureHeaderHandler
+
+	traced := sloggcp.TraceMiddleware(&capture)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	//nolint:canonicalheader // W3C standard traceparent is always lower-case.
+	req.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	traced.ServeHTTP(httptest.NewRecorder(), req)
+
+	if capture.gotContext.TraceID != "4bf92f3577b34da6a3ce929d0e0e4736" {
+		t.Errorf("TraceID = %q, want 4bf92f3577b34da6a3ce929d0e0e4736", capture.gotContext.TraceID)
+	}
+	if capture.gotContext.SpanID != "00f067aa0ba902b7" {
+		t.Errorf("SpanID = %q, want 00f067aa0ba902b7", capture.gotContext.SpanID)
+	}
+	if !capture.gotContext.Sampled {
+		t.Error("Sampled = false, want true")
 	}
 }
 
@@ -570,8 +602,8 @@ func TestTraceMiddleware_NoHeader(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	traced.ServeHTTP(httptest.NewRecorder(), req)
 
-	if capture.gotHeader != "" {
-		t.Errorf("expected empty header, got %q", capture.gotHeader)
+	if capture.gotContext.TraceID != "" {
+		t.Errorf("expected empty TraceID, got %q", capture.gotContext.TraceID)
 	}
 }
 
@@ -675,7 +707,7 @@ func TestHandler_SlogTestCompliance(t *testing.T) {
 // --- ErrorAttrs ---.
 
 func TestErrorAttrs(t *testing.T) {
-	testErr := errors.New("something failed")
+	testErr := errSomethingFailed
 	attrs := sloggcp.ErrorAttrs(testErr, sloggcp.ServiceContext{Service: "my-service", Version: "my-service-00001"})
 
 	if len(attrs) != 4 {
@@ -705,7 +737,7 @@ func TestErrorAttrs_NilError(t *testing.T) {
 func TestErrorAttrsAny(t *testing.T) {
 	t.Parallel()
 
-	testErr := errors.New("something failed")
+	testErr := errSomethingFailed
 	anyAttrs := sloggcp.ErrorAttrsAny(testErr, sloggcp.ServiceContext{Service: "my-service", Version: "my-service-00001"})
 
 	// Alternating key-value: "@type", value, slog.Group(...), "stack_trace", trace, "error", errorMsg.
@@ -811,9 +843,10 @@ func TestDetectProjectID_MetadataFallback(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Metadata-Flavor") != "Google" {
 			w.WriteHeader(http.StatusForbidden)
+
 			return
 		}
-		w.Write([]byte("metadata-project-id"))
+		_, _ = w.Write([]byte("metadata-project-id"))
 	}))
 	defer server.Close()
 
@@ -884,7 +917,7 @@ func TestDetectProjectID_MetadataUnavailable(t *testing.T) {
 func TestDetectProjectID_EnvTakesPrecedenceOverMetadata(t *testing.T) {
 	// Start a metadata server that returns a different project.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("metadata-project"))
+		_, _ = w.Write([]byte("metadata-project"))
 	}))
 	defer server.Close()
 
@@ -968,10 +1001,7 @@ func TestWithTrace_InjectsTraceID(t *testing.T) {
 	t.Parallel()
 
 	buf := &sloggcptest.SyncBuffer{}
-	resolver := func(ctx context.Context) sloggcp.TraceContext {
-		info := sloggcp.ParseCloudTraceHeaderForTest(sloggcp.TraceHeaderKeyForTest(ctx))
-		return sloggcp.TraceContext(info)
-	}
+	resolver := sloggcp.TraceContextForTest
 	inner := slog.NewJSONHandler(buf, nil)
 	logger := slog.New(sloggcp.NewHandler(inner, resolver, "test-project"))
 

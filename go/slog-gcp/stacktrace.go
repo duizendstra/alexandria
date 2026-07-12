@@ -14,7 +14,7 @@ import (
 // skipping the specified number of frames. Returns a formatted string
 // compatible with Cloud Error Reporting's expected stack trace format.
 func stackTrace(skip int) string {
-	var pcs [32]uintptr
+	var pcs [128]uintptr
 	n := runtime.Callers(skip, pcs[:])
 	if n == 0 {
 		return ""
@@ -31,11 +31,13 @@ func stackTrace(skip int) string {
 		}
 
 		b.WriteString(frame.Function)
+		b.WriteString("()")
 		b.WriteByte('\n')
 		b.WriteString("\t")
 		b.WriteString(frame.File)
 		b.WriteByte(':')
-		b.WriteString(strconv.Itoa(frame.Line))
+		var lineBuf [20]byte
+		b.Write(strconv.AppendInt(lineBuf[:0], int64(frame.Line), 10)) //nolint:mnd // Base-10 is the only valid radix for line numbers.
 		b.WriteByte('\n')
 
 		if !more {
