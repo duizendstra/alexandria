@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **skills/diffract-review**: Agentic Diffract review skill with 9 parallel tool-equipped lens agents and CHECK mediator, based on contextvibes/diffract
 - **blueprints/service/.ko.yaml**: Golden ko build template for Go Cloud Run services (pinned Chainguard static base, reproducible builds)
 - **skills/ko-build**: Antigravity skill for setting up ko container builds with CI/CD patterns and troubleshooting
+- **go/dataquality/datadiff**: Deep comparison and data validation tool for schemas, volume, and metric stats with configurable tolerance limits.
+- **go/observability/audit**: Production-proven audit logger with structured file outputs, automatic file-size rotation, and scorecard readers.
+- **go/discovery/privacyfilter**: High-security, context-aware scan and redaction filter that skips sensitive directory patterns and redacts exposed credentials/tokens.
+- **go/discovery/search**: Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic.
+- **go/platform/apierr**: General-purpose REST API/gRPC error mapping layer with retryable classification, unified status responses, and error-unwrapping middleware.
+- **go/platform/async**: Thread-safe task coordinator and manager for sub-mitting, fetching, and pruning background asynchronous tasks.
+
 
 ### Changed
 

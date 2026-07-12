@@ -1,8 +1,10 @@
 package retry
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -128,3 +130,55 @@ func TestTransport_PermanentErrorFailFast(t *testing.T) {
 		t.Errorf("expected inner error %v, got %v", rawErr, err)
 	}
 }
+
+func TestTransport_RetryWithRequestBody(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("failed to read request body: %v", err)
+		}
+		if string(body) != "hello retry" {
+			t.Errorf("expected body 'hello retry', got %q", string(body))
+		}
+
+		if attempts == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("retry later"))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	shouldRetry := func(code int) bool {
+		return code == http.StatusServiceUnavailable
+	}
+
+	client := &http.Client{
+		Transport: Transport(3, shouldRetry, nil),
+	}
+
+	bodyReader := bytes.NewReader([]byte("hello retry"))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, server.URL, bodyReader)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected request failure: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 OK, got %d", resp.StatusCode)
+	}
+	if attempts != 2 {
+		t.Errorf("expected exactly 2 attempts, got %d", attempts)
+	}
+}
+
