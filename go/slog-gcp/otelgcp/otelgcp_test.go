@@ -16,6 +16,11 @@ import (
 func TestNewResolver(t *testing.T) {
 	t.Parallel()
 
+	const (
+		wantTraceID = "0af7651916cd43dd8448eb211c80319c"
+		wantSpanID  = "b7ad6b7169203331"
+	)
+
 	resolver := otelgcp.NewResolver()
 
 	t.Run("empty context", func(t *testing.T) {
@@ -29,11 +34,11 @@ func TestNewResolver(t *testing.T) {
 
 	t.Run("valid span context", func(t *testing.T) {
 		t.Parallel()
-		traceID, err := trace.TraceIDFromHex("0af7651916cd43dd8448eb211c80319c")
+		traceID, err := trace.TraceIDFromHex(wantTraceID)
 		if err != nil {
 			t.Fatalf("failed to parse trace ID: %v", err)
 		}
-		spanID, err := trace.SpanIDFromHex("b7ad6b7169203331")
+		spanID, err := trace.SpanIDFromHex(wantSpanID)
 		if err != nil {
 			t.Fatalf("failed to parse span ID: %v", err)
 		}
@@ -47,11 +52,11 @@ func TestNewResolver(t *testing.T) {
 		ctx := trace.ContextWithSpanContext(context.Background(), sc)
 		tc := resolver(ctx)
 
-		if tc.TraceID != "0af7651916cd43dd8448eb211c80319c" {
-			t.Errorf("expected trace ID %q, got %q", "0af7651916cd43dd8448eb211c80319c", tc.TraceID)
+		if tc.TraceID != wantTraceID {
+			t.Errorf("expected trace ID %q, got %q", wantTraceID, tc.TraceID)
 		}
-		if tc.SpanID != "b7ad6b7169203331" {
-			t.Errorf("expected span ID %q, got %q", "b7ad6b7169203331", tc.SpanID)
+		if tc.SpanID != wantSpanID {
+			t.Errorf("expected span ID %q, got %q", wantSpanID, tc.SpanID)
 		}
 		if !tc.Sampled {
 			t.Error("expected sampled to be true")
