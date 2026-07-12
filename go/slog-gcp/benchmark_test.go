@@ -85,4 +85,3 @@ func BenchmarkHandler_NoResolver(b *testing.B) {
 		logger.InfoContext(ctx, "no resolver")
 	}
 }
-

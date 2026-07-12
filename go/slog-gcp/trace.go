@@ -57,3 +57,21 @@ func decimalToHexSpan(decimal string) string {
 
 	return string(buf[:])
 }
+
+// parseTraceparentHeader parses the W3C traceparent header.
+// Format: version-trace_id-parent_id-trace_flags
+func parseTraceparentHeader(header string) cloudTrace {
+	var info cloudTrace
+	parts := strings.Split(header, "-")
+	if len(parts) < 4 {
+		return info
+	}
+
+	info.traceID = parts[1]
+	info.spanID = parts[2]
+	if parts[3] == "01" {
+		info.sampled = true
+	}
+
+	return info
+}

@@ -24,7 +24,7 @@ func GCPReplaceAttr(_ []string, a slog.Attr) slog.Attr {
 	if a.Key == slog.SourceKey {
 		a.Key = FieldSourceLocation
 
-		if source, ok := a.Value.Any().(*slog.Source); ok {
+		if source, ok := a.Value.Any().(*slog.Source); ok && source != nil {
 			a.Value = slog.GroupValue(
 				slog.String("file", source.File),
 				slog.Int("line", source.Line),

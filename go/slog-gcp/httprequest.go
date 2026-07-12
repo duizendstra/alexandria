@@ -155,5 +155,3 @@ type flushHijackRecorder struct {
 	http.Flusher
 	http.Hijacker
 }
-
-

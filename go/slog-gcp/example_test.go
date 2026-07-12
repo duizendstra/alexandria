@@ -71,4 +71,3 @@ func ExampleWithLevelVar() {
 	// In production: sloggcp.Setup(sloggcp.WithLevelVar(&level)).
 	_ = &level
 }
-
