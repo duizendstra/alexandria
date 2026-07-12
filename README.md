@@ -22,6 +22,8 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 
 | Module | Import Path | Status |
 |---|---|---|
+| [retry](go/retry/) | `github.com/duizendstra/alexandria/go/retry` | v0.0.1 |
+| [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v0.0.1 |
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.0.1 |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.0.1 |
 
