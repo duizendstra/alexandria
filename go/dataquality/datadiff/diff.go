@@ -18,6 +18,7 @@ func DiffColumns(left, right []Column) SchemaResult {
 		rc, ok := rightByName[c.Name]
 		if !ok {
 			result.LeftOnly = append(result.LeftOnly, c)
+
 			continue
 		}
 		if c.DataType != rc.DataType {
@@ -38,6 +39,7 @@ func DiffColumns(left, right []Column) SchemaResult {
 	result.Match = len(result.LeftOnly) == 0 &&
 		len(result.RightOnly) == 0 &&
 		len(result.TypeDiffs) == 0
+
 	return result
 }
 
@@ -46,6 +48,7 @@ func indexColumns(cols []Column) map[string]Column {
 	for _, c := range cols {
 		m[c.Name] = c
 	}
+
 	return m
 }
 
@@ -87,6 +90,7 @@ func diffFloat(col, field string, l, r, tolerance float64) []StatDiff {
 	if base > 0 && tolerance > 0 && math.Abs(l-r)/base <= tolerance {
 		return nil
 	}
+
 	return []StatDiff{{Column: col, Field: field, Left: l, Right: r, Delta: r - l}}
 }
 
@@ -94,5 +98,6 @@ func diffInt(col, field string, l, r int64) []StatDiff {
 	if l == r {
 		return nil
 	}
+
 	return []StatDiff{{Column: col, Field: field, Left: float64(l), Right: float64(r), Delta: float64(r - l)}}
 }

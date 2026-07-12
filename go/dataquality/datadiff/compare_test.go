@@ -1,3 +1,4 @@
+//nolint:goconst // test schemas contain repetitive standard database field types
 package datadiff_test
 
 import (

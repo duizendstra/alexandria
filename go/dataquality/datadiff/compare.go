@@ -10,8 +10,8 @@ import (
 type Option func(*options)
 
 type options struct {
-	maxDiffs       int     // cap on row-level diffs returned (0 = unlimited)
-	statsTolerance float64 // relative tolerance for stats comparison (0 = exact)
+	maxDiffs       int     // cap on row-level diffs returned (0 = unlimited).
+	statsTolerance float64 // relative tolerance for stats comparison (0 = exact).
 }
 
 // WithMaxDiffs caps the number of row-level diffs returned.
@@ -27,8 +27,8 @@ func WithStatsTolerance(t float64) Option {
 
 // Config specifies what to compare.
 type Config struct {
-	Key    string // primary key column for joining rows
-	Filter string // optional WHERE clause (e.g. partition filter)
+	Key    string // primary key column for joining rows.
+	Filter string // optional WHERE clause (e.g. partition filter).
 }
 
 // Reconciler orchestrates comparison layers through a Comparator port.
@@ -44,7 +44,12 @@ func NewReconciler(cmp Comparator) *Reconciler {
 // Compare runs all four comparison layers.
 // Each layer is independent — a failure in one does not stop the others.
 func (r *Reconciler) Compare(ctx context.Context, cfg Config, opts ...Option) (Result, error) {
-	o := options{maxDiffs: 100, statsTolerance: 1e-9} // tiny default tolerance for FP noise
+	const (
+		defaultMaxDiffs       = 100
+		defaultStatsTolerance = 1e-9
+	)
+
+	o := options{maxDiffs: defaultMaxDiffs, statsTolerance: defaultStatsTolerance} // tiny default tolerance for FP noise.
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -59,21 +64,21 @@ func (r *Reconciler) Compare(ctx context.Context, cfg Config, opts ...Option) (R
 	}
 	var firstErr error
 
-	// Layer 1: Schema
+	// Layer 1: Schema.
 	schema, err := r.cmp.CompareSchema(ctx)
 	if err != nil {
 		firstErr = fmt.Errorf("schema: %w", err)
 	}
 	result.Schema = schema
 
-	// Layer 2: Volume
+	// Layer 2: Volume.
 	volume, err := r.cmp.CompareVolume(ctx, cfg.Filter)
 	if err != nil && firstErr == nil {
 		firstErr = fmt.Errorf("volume: %w", err)
 	}
 	result.Volume = volume
 
-	// Layer 3: Content (only if schema matches — mismatched columns break diffs)
+	// Layer 3: Content (only if schema matches — mismatched columns break diffs).
 	if result.Schema.Match {
 		content, err := r.cmp.CompareContent(ctx, cfg.Key, cfg.Filter, o.maxDiffs)
 		if err != nil && firstErr == nil {
@@ -82,7 +87,7 @@ func (r *Reconciler) Compare(ctx context.Context, cfg Config, opts ...Option) (R
 		result.Content = content
 	}
 
-	// Layer 4: Stats (apply tolerance in domain)
+	// Layer 4: Stats (apply tolerance in domain).
 	stats, err := r.cmp.CompareStats(ctx, cfg.Filter)
 	if err != nil && firstErr == nil {
 		firstErr = fmt.Errorf("stats: %w", err)
@@ -104,6 +109,7 @@ func applyStatsTolerance(s *StatsResult, tolerance float64) {
 		if base == 0 {
 			s.Diffs[n] = d
 			n++
+
 			continue
 		}
 		if math.Abs(d.Delta)/base > tolerance {
