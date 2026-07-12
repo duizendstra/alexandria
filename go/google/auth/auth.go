@@ -272,7 +272,68 @@ func (v *DWDValidator) ValidateAccess(ctx context.Context, userEmail string) err
 
 // Interactive Consent Flow Helpers.
 
-var errNoCode = errors.New("no code in callback")
+var (
+	errNoCode        = errors.New("no code in callback")
+	errStateMismatch = errors.New("state token mismatch: security warning")
+)
+
+type callbackHandler struct {
+	stateToken string
+	codeCh     chan<- string
+	errCh      chan<- error
+}
+
+func (h *callbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	state := r.URL.Query().Get("state")
+	if state != h.stateToken {
+		http.Error(w, "invalid state parameter (CSRF detected)", http.StatusForbidden)
+		select {
+		case h.errCh <- errStateMismatch:
+		default:
+		}
+
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "missing code", http.StatusBadRequest)
+		select {
+		case h.errCh <- errNoCode:
+		default:
+		}
+
+		return
+	}
+
+	_, _ = fmt.Fprint(w, "<html><body><h2>Authorization complete</h2><p>You can close this tab.</p></body></html>")
+	select {
+	case h.codeCh <- code:
+	default:
+	}
+}
+
+// openBrowser opens the specified URL in the default browser.
+func openBrowser(ctx context.Context, authURL string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		//nolint:gosec // Launch browser with constructed trusted URL.
+		cmd = exec.CommandContext(ctx, "open", authURL)
+	case "windows":
+		//nolint:gosec // Launch browser with constructed trusted URL.
+		cmd = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", authURL)
+	default:
+		//nolint:gosec // Launch browser with constructed trusted URL.
+		cmd = exec.CommandContext(ctx, "xdg-open", authURL)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start browser process: %w", err)
+	}
+
+	return nil
+}
 
 func interactiveConsentClient(ctx context.Context, passKey, tokenPath string, scopes []string, logger *slog.Logger) (*http.Client, error) {
 	log := logger
@@ -322,7 +383,8 @@ func resolveCredentials(ctx context.Context, passKey string) ([]byte, error) {
 }
 
 func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error) {
-	stateBytes := make([]byte, 16)
+	const stateBytesLen = 16
+	stateBytes := make([]byte, stateBytesLen)
 	if _, err := rand.Read(stateBytes); err != nil {
 		return nil, fmt.Errorf("generate secure state token: %w", err)
 	}
@@ -331,34 +393,11 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		state := r.URL.Query().Get("state")
-		if state != stateToken {
-			http.Error(w, "invalid state parameter (CSRF detected)", http.StatusForbidden)
-			select {
-			case errCh <- errors.New("state token mismatch: security warning"):
-			default:
-			}
-			return
-		}
-
-		code := r.URL.Query().Get("code")
-		if code == "" {
-			http.Error(w, "missing code", http.StatusBadRequest)
-			select {
-			case errCh <- errNoCode:
-			default:
-			}
-			return
-		}
-
-		_, _ = fmt.Fprint(w, "<html><body><h2>Authorization complete</h2><p>You can close this tab.</p></body></html>")
-		select {
-		case codeCh <- code:
-		default:
-		}
-	})
+	handler := &callbackHandler{
+		stateToken: stateToken,
+		codeCh:     codeCh,
+		errCh:      errCh,
+	}
 
 	//nolint:noctx // CLI consent tool callback server, runs directly to completion.
 	listener, err := net.Listen("tcp", "localhost:0")
@@ -370,7 +409,7 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 	cfg.RedirectURL = fmt.Sprintf("http://localhost:%d", port)
 
 	srv := &http.Server{
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 3 * time.Second, //nolint:mnd // Header timeout prevents Slowloris attacks.
 	}
 
@@ -388,18 +427,7 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 	authURL := cfg.AuthCodeURL(stateToken, oauth2.AccessTypeOffline)
 	fmt.Printf("\nOpening browser for Google OAuth2 consent...\n")
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.CommandContext(ctx, "open", authURL)
-	case "windows":
-		cmd = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", authURL)
-	default:
-		cmd = exec.CommandContext(ctx, "xdg-open", authURL)
-	}
-
-	//nolint:gosec // Launch browser with constructed trusted URL.
-	if oErr := cmd.Start(); oErr != nil {
+	if oErr := openBrowser(ctx, authURL); oErr != nil {
 		fmt.Printf("Could not open browser. Visit this URL manually:\n\n  %s\n\n", authURL)
 	}
 
