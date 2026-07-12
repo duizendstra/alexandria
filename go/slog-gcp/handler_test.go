@@ -465,6 +465,7 @@ func (c *captureHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 
 // testTraceViaMiddleware exercises the full middleware→resolver→handler chain
 // and asserts on the resulting log entry.
+//
 //nolint:unparam // Parameter flexibility useful for future test cases.
 func testTraceViaMiddleware(t *testing.T, header, wantTraceID, wantSpanID string, wantSampled bool) {
 	t.Helper()
@@ -557,6 +558,23 @@ func TestTraceMiddleware_SetsContext(t *testing.T) {
 
 	if capture.gotHeader != "abc/123;o=1" {
 		t.Errorf("context header = %q, want abc/123;o=1", capture.gotHeader)
+	}
+}
+
+func TestTraceMiddleware_Traceparent(t *testing.T) {
+	t.Parallel()
+
+	var capture captureHeaderHandler
+
+	traced := sloggcp.TraceMiddleware(&capture)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	req.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	traced.ServeHTTP(httptest.NewRecorder(), req)
+
+	wantHeader := "4bf92f3577b34da6a3ce929d0e0e4736/00f067aa0ba902b7;o=1"
+	if capture.gotHeader != wantHeader {
+		t.Errorf("context header = %q, want %q", capture.gotHeader, wantHeader)
 	}
 }
 

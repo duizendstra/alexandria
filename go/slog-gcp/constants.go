@@ -52,4 +52,3 @@ type TraceContext struct {
 func (tc TraceContext) IsEmpty() bool {
 	return tc.TraceID == ""
 }
-

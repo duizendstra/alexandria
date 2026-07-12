@@ -25,6 +25,9 @@ import (
 //	slog.SetDefault(slog.New(handler))
 func NewResolver() sloggcp.IDResolver {
 	return func(ctx context.Context) sloggcp.TraceContext {
+		if ctx == nil {
+			return sloggcp.TraceContext{}
+		}
 		span := trace.SpanFromContext(ctx)
 		sc := span.SpanContext()
 		if !sc.IsValid() {

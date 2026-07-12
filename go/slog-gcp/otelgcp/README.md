@@ -29,10 +29,11 @@ import (
 )
 
 func main() {
-	// Configure standard GCP structured logger
-	handler := otelgcp.NewHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
+	// Configure standard GCP structured logger with OpenTelemetry trace resolver
+	inner := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		ReplaceAttr: sloggcp.GCPReplaceAttr,
+	})
+	handler := sloggcp.NewHandler(inner, otelgcp.NewResolver(), "my-gcp-project")
 
 	logger := slog.New(handler)
 	slog.SetDefault(logger)

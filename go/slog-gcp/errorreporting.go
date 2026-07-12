@@ -46,13 +46,20 @@ func ServiceContextFromEnv() ServiceContext {
 // Attach these to error-level log lines so GCP Error Reporting
 // automatically picks them up. Includes a stack trace for grouping.
 func ErrorAttrs(err error, sc ServiceContext) []slog.Attr {
+	return ErrorAttrsWithSkip(err, sc, 3) //nolint:mnd // Skip count for direct caller stack frames.
+}
+
+// ErrorAttrsWithSkip returns slog attributes for Cloud Error Reporting,
+// skipping the specified number of stack frames. This is useful when
+// wrapping slog-gcp in custom logging helpers.
+func ErrorAttrsWithSkip(err error, sc ServiceContext, skip int) []slog.Attr {
 	attrs := []slog.Attr{
 		slog.String("@type", ErrorReportingType),
 		slog.Group("serviceContext", //nolint:sloglint // GCP Error Reporting expects camelCase key.
 			slog.String("service", sc.Service),
 			slog.String("version", sc.Version),
 		),
-		slog.String("stack_trace", stackTrace(3)), //nolint:mnd // Skip count for caller stack frames.
+		slog.String("stack_trace", stackTrace(skip)),
 	}
 
 	if err != nil {
@@ -65,6 +72,13 @@ func ErrorAttrs(err error, sc ServiceContext) []slog.Attr {
 // ErrorAttrsAny returns error reporting attributes as []any for use
 // with slog's alternating key-value API (e.g. slog.Error("msg", attrs...)).
 func ErrorAttrsAny(err error, sc ServiceContext) []any {
+	return ErrorAttrsAnyWithSkip(err, sc, 3) //nolint:mnd // Skip count for direct caller stack frames.
+}
+
+// ErrorAttrsAnyWithSkip returns error reporting attributes as []any,
+// skipping the specified number of stack frames. This is useful when
+// wrapping slog-gcp in custom logging helpers.
+func ErrorAttrsAnyWithSkip(err error, sc ServiceContext, skip int) []any {
 	attrs := []any{
 		"@type",
 		ErrorReportingType,
@@ -72,7 +86,7 @@ func ErrorAttrsAny(err error, sc ServiceContext) []any {
 			slog.String("service", sc.Service),
 			slog.String("version", sc.Version),
 		),
-		"stack_trace", stackTrace(3), //nolint:mnd // Skip count for caller stack frames.
+		"stack_trace", stackTrace(skip),
 	}
 
 	if err != nil {

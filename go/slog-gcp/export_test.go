@@ -6,7 +6,6 @@ package sloggcp
 
 import (
 	"context"
-	"sync"
 )
 
 // TraceHeaderKeyType is an exported alias of traceHeaderKey for
@@ -41,8 +40,9 @@ func ParseCloudTraceHeaderForTest(header string) CloudTraceForTest {
 // ResetMetadataCacheForTest resets the metadata project ID cache,
 // allowing tests to re-trigger metadata detection.
 func ResetMetadataCacheForTest() {
+	metadataMu.Lock()
+	defer metadataMu.Unlock()
 	metadataProjectID = ""
-	metadataOnce = sync.Once{}
 }
 
 // SetMetadataURLForTest overrides the metadata service URL for testing.
