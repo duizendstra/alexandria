@@ -1,0 +1,348 @@
+syntax = "proto3";
+
+package collaboration.issues.v1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/collaboration/issues/v1;issuesv1";
+
+// IssueState represents the lifecycle state of a GitHub issue.
+enum IssueState {
+  // Default value. Not a valid state for stored issues.
+  ISSUE_STATE_UNSPECIFIED = 0;
+  // The issue is open.
+  ISSUE_STATE_OPEN = 1;
+  // The issue is closed.
+  ISSUE_STATE_CLOSED = 2;
+}
+
+// MilestoneState represents the state of a milestone.
+enum MilestoneState {
+  // Default value.
+  MILESTONE_STATE_UNSPECIFIED = 0;
+  // The milestone is open.
+  MILESTONE_STATE_OPEN = 1;
+  // The milestone is closed.
+  MILESTONE_STATE_CLOSED = 2;
+}
+
+// Issue represents a GitHub issue.
+message Issue {
+  // Issue number (unique within a repository).
+  int32 number = 1;
+  // Issue title.
+  string title = 2;
+  // Issue body (markdown).
+  string body = 3;
+  // Lifecycle state.
+  IssueState state = 4;
+  // Applied labels.
+  repeated string labels = 5;
+  // Assigned GitHub usernames.
+  repeated string assignees = 6;
+  // Output only. URL to the issue on GitHub.
+  string html_url = 7;
+  // Milestone title, if assigned.
+  string milestone = 8;
+}
+
+// Label represents a GitHub label.
+message Label {
+  // Label name.
+  string name = 1;
+  // Hex color code (without #).
+  string color = 2;
+  // Label description.
+  string description = 3;
+}
+
+// Milestone represents a GitHub milestone.
+message Milestone {
+  // Milestone number.
+  int32 number = 1;
+  // Milestone title.
+  string title = 2;
+  // Milestone description.
+  string description = 3;
+  // Lifecycle state.
+  MilestoneState state = 4;
+  // Due date in RFC 3339 format.
+  string due_on = 5;
+}
+
+// IssuesService manages GitHub issues and milestones.
+//
+// All repository parameters accept "owner/repo" format. When empty,
+// the server uses a configured default repository.
+service IssuesService {
+  // CreateIssue creates a new issue (AIP-133).
+  rpc CreateIssue(CreateIssueRequest) returns (CreateIssueResponse);
+  // ListIssues returns issues matching a filter (AIP-132).
+  rpc ListIssues(ListIssuesRequest) returns (ListIssuesResponse);
+  // GetIssue retrieves a single issue by number (AIP-131).
+  rpc GetIssue(GetIssueRequest) returns (GetIssueResponse);
+  // UpdateIssue updates an issue's state, labels, or content (AIP-134).
+  rpc UpdateIssue(UpdateIssueRequest) returns (UpdateIssueResponse);
+  // ListMilestones returns milestones for the repository (AIP-132).
+  rpc ListMilestones(ListMilestonesRequest) returns (ListMilestonesResponse);
+  // CreateMilestone creates a new milestone (AIP-133).
+  rpc CreateMilestone(CreateMilestoneRequest) returns (CreateMilestoneResponse);
+  // UpdateMilestone updates a milestone, including close (AIP-134).
+  rpc UpdateMilestone(UpdateMilestoneRequest) returns (UpdateMilestoneResponse);
+  // SearchIssues searches issues across repositories.
+  rpc SearchIssues(SearchIssuesRequest) returns (SearchIssuesResponse);
+  // GetLabel retrieves a single label by name (AIP-131).
+  rpc GetLabel(GetLabelRequest) returns (GetLabelResponse);
+  // BatchGetIssues retrieves multiple issues by number (AIP-231).
+  rpc BatchGetIssues(BatchGetIssuesRequest) returns (BatchGetIssuesResponse);
+  // AddSubIssue creates a parent-child relationship between two issues.
+  // Uses GitHub's native sub-issue API (GraphQL addSubIssue mutation).
+  rpc AddSubIssue(AddSubIssueRequest) returns (AddSubIssueResponse);
+  // SetIssueType sets the native org-level issue type (e.g. Epic, Story, Task, Bug, Spike).
+  // Uses GitHub's native issue type API (GraphQL updateIssueIssueType mutation).
+  rpc SetIssueType(SetIssueTypeRequest) returns (SetIssueTypeResponse);
+  // UpdateBoardField sets a custom field value on a board item (e.g. Priority, Size, Sprint).
+  // Uses GitHub Projects V2 GraphQL API (updateProjectV2ItemFieldValue mutation).
+  rpc UpdateBoardField(UpdateBoardFieldRequest) returns (UpdateBoardFieldResponse);
+}
+
+// CreateIssueRequest is the request message for
+// [IssuesService.CreateIssue][collaboration.issues.v1.IssuesService.CreateIssue].
+message CreateIssueRequest {
+  // Required. Issue title.
+  string title = 1;
+  // Optional. Issue body (markdown).
+  string body = 2;
+  // Optional. Labels to apply.
+  repeated string labels = 3;
+  // Optional. GitHub usernames to assign.
+  repeated string assignees = 4;
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 5;
+}
+
+// CreateIssueResponse is the response message for
+// [IssuesService.CreateIssue][collaboration.issues.v1.IssuesService.CreateIssue].
+message CreateIssueResponse {
+  // The created issue.
+  Issue issue = 1;
+}
+
+// ListIssuesRequest is the request message for
+// [IssuesService.ListIssues][collaboration.issues.v1.IssuesService.ListIssues].
+message ListIssuesRequest {
+  // Optional. Filter by state. Default: OPEN.
+  IssueState state = 1;
+  // Optional. Filter by labels.
+  repeated string labels = 2;
+  // Optional. Filter by assignee.
+  string assignee = 3;
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 4;
+}
+
+// ListIssuesResponse is the response message for
+// [IssuesService.ListIssues][collaboration.issues.v1.IssuesService.ListIssues].
+message ListIssuesResponse {
+  // The matching issues.
+  repeated Issue issues = 1;
+}
+
+// GetIssueRequest is the request message for
+// [IssuesService.GetIssue][collaboration.issues.v1.IssuesService.GetIssue].
+message GetIssueRequest {
+  // Required. Issue number.
+  int32 number = 1;
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 2;
+}
+
+// GetIssueResponse is the response message for
+// [IssuesService.GetIssue][collaboration.issues.v1.IssuesService.GetIssue].
+message GetIssueResponse {
+  // The requested issue.
+  Issue issue = 1;
+}
+
+// UpdateIssueRequest is the request message for
+// [IssuesService.UpdateIssue][collaboration.issues.v1.IssuesService.UpdateIssue].
+message UpdateIssueRequest {
+  // Required. Issue number.
+  int32 number = 1;
+  // Optional. New state.
+  IssueState state = 2;
+  // Optional. New labels (replaces existing).
+  repeated string labels = 3;
+  // Optional. New assignees (replaces existing).
+  repeated string assignees = 4;
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 5;
+  // Optional. New title.
+  string title = 6;
+  // Optional. New body.
+  string body = 7;
+  // Optional. Milestone number. Set to -1 to clear.
+  int32 milestone = 8;
+}
+
+// UpdateIssueResponse is the response message for
+// [IssuesService.UpdateIssue][collaboration.issues.v1.IssuesService.UpdateIssue].
+message UpdateIssueResponse {
+  // The updated issue.
+  Issue issue = 1;
+}
+
+// ListMilestonesRequest is the request message for
+// [IssuesService.ListMilestones][collaboration.issues.v1.IssuesService.ListMilestones].
+message ListMilestonesRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Optional. Filter by state. Default: OPEN.
+  MilestoneState state = 2;
+}
+
+// ListMilestonesResponse is the response message for
+// [IssuesService.ListMilestones][collaboration.issues.v1.IssuesService.ListMilestones].
+message ListMilestonesResponse {
+  // The matching milestones.
+  repeated Milestone milestones = 1;
+}
+
+// CreateMilestoneRequest is the request message for
+// [IssuesService.CreateMilestone][collaboration.issues.v1.IssuesService.CreateMilestone].
+message CreateMilestoneRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Required. Milestone title.
+  string title = 2;
+  // Optional. Milestone description.
+  string description = 3;
+  // Optional. Due date in RFC 3339 format.
+  string due_on = 4;
+}
+
+// CreateMilestoneResponse is the response message for
+// [IssuesService.CreateMilestone][collaboration.issues.v1.IssuesService.CreateMilestone].
+message CreateMilestoneResponse {
+  // The created milestone.
+  Milestone milestone = 1;
+}
+
+// UpdateMilestoneRequest is the request message for
+// [IssuesService.UpdateMilestone][collaboration.issues.v1.IssuesService.UpdateMilestone].
+message UpdateMilestoneRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Required. Milestone number.
+  int32 number = 2;
+  // Optional. New title.
+  string title = 3;
+  // Optional. New description.
+  string description = 4;
+  // Optional. New state.
+  MilestoneState state = 5;
+  // Optional. New due date in RFC 3339 format.
+  string due_on = 6;
+}
+
+// UpdateMilestoneResponse is the response message for
+// [IssuesService.UpdateMilestone][collaboration.issues.v1.IssuesService.UpdateMilestone].
+message UpdateMilestoneResponse {
+  // The updated milestone.
+  Milestone milestone = 1;
+}
+
+// SearchIssuesRequest is the request message for
+// [IssuesService.SearchIssues][collaboration.issues.v1.IssuesService.SearchIssues].
+message SearchIssuesRequest {
+  // Required. GitHub search query (e.g. "repo:owner/repo is:open label:bug").
+  string query = 1;
+}
+
+// SearchIssuesResponse is the response message for
+// [IssuesService.SearchIssues][collaboration.issues.v1.IssuesService.SearchIssues].
+message SearchIssuesResponse {
+  // Matching issues.
+  repeated Issue issues = 1;
+  // Total count of matches (may exceed returned results).
+  int32 total_count = 2;
+}
+
+// GetLabelRequest is the request message for
+// [IssuesService.GetLabel][collaboration.issues.v1.IssuesService.GetLabel].
+message GetLabelRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Required. Label name.
+  string name = 2;
+}
+
+// GetLabelResponse is the response message for
+// [IssuesService.GetLabel][collaboration.issues.v1.IssuesService.GetLabel].
+message GetLabelResponse {
+  // The requested label.
+  Label label = 1;
+}
+
+// BatchGetIssuesRequest is the request message for
+// [IssuesService.BatchGetIssues][collaboration.issues.v1.IssuesService.BatchGetIssues].
+message BatchGetIssuesRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Required. Issue numbers to retrieve.
+  repeated int32 numbers = 2;
+}
+
+// BatchGetIssuesResponse is the response message for
+// [IssuesService.BatchGetIssues][collaboration.issues.v1.IssuesService.BatchGetIssues].
+message BatchGetIssuesResponse {
+  // The requested issues.
+  repeated Issue issues = 1;
+}
+
+// AddSubIssueRequest is the request message for
+// [IssuesService.AddSubIssue][collaboration.issues.v1.IssuesService.AddSubIssue].
+message AddSubIssueRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Required. Parent issue number.
+  int32 parent_number = 2;
+  // Required. Child issue number.
+  int32 child_number = 3;
+}
+
+// AddSubIssueResponse is the response message for
+// [IssuesService.AddSubIssue][collaboration.issues.v1.IssuesService.AddSubIssue].
+message AddSubIssueResponse {}
+
+// SetIssueTypeRequest is the request message for
+// [IssuesService.SetIssueType][collaboration.issues.v1.IssuesService.SetIssueType].
+message SetIssueTypeRequest {
+  // Optional. Repository in "owner/repo" format. Uses default if empty.
+  string repo = 1;
+  // Required. Issue number.
+  int32 number = 2;
+  // Required. Issue type name (e.g. "Epic", "Story", "Task", "Bug", "Spike").
+  string type_name = 3;
+}
+
+// SetIssueTypeResponse is the response message for
+// [IssuesService.SetIssueType][collaboration.issues.v1.IssuesService.SetIssueType].
+message SetIssueTypeResponse {}
+
+// UpdateBoardFieldRequest is the request message for
+// [IssuesService.UpdateBoardField][collaboration.issues.v1.IssuesService.UpdateBoardField].
+message UpdateBoardFieldRequest {
+  // Required. GitHub organization or user login.
+  string owner = 1;
+  // Required. Project board number.
+  int32 project_number = 2;
+  // Required. URL of the issue (e.g. "https://github.com/owner/repo/issues/42").
+  string issue_url = 3;
+  // Required. Field name (e.g. "Priority", "Size", "Sprint").
+  string field_name = 4;
+  // Required. Option name for single-select fields (e.g. "P1", "M", "Sprint 1").
+  string option_name = 5;
+}
+
+// UpdateBoardFieldResponse is the response message for
+// [IssuesService.UpdateBoardField][collaboration.issues.v1.IssuesService.UpdateBoardField].
+message UpdateBoardFieldResponse {}

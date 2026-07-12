@@ -1,18 +1,21 @@
 package datadiff
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 )
 
+var ErrInvalidTarget = errors.New("expected project.dataset.table")
+
 // ParseTarget parses a "project.dataset.table" string into a Target.
 func ParseTarget(s string) (Target, error) {
-	parts := strings.SplitN(s, ".", 3)
 	const requiredParts = 3
+	parts := strings.SplitN(s, ".", requiredParts)
 
 	if len(parts) != requiredParts {
-		return Target{}, fmt.Errorf("expected project.dataset.table, got %q", s)
+		return Target{}, fmt.Errorf("%w: got %q", ErrInvalidTarget, s)
 	}
 
 	return Target{
@@ -23,7 +26,8 @@ func ParseTarget(s string) (Target, error) {
 }
 
 // ParseTargetPair parses left and right table strings into Targets.
-func ParseTargetPair(left, right string) (leftTarget, rightTarget Target, err error) {
+//nolint:gocritic // gocritic unnamedResult clashes with nonamedreturns linter
+func ParseTargetPair(left, right string) (Target, Target, error) {
 	l, err := ParseTarget(left)
 	if err != nil {
 		return Target{}, Target{}, fmt.Errorf("left: %w", err)
@@ -105,7 +109,12 @@ func PrintResult(r *Result) {
 
 // PrintCost writes bytes processed and estimated cost to stdout.
 func PrintCost(bytes int64) {
-	mb := float64(bytes) / 1e6
-	cost := float64(bytes) / 1e12 * 6.25
+	const (
+		bytesPerMB = 1e6
+		bytesPerTB = 1e12
+		costPerTB  = 6.25
+	)
+	mb := float64(bytes) / bytesPerMB
+	cost := float64(bytes) / bytesPerTB * costPerTB
 	fmt.Printf("📊 Bytes processed: %.2f MB ($%.4f on-demand)\n", mb, cost)
 }

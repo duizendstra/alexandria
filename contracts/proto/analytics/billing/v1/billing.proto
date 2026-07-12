@@ -1,0 +1,161 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Billing types for GCP BigQuery billing export analysis.
+// Maps to the standard gcp_billing_export_v1 table schema.
+
+syntax = "proto3";
+
+package analytics.billing.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/analytics/billing/v1;billingv1";
+
+// BillingRecord represents a single row from the BQ billing export.
+// Field mapping follows the standard gcp_billing_export_v1 schema.
+message BillingRecord {
+  // Billing account this record belongs to.
+  string billing_account_id = 1;
+
+  // GCP service (e.g. "Compute Engine", "Cloud Storage").
+  Service service = 2;
+
+  // SKU detail (e.g. "N1 Predefined Instance Core running in Americas").
+  SKU sku = 3;
+
+  // Project this charge belongs to.
+  Project project = 4;
+
+  // Time range for the usage.
+  google.protobuf.Timestamp usage_start_time = 5;
+  google.protobuf.Timestamp usage_end_time = 6;
+
+  // Cost in the billing currency.
+  double cost = 7;
+
+  // ISO 4217 currency code (e.g. "EUR", "USD").
+  string currency = 8;
+
+  // Usage quantity and unit.
+  Usage usage = 9;
+
+  // Credits applied to this record (discounts, promotions, etc.).
+  repeated Credit credits = 10;
+
+  // Invoice month (e.g. "202601").
+  string invoice_month = 11;
+
+  // Cost type (e.g. "regular", "tax", "adjustment", "rounding_error").
+  string cost_type = 12;
+
+  // Location of the resource.
+  Location location = 13;
+}
+
+// Service identifies a GCP service.
+message Service {
+  string id = 1; // e.g. "6F81-5844-456A"
+  string description = 2; // e.g. "Compute Engine"
+}
+
+// SKU identifies a specific billing SKU.
+message SKU {
+  string id = 1; // e.g. "2E27-4F75-95CD"
+  string description = 2; // e.g. "N1 Predefined Instance Core running in Americas"
+}
+
+// Project identifies the GCP project.
+message Project {
+  string id = 1; // e.g. "my-project"
+  string name = 2; // Display name
+  string number = 3; // Numeric project number
+  repeated Label labels = 4;
+}
+
+// Label is a key-value pair from project or resource labels.
+message Label {
+  string key = 1;
+  string value = 2;
+}
+
+// Usage describes the quantity consumed.
+message Usage {
+  double amount = 1; // Usage quantity
+  string unit = 2; // e.g. "seconds", "byte-seconds"
+  double amount_in_pricing_units = 3; // Normalised to pricing unit
+  string pricing_unit = 4; // e.g. "hour"
+}
+
+// Credit represents a discount or promotional credit applied.
+message Credit {
+  string name = 1; // e.g. "Sustained Use Discount"
+  double amount = 2; // Negative value = cost reduction
+  string type = 3; // e.g. "SUSTAINED_USAGE_DISCOUNT"
+  string id = 4;
+}
+
+// Location of the resource.
+message Location {
+  string location = 1; // e.g. "us-central1"
+  string country = 2; // e.g. "US"
+  string region = 3; // e.g. "us-central1"
+  string zone = 4; // e.g. "us-central1-a"
+}
+
+// --- Aggregation types ---
+
+// ServiceCost is an aggregated cost for a single GCP service.
+message ServiceCost {
+  string service_id = 1;
+  string service_description = 2;
+  double cost = 3;
+  string currency = 4;
+}
+
+// ProjectCost is an aggregated cost for a single project.
+message ProjectCost {
+  string project_id = 1;
+  string project_name = 2;
+  double cost = 3;
+  string currency = 4;
+}
+
+// DailyCost is a single day's total cost.
+message DailyCost {
+  string date = 1; // YYYY-MM-DD
+  double cost = 2;
+  string currency = 3;
+}
+
+// SKUCost is an aggregated cost for a single SKU.
+message SKUCost {
+  string sku_id = 1;
+  string sku_description = 2;
+  string service_description = 3;
+  double cost = 4;
+  string currency = 5;
+}
+
+// PeriodComparison compares costs between two periods.
+message PeriodComparison {
+  string period_a = 1; // e.g. "2026-01"
+  string period_b = 2; // e.g. "2025-12"
+  double cost_a = 3;
+  double cost_b = 4;
+  double delta = 5; // cost_a - cost_b
+  double delta_percent = 6; // ((cost_a - cost_b) / cost_b) * 100
+  string currency = 7;
+  repeated ServiceCost by_service_a = 8;
+  repeated ServiceCost by_service_b = 9;
+}
+
+// CostReport aggregates billing data for a period.
+message CostReport {
+  string period = 1; // e.g. "2026-01"
+  double total_cost = 2;
+  string currency = 3;
+  repeated ServiceCost by_service = 4;
+  repeated ProjectCost by_project = 5;
+  repeated DailyCost by_day = 6;
+  repeated SKUCost top_skus = 7;
+}

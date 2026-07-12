@@ -1,0 +1,107 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Message types for email and communication. Designed for Gmail but
+// generic enough for any message-based system (email, chat, notifications).
+
+syntax = "proto3";
+
+package domain.message.v1;
+
+import "domain/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/domain/message/v1;messagev1";
+
+// MessageType classifies the kind of message.
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_EMAIL = 1;
+  MESSAGE_TYPE_CHAT = 2;
+  MESSAGE_TYPE_NOTIFICATION = 3;
+  // 4-9 reserved for future types.
+}
+
+// DraftStatus tracks the lifecycle of a draft message.
+enum DraftStatus {
+  DRAFT_STATUS_UNSPECIFIED = 0;
+  DRAFT_STATUS_COMPOSING = 1; // Being written.
+  DRAFT_STATUS_READY = 2; // Ready to send.
+  DRAFT_STATUS_SENT = 3; // Has been sent.
+  DRAFT_STATUS_DISCARDED = 4; // Abandoned.
+  // 5-9 reserved.
+}
+
+// Participant represents a sender or recipient.
+message Participant {
+  // Display name (e.g. "Jasper Duizendstra").
+  string name = 1;
+
+  // Address (e.g. "jasper@example.com").
+  string address = 2;
+
+  // 3-9 reserved for future fields.
+}
+
+// Message represents an email or communication message.
+message Message {
+  // Source system that provided this message.
+  domain.common.v1.ExternalId external_id = 1;
+
+  // Thread/conversation identifier for grouping related messages.
+  string thread_id = 2;
+
+  // The message type (email, chat, notification).
+  MessageType type = 3;
+
+  // Sender of the message.
+  Participant from = 4;
+
+  // Primary recipients.
+  repeated Participant to = 5;
+
+  // Carbon-copy recipients.
+  repeated Participant cc = 6;
+
+  // Blind carbon-copy recipients.
+  repeated Participant bcc = 7;
+
+  // Subject line.
+  string subject = 8;
+
+  // Plain text body.
+  string body_text = 9;
+
+  // HTML body (if available).
+  string body_html = 10;
+
+  // Labels or categories (e.g. "INBOX", "SENT", "IMPORTANT").
+  repeated string labels = 11;
+
+  // When the message was received/sent.
+  google.protobuf.Timestamp received_at = 12;
+
+  // Message snippet (short preview of the body).
+  string snippet = 13;
+
+  // Whether the message has been read.
+  bool is_read = 14;
+
+  // 15-29 reserved for future fields (attachments, headers, etc.).
+}
+
+// Draft represents a message being composed.
+message Draft {
+  // Source system identifier for the draft.
+  domain.common.v1.ExternalId external_id = 1;
+
+  // The draft message content.
+  Message message = 2;
+
+  // Current status of the draft.
+  DraftStatus status = 3;
+
+  // When the draft was last modified.
+  google.protobuf.Timestamp updated_at = 4;
+
+  // 5-9 reserved for future fields.
+}

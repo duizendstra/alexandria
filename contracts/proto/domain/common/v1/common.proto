@@ -1,0 +1,42 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Common types shared across Alexandria domain models.
+
+syntax = "proto3";
+
+package domain.common.v1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/domain/common/v1;commonv1";
+
+// Lifecycle tracks the state of an entity. History is never deleted —
+// entities move through states, and old states remain queryable via
+// valid_from / valid_to timestamps on the containing message.
+enum Lifecycle {
+  LIFECYCLE_UNSPECIFIED = 0;
+  LIFECYCLE_ACTIVE = 1; // Currently valid and in use.
+  LIFECYCLE_LEGACY = 2; // Superseded but historically accurate.
+  LIFECYCLE_INVALID = 3; // Known to be incorrect (e.g. bounced email).
+  // 4-9 reserved for future lifecycle states.
+}
+
+// Purpose describes the intended usage context of a data point.
+enum Purpose {
+  PURPOSE_UNSPECIFIED = 0;
+  PURPOSE_PERSONAL = 1; // Personal use (home address, personal email).
+  PURPOSE_WORK = 2; // Professional use (office address, work email).
+  PURPOSE_BILLING = 3; // Billing and invoicing.
+  PURPOSE_SHIPPING = 4; // Physical delivery.
+  // 5-9 reserved for future purposes.
+}
+
+// ExternalId links an Alexandria entity to a record in an external system.
+// Every data point should track its source for provenance.
+message ExternalId {
+  // The source system identifier (e.g. "google-contacts", "easyflor", "eitje").
+  string system = 1;
+
+  // The record identifier within that system (e.g. "people/c1234567890").
+  string id = 2;
+
+  // 3-9 reserved for future fields (e.g. system_version, last_sync_at).
+}

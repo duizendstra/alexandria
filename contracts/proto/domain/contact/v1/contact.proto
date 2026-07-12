@@ -1,0 +1,88 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Contact types: reusable across any entity that has contact information.
+// Designed for Party but importable by Location, Building, Event, etc.
+
+syntax = "proto3";
+
+package domain.contact.v1;
+
+import "domain/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/domain/contact/v1;contactv1";
+
+// ContactPointType classifies the medium of a contact point.
+enum ContactPointType {
+  CONTACT_POINT_TYPE_UNSPECIFIED = 0;
+  CONTACT_POINT_TYPE_EMAIL = 1;
+  CONTACT_POINT_TYPE_PHONE = 2;
+  CONTACT_POINT_TYPE_URL = 3;
+  CONTACT_POINT_TYPE_FAX = 4;
+  // 5-9 reserved for future types (e.g. SOCIAL, MESSAGING).
+}
+
+// ContactPoint represents a single way to reach an entity.
+// Carries its own lifecycle, purpose, and temporal validity.
+message ContactPoint {
+  // The type of contact point (email, phone, URL, etc.).
+  ContactPointType type = 1;
+
+  // The value (e.g. "jasper@example.com", "+31612345678", "https://example.com").
+  string value = 2;
+
+  // Usage context (personal, work, billing, etc.).
+  domain.common.v1.Purpose purpose = 3;
+
+  // Current state of this contact point.
+  domain.common.v1.Lifecycle lifecycle = 4;
+
+  // Source system that provided this data point.
+  domain.common.v1.ExternalId source = 5;
+
+  // When this contact point became valid.
+  google.protobuf.Timestamp valid_from = 6;
+
+  // When this contact point stopped being valid. Unset = still valid.
+  google.protobuf.Timestamp valid_to = 7;
+
+  // Human-readable label from the source (e.g. "Mobile", "Main").
+  string label = 8;
+
+  // 9-19 reserved for future fields.
+}
+
+// PostalAddress represents a structured physical address.
+message PostalAddress {
+  // Street name and house number.
+  string street = 1;
+
+  // City or locality.
+  string city = 2;
+
+  // State, province, or region.
+  string region = 3;
+
+  // Postal or ZIP code.
+  string postal_code = 4;
+
+  // ISO 3166-1 alpha-2 country code (e.g. "NL", "US").
+  string country_code = 5;
+
+  // Usage context (personal, work, billing, shipping).
+  domain.common.v1.Purpose purpose = 6;
+
+  // Current state of this address.
+  domain.common.v1.Lifecycle lifecycle = 7;
+
+  // Source system that provided this data point.
+  domain.common.v1.ExternalId source = 8;
+
+  // When this address became valid.
+  google.protobuf.Timestamp valid_from = 9;
+
+  // When this address stopped being valid. Unset = still valid.
+  google.protobuf.Timestamp valid_to = 10;
+
+  // 11-19 reserved for future fields (e.g. formatted_address, geo coordinates).
+}

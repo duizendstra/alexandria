@@ -27,8 +27,8 @@ func (r *Result) Pass() bool {
 // SchemaResult compares table structure.
 type SchemaResult struct {
 	Match     bool
-	LeftOnly  []Column // columns only in left
-	RightOnly []Column // columns only in right
+	LeftOnly  []Column // columns only in left.
+	RightOnly []Column // columns only in right.
 	TypeDiffs []ColumnTypeDiff
 }
 
@@ -50,6 +50,7 @@ func (v VolumeResult) String() string {
 	if v.Match {
 		return fmt.Sprintf("MATCH (%d rows)", v.LeftCount)
 	}
+
 	return fmt.Sprintf("MISMATCH (left=%d, right=%d, delta=%d)",
 		v.LeftCount, v.RightCount, v.RightCount-v.LeftCount)
 }
@@ -57,18 +58,18 @@ func (v VolumeResult) String() string {
 // ContentResult reports row-level differences.
 type ContentResult struct {
 	Match     bool
-	LeftOnly  int64  // rows only in left
-	RightOnly int64  // rows only in right
-	Differed  int64  // rows present in both but with different values
-	Matched   int64  // rows identical in both
-	Diffs     []Diff // first N actual diffs for inspection
+	LeftOnly  int64  // rows only in left.
+	RightOnly int64  // rows only in right.
+	Differed  int64  // rows present in both but with different values.
+	Matched   int64  // rows identical in both.
+	Diffs     []Diff // first N actual diffs for inspection.
 }
 
 // Diff is a single row-level difference.
 type Diff struct {
 	Key    string
-	Side   string            // "left-only", "right-only", "both"
-	Fields map[string][2]any // field → [left, right] values (only for "both")
+	Side   string            // "left-only", "right-only", "both".
+	Fields map[string][2]any // field → [left, right] values (only for "both").
 }
 
 // StatsResult compares column-level aggregates.

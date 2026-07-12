@@ -4,7 +4,7 @@ domain: operations
 type: index
 diataxis_quadrant: explanation
 status: active
-maturity: seed
+maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: CI/CD pipeline design, release-please automation, Dependabot configuration, and tagging conventions.
@@ -23,4 +23,6 @@ This folder documents the automated pipelines, release tooling, and operational 
 
 ## Contents
 
-_No documents yet. This is a seed directory._
+- [declarative-ci-cd-pipelines.md](declarative-ci-cd-pipelines.md) — Multi-module monorepos release strategies, semantic tagging, and automated regression metrics checks.
+- [disaster-recovery-and-rollback.md](disaster-recovery-and-rollback.md) — Step-by-step operational instructions for hot-fixing, rolling back faulty releases, retracting Go modules, and recovering from pipeline incidents.
+

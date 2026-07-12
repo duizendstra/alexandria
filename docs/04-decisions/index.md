@@ -62,3 +62,4 @@ What becomes easier or more difficult to do because of this change?
 | ADR | Title | Status |
 |---|---|---|
 | [ADR-0001](adr-0001-monorepo-strategy.md) | Use a Multi-Module Monorepo | Accepted |
+| [ADR-0002](adr-0002-vault-centric-documentation.md) | Vault-Centric Documentation Structure | Accepted |

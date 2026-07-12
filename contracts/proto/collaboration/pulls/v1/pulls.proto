@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+// Package pulls defines the collaboration layer's delivery capability.
+//
+// Hexagonal: inbound port — consumed by MCP tools and services.
+// CODE phase: Express — the final step that ships value.
+// PARA: Projects — PRs belong to time-bound deliverables.
+// Scrumban: Delivery column — create_pr and merge_pr close the loop.
+package collaboration.pulls.v1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/collaboration/pulls/v1;pullsv1";
+
+// PullRequest represents a GitHub pull request.
+message PullRequest {
+  // PR number (unique within a repository).
+  int32 number = 1;
+  // PR title.
+  string title = 2;
+  // Output only. URL to the PR on GitHub.
+  string html_url = 3;
+  // Current state (e.g. "open", "closed").
+  string state = 4;
+  // Output only. Whether the PR has been merged.
+  bool merged = 5;
+}
+
+// PullsService manages GitHub pull requests.
+//
+// All repository parameters accept "owner/repo" format.
+service PullsService {
+  // CreatePullRequest opens a new pull request (AIP-133).
+  rpc CreatePullRequest(CreatePullRequestRequest) returns (CreatePullRequestResponse);
+  // MergePullRequest merges an open pull request.
+  rpc MergePullRequest(MergePullRequestRequest) returns (MergePullRequestResponse);
+}
+
+// CreatePullRequestRequest is the request message for
+// [PullsService.CreatePullRequest][collaboration.pulls.v1.PullsService.CreatePullRequest].
+message CreatePullRequestRequest {
+  // Required. Repository in "owner/repo" format.
+  string repo = 1;
+  // Required. PR title.
+  string title = 2;
+  // Optional. PR body (markdown).
+  string body = 3;
+  // Required. Source branch name.
+  string head = 4;
+  // Required. Target branch name (e.g. "main").
+  string base = 5;
+  // Optional. Whether to create as draft. Default: false.
+  bool draft = 6;
+}
+
+// CreatePullRequestResponse is the response message for
+// [PullsService.CreatePullRequest][collaboration.pulls.v1.PullsService.CreatePullRequest].
+message CreatePullRequestResponse {
+  // The created pull request.
+  PullRequest pull_request = 1;
+}
+
+// MergePullRequestRequest is the request message for
+// [PullsService.MergePullRequest][collaboration.pulls.v1.PullsService.MergePullRequest].
+message MergePullRequestRequest {
+  // Required. Repository in "owner/repo" format.
+  string repo = 1;
+  // Required. PR number to merge.
+  int32 number = 2;
+  // Optional. Merge method: "merge", "squash", or "rebase". Default: "merge".
+  string merge_method = 3;
+  // Optional. Custom commit title for the merge commit.
+  string commit_title = 4;
+}
+
+// MergePullRequestResponse is the response message for
+// [PullsService.MergePullRequest][collaboration.pulls.v1.PullsService.MergePullRequest].
+message MergePullRequestResponse {
+  // The merge commit SHA.
+  string sha = 1;
+  // Whether the merge was successful.
+  bool merged = 2;
+  // GitHub's merge message.
+  string message = 3;
+}

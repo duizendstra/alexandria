@@ -15,6 +15,7 @@ Each directory is a standalone Go module with its own `go.mod`.
 | [google](google/) | Secure, platform-aware Google Workspace DWD authenticators & Admin/Drive Clients | v0.0.1 |
 | [dataquality/datadiff](dataquality/datadiff/) | Schema-based table structures & statistical dataset difference engine | v0.0.1 |
 | [observability/audit](observability/audit/) | Dependency-free audit logging domains & size-rotated file adapters | v0.0.1 |
+| [contracts](contracts/) | Unified, compiled Protocol Buffer contracts representing Alexandria's Ubiquitous Language | v0.0.1 |
 | [discovery/privacyfilter](discovery/privacyfilter/) | Fast, single-pass sensitive document and credential content redactor | v0.0.1 |
 | [platform/async](platform/async/) | SRE-hardened panic-resilient bounded asynchronous worker pool | v0.0.1 |
 

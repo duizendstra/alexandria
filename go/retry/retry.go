@@ -124,5 +124,5 @@ func jitter(ceiling time.Duration) time.Duration {
 		return 0
 	}
 
-	return time.Duration(rand.Int64N(int64(ceiling)))
+	return time.Duration(rand.Int64N(int64(ceiling))) // #nosec G404
 }

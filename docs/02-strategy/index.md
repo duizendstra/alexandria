@@ -4,7 +4,7 @@ domain: strategy
 type: index
 diataxis_quadrant: explanation
 status: active
-maturity: seed
+maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Vision, roadmap, module growth strategy, and publication criteria for Alexandria.
@@ -23,4 +23,4 @@ This folder captures the long-term direction and growth plan for the Alexandria 
 
 ## Contents
 
-_No documents yet. This is a seed directory._
+- [roadmap.md](roadmap.md) — Alexandria Documentation Roadmap tracking rolling milestones and deliverables.

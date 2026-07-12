@@ -4,7 +4,7 @@ domain: playbooks
 type: index
 diataxis_quadrant: how-to
 status: active
-maturity: seed
+maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: How-to guides for adding modules, migrating from private packages, and publishing to pkg.go.dev.
@@ -22,4 +22,4 @@ This folder contains step-by-step how-to guides for common development and maint
 
 ## Contents
 
-_No documents yet. This is a seed directory._
+- [onboarding.md](onboarding.md) — Step-by-step developer learning playbook to set up a 100% declarative, local hermetic workspace using Nix in under 60 seconds.

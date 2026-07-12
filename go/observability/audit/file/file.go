@@ -1,3 +1,4 @@
+// Package file provides file-based implementations of the audit.Writer interface.
 package file
 
 import (
@@ -134,21 +135,23 @@ func (w *FileWriter) rotateLocked() error {
 	_ = os.Remove(backupPath)
 
 	if err := os.Rename(w.path, backupPath); err != nil {
-		// Fallback self-healing: reopen original file in append mode to maintain capacity
+		// Fallback self-healing: reopen original file in append mode to maintain capacity.
 		f, reopenErr := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, fileMode)
 		if reopenErr == nil {
 			w.file = f
 		}
+
 		return fmt.Errorf("rename audit log: %w", err)
 	}
 
 	f, err := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, fileMode)
 	if err != nil {
-		// Fallback self-healing: reopen backupPath in append mode to keep logging going on backup file
-		fb, backupReopenErr := os.OpenFile(backupPath, os.O_APPEND|os.O_WRONLY, fileMode)
+		// Fallback self-healing: reopen backupPath in append mode to keep logging going on backup file.
+		fb, backupReopenErr := os.OpenFile(backupPath, os.O_APPEND|os.O_WRONLY, fileMode) //nolint:gosec // path is trusted
 		if backupReopenErr == nil {
 			w.file = fb
 		}
+
 		return fmt.Errorf("create new audit log: %w", err)
 	}
 
@@ -180,7 +183,7 @@ func ReadScorecard(path string) (audit.Scorecard, error) {
 	for dec.More() {
 		var e audit.Entry
 		if err := dec.Decode(&e); err != nil {
-			continue // skip malformed entries
+			continue // skip malformed entries.
 		}
 
 		sc.Total++

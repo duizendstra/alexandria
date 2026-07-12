@@ -4,9 +4,9 @@ package datadiff
 // It uses database-agnostic abstractions while maintaining backward-compatible
 // properties for GCP BigQuery targets.
 type Target struct {
-	Project string // Database or GCP project qualifier (e.g. "my-project")
-	Dataset string // Dataset or schema context (e.g. "my_dataset")
-	Table   string // Table or relation identifier (e.g. "users")
+	Project string // Database or GCP project qualifier (e.g. "my-project").
+	Dataset string // Dataset or schema context (e.g. "my_dataset").
+	Table   string // Table or relation identifier (e.g. "users").
 }
 
 // Qualifier returns the database or project qualifier context.
@@ -34,7 +34,7 @@ type ColumnMode string
 const (
 	ModeNullable ColumnMode = "NULLABLE"
 	ModeRequired ColumnMode = "REQUIRED"
-	ModeRepeated ColumnMode = "REPEATED" // array
+	ModeRepeated ColumnMode = "REPEATED" // array.
 )
 
 // Column describes a table column, including nested structures.
@@ -42,10 +42,10 @@ const (
 // For REPEATED RECORD, Mode is REPEATED and Children is populated.
 type Column struct {
 	Name     string
-	DataType string     // e.g. "STRING", "INT64", "RECORD", "FLOAT64"
-	Mode     ColumnMode // NULLABLE, REQUIRED, or REPEATED
+	DataType string     // e.g. "STRING", "INT64", "RECORD", "FLOAT64".
+	Mode     ColumnMode // NULLABLE, REQUIRED, or REPEATED.
 	Position int
-	Children []Column // populated when DataType is "RECORD"
+	Children []Column // populated when DataType is "RECORD".
 }
 
 // IsNested returns true if this column has child fields.
@@ -102,7 +102,7 @@ func FlattenAll(cols []Column) []Column {
 type TableMeta struct {
 	Columns         []Column
 	RowCount        int64
-	PartitionColumn string // empty if not partitioned
+	PartitionColumn string // empty if not partitioned.
 	ClusterColumns  []string
 	SizeBytes       int64
 }

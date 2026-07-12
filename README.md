@@ -29,6 +29,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.0.1 |
 | [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.0.1 |
 | [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v0.0.1 |
+| [contracts](go/contracts/) | `github.com/duizendstra/alexandria/go/contracts` | v0.0.1 |
 | [discovery/privacyfilter](go/discovery/privacyfilter/) | `github.com/duizendstra/alexandria/go/discovery/privacyfilter` | v0.0.1 |
 | [discovery/search](go/discovery/search/) | `github.com/duizendstra/alexandria/go/discovery/search` | v0.0.1 |
 | [platform/apierr](go/platform/apierr/) | `github.com/duizendstra/alexandria/go/platform/apierr` | v0.0.1 |
