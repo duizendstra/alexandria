@@ -15,7 +15,9 @@ import (
 // true if the request should be retried. This keeps the retry transport
 // decoupled from specific error taxonomies.
 //
-//	transport := retry.Transport(3, apierr.IsRetryableStatus, base)
+//	transport := retry.Transport(3, func(code int) bool {
+//		return code == 429 || code >= 500
+//	}, base)
 func Transport(maxAttempts int, shouldRetry func(statusCode int) bool, base http.RoundTripper) http.RoundTripper {
 	if base == nil {
 		base = http.DefaultTransport
