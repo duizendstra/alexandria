@@ -239,6 +239,11 @@ linters:
         linters:
           - gomoddirectives
 
+      # slog-gcp/otelgcp submodule — uses local replace directive for development.
+      - path: go/slog-gcp/otelgcp/go\.mod
+        linters:
+          - gomoddirectives
+
       # CLI packages — Cobra patterns need globals, inits, and relaxed style.
       - path: go/cli/.*
         linters:
