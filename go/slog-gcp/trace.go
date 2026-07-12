@@ -54,5 +54,6 @@ func decimalToHexSpan(decimal string) string {
 		buf[i] = hexChars[n&0xf]
 		n >>= 4
 	}
+
 	return string(buf[:])
 }
