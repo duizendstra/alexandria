@@ -1,3 +1,3 @@
 module github.com/duizendstra/alexandria/go/dataquality/datadiff
 
-go 1.24.1
+go 1.26

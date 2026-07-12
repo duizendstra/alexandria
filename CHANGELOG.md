@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **go/discovery/search**: Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic.
 - **go/platform/apierr**: General-purpose REST API/gRPC error mapping layer with retryable classification, unified status responses, and error-unwrapping middleware.
 - **go/platform/async**: Thread-safe task coordinator and manager for sub-mitting, fetching, and pruning background asynchronous tasks.
+- **documentation**: Generated high-quality, SRE-hardened README.md files for the 9 core Go modules (`go/google`, `go/contracts`, `go/dataquality/datadiff`, `go/observability/audit`, `go/discovery/privacyfilter`, `go/discovery/search`, `go/discovery/search/searchtest`, `go/platform/apierr`, and `go/platform/async`) following the standard template pattern.
 
 
 ### Changed
@@ -30,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Added `WithTraceContext` public helper for context propagation in async workers.
   - Added `GCP_METADATA_DISABLED=true` environment variable bypass for metadata query.
   - Optimized trace prefix parsing (pre-computed in handler creation) to reduce hot-path allocations.
+- **maintenance**:
+  - Upgraded Google, ConnectRPC, and Protobuf dependencies to latest stable/secure versions.
+  - Standardized Go modules version requirements to `go 1.26` (libraries minor version rule).
+  - Removed all `replace` directives from Go modules for cleaner dependency graph.
+  - Added unit tests for `go/slog-gcp/otelgcp` span context extraction.
+  - Expanded Dependabot configuration to cover all Go modules with external dependencies + actions.
+  - Fixed dead code in `platform/async`, doc comment placement in `platform/apierr`, and doc example in `retry`.
+  - Rewrote `contracts/README.md` to document the actual Protocol Buffer schemas and Buf compilation workflow.
 
 
 ## [go/slog-gcp/otelgcp/v0.0.1] - 2026-06-28
