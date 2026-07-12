@@ -8,13 +8,14 @@ import (
 	"context"
 )
 
-// TraceHeaderKeyType is an exported alias of traceHeaderKey for
+// TraceContextKeyType is an exported alias of traceContextKey for
 // use in external tests. This file is only compiled during testing.
-type TraceHeaderKeyType = traceHeaderKey
+type TraceContextKeyType = traceContextKey
 
-// TraceHeaderKeyForTest extracts the trace header value from context for testing.
-func TraceHeaderKeyForTest(ctx context.Context) string {
-	v, _ := ctx.Value(traceHeaderKey{}).(string)
+// TraceContextForTest extracts the TraceContext struct from context for testing.
+func TraceContextForTest(ctx context.Context) TraceContext {
+	v, _ := ctx.Value(traceContextKey{}).(TraceContext)
+
 	return v
 }
 
@@ -30,11 +31,7 @@ type CloudTraceForTest struct {
 func ParseCloudTraceHeaderForTest(header string) CloudTraceForTest {
 	info := parseCloudTraceHeader(header)
 
-	return CloudTraceForTest{
-		TraceID: info.traceID,
-		SpanID:  info.spanID,
-		Sampled: info.sampled,
-	}
+	return CloudTraceForTest(info)
 }
 
 // ResetMetadataCacheForTest resets the metadata project ID cache,
