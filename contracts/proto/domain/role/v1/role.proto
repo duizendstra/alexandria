@@ -1,0 +1,55 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Role types for Party entities. A Party can play multiple roles
+// simultaneously across different contexts.
+
+syntax = "proto3";
+
+package domain.role.v1;
+
+import "domain/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/domain/role/v1;rolev1";
+
+// RoleType classifies the function a Party serves in a context.
+enum RoleType {
+  ROLE_TYPE_UNSPECIFIED = 0;
+  ROLE_TYPE_CONTACT = 1; // Personal/business contact.
+  ROLE_TYPE_EMPLOYEE = 2; // Employee of an organization.
+  ROLE_TYPE_SUPPLIER = 3; // Supplies goods or services.
+  ROLE_TYPE_CUSTOMER = 4; // Purchases goods or services.
+  ROLE_TYPE_DEBTOR = 5; // Owes money (accounts receivable).
+  ROLE_TYPE_CREDITOR = 6; // Is owed money (accounts payable).
+  // 7-19 reserved for future roles.
+}
+
+// Role describes what function a Party plays in a given context.
+// A single Party can have multiple roles (e.g. both SUPPLIER and CUSTOMER).
+message Role {
+  // The type of role.
+  RoleType type = 1;
+
+  // Current state of this role assignment.
+  domain.common.v1.Lifecycle lifecycle = 2;
+
+  // Source system that assigned this role.
+  domain.common.v1.ExternalId source = 3;
+
+  // When this role became active.
+  google.protobuf.Timestamp valid_from = 4;
+
+  // When this role ended. Unset = still active.
+  google.protobuf.Timestamp valid_to = 5;
+
+  // Job title or role name (e.g. "Software Engineer", "Account Manager").
+  string title = 6;
+
+  // Organization the party holds this role at.
+  string organization_name = 7;
+
+  // Free-text description of responsibilities or context.
+  string description = 8;
+
+  // 9-14 reserved for future fields (e.g. department, location, notes).
+}

@@ -38,26 +38,51 @@ type retryTransport struct {
 	shouldRetry func(statusCode int) bool
 }
 
+func cloneRequest(req *http.Request) *http.Request {
+	if req.Body != nil && req.GetBody != nil {
+		activeReq := new(http.Request)
+		*activeReq = *req
+
+		return activeReq
+	}
+
+	return req
+}
+
+func rewindRequestBody(req *http.Request) error {
+	if req.Body != nil && req.GetBody != nil {
+		body, err := req.GetBody()
+		if err != nil {
+			return fmt.Errorf("retry: failed to get request body: %w", err)
+		}
+
+		req.Body = body
+	}
+
+	return nil
+}
+
+func drainBody(resp *http.Response) {
+	if resp != nil && resp.Body != nil {
+		const maxDrainBytes = 4096
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDrainBytes))
+		_ = resp.Body.Close()
+	}
+}
+
 func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	var (
 		resp    *http.Response
 		lastErr error
 	)
 
-	// Shallow clone request to avoid modifying the caller's request
-	activeReq := req
-	if req.Body != nil && req.GetBody != nil {
-		activeReq = new(http.Request)
-		*activeReq = *req
-	}
+	activeReq := cloneRequest(req)
 
 	for attempt := range t.maxAttempts {
-		if attempt > 0 && activeReq.Body != nil && activeReq.GetBody != nil {
-			body, err := activeReq.GetBody()
-			if err != nil {
-				return nil, fmt.Errorf("retry: failed to get request body: %w", err)
+		if attempt > 0 {
+			if err := rewindRequestBody(activeReq); err != nil {
+				return nil, err
 			}
-			activeReq.Body = body
 		}
 
 		resp, lastErr = t.base.RoundTrip(activeReq)
@@ -83,10 +108,7 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		// Drain and close body before retry to reuse the connection.
-		if resp.Body != nil {
-			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-			_ = resp.Body.Close()
-		}
+		drainBody(resp)
 
 		if attempt < t.maxAttempts-1 {
 			if waitErr := t.wait(activeReq, attempt); waitErr != nil {

@@ -164,13 +164,13 @@ func TestTaskPanicRecovery(t *testing.T) {
 }
 
 func TestConcurrencyLimit(t *testing.T) {
-	// Setup with limit of 1
+	// Setup with limit of 1.
 	r := async.NewRunnerWithLimit(1)
 
 	started := make(chan struct{})
 	block := make(chan struct{})
 
-	// Task 1: blocks until we release it
+	// Task 1: blocks until we release it.
 	r.Submit("blocker", func() (any, error) {
 		close(started)
 		<-block
@@ -179,7 +179,7 @@ func TestConcurrencyLimit(t *testing.T) {
 
 	<-started
 
-	// Task 2: submitted but should not run because limit of 1 is held by blocker
+	// Task 2: submitted but should not run because limit of 1 is held by blocker.
 	id2 := r.Submit("queued", func() (any, error) {
 		return "done2", nil
 	})
@@ -194,7 +194,7 @@ func TestConcurrencyLimit(t *testing.T) {
 		t.Errorf("expected Task 2 to be StatusPending, got %s", t2.Status)
 	}
 
-	// Release Task 1
+	// Release Task 1.
 	close(block)
 
 	time.Sleep(50 * time.Millisecond)

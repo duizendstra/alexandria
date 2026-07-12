@@ -1,0 +1,62 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Artifact registry types for the Alexandria catalog.
+// Go package registry/artifacts implements the file-based catalog.
+
+syntax = "proto3";
+
+package registry.artifacts.v1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/registry/artifacts/v1;artifactsv1";
+
+// Artifact represents a single entry in the Alexandria catalog.
+message Artifact {
+  // Unique name of the artifact.
+  string name = 1;
+  // Type classification (e.g. "pattern", "docs", "proto", "deploy", "workflow").
+  string type = 2;
+  // Path relative to the Alexandria root.
+  string path = 3;
+  // Maturity level (e.g. "draft", "stable", "deprecated").
+  string maturity = 4;
+  // Provenance — where this artifact was ascended from (e.g. "example/sync.go").
+  repeated string ascended_from = 5;
+  // Projects that consume this artifact.
+  repeated string consumers = 6;
+  // Human-readable description.
+  string description = 7;
+}
+
+// Catalog is the root structure of catalog.yml.
+message Catalog {
+  // All registered artifacts.
+  repeated Artifact artifacts = 1;
+}
+
+// AscendOptions configures an ascend operation (promoting a file to Alexandria).
+message AscendOptions {
+  // Path to the source file in the customer project.
+  string source_path = 1;
+  // Path to the Alexandria root directory.
+  string alexandria_root = 2;
+  // Destination path relative to Alexandria root.
+  string dest_path = 3;
+  // Artifact name for the catalog entry.
+  string name = 4;
+  // Artifact type for the catalog entry.
+  string type = 5;
+  // Human-readable description.
+  string description = 6;
+  // Name of the originating project.
+  string project_name = 7;
+}
+
+// AscendResult describes the outcome of an ascend operation.
+message AscendResult {
+  // Absolute path of the source file.
+  string source = 1;
+  // Absolute path of the destination file.
+  string dest = 2;
+  // The catalog entry that was created.
+  Artifact artifact = 3;
+}

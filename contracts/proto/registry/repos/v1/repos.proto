@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package registry.repos.v1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/registry/repos/v1;reposv1";
+
+// Capability represents an operation that can be performed on a repository.
+enum Capability {
+  // Default value.
+  CAPABILITY_UNSPECIFIED = 0;
+  // Can list issues (AIP-132).
+  CAPABILITY_LIST_ISSUES = 1;
+  // Can create issues (AIP-133).
+  CAPABILITY_CREATE_ISSUE = 2;
+  // Can update issues (AIP-134).
+  CAPABILITY_UPDATE_ISSUE = 3;
+  // Can search issues.
+  CAPABILITY_SEARCH_ISSUES = 4;
+  // Can list milestones (AIP-132).
+  CAPABILITY_LIST_MILESTONES = 5;
+  // Can create milestones (AIP-133).
+  CAPABILITY_CREATE_MILESTONE = 6;
+  // Can update milestones (AIP-134).
+  CAPABILITY_UPDATE_MILESTONE = 7;
+  // Can get labels (AIP-131).
+  CAPABILITY_GET_LABEL = 8;
+  // Can batch-get issues (AIP-231).
+  CAPABILITY_BATCH_GET_ISSUES = 9;
+}
+
+// RepositoryDescriptor describes a repo and its available capabilities.
+// Resource name pattern: "repositories/{owner}/{repo}" (AIP-122).
+message RepositoryDescriptor {
+  // Fully qualified repository name (e.g. "OWNER/REPO").
+  string full_name = 1;
+  // Capabilities available for this repository.
+  repeated Capability capabilities = 2;
+}
+
+// RepoService provides repository catalog and access information.
+//
+// Consumers query this service to discover which repositories are
+// available and what operations are permitted on each.
+service RepoService {
+  // ListRepositories returns all configured repositories (AIP-132).
+  rpc ListRepositories(ListRepositoriesRequest) returns (ListRepositoriesResponse);
+}
+
+// ListRepositoriesRequest is the request message for
+// [RepoService.ListRepositories][registry.repos.v1.RepoService.ListRepositories].
+// Currently empty — pagination will be added when the catalog grows.
+message ListRepositoriesRequest {}
+
+// ListRepositoriesResponse is the response message for
+// [RepoService.ListRepositories][registry.repos.v1.RepoService.ListRepositories].
+message ListRepositoriesResponse {
+  // The list of configured repositories.
+  repeated RepositoryDescriptor repositories = 1;
+}

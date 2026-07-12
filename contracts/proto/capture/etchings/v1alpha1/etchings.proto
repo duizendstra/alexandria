@@ -1,0 +1,80 @@
+// Etchings captures raw, unclassified data for later triage.
+//
+// Scrumban: Capture phase — everything starts as an etch.
+// CODE: Capture — instant, zero ceremony.
+// PARA: Inbox — not yet classified into Projects/Areas/Resources.
+// Hexagonal: core domain — EtchingsService defines the port contract.
+syntax = "proto3";
+
+package capture.etchings.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/capture/etchings/v1alpha1;etchingsv1alpha1";
+
+// EtchingsService manages raw captures (etchings) for later triage.
+//
+// Etchings are ephemeral — they live in the inbox until triaged to a
+// destination (story, memory, friction, ascend) or deleted.
+service EtchingsService {
+  // CreateEtching captures a new raw etch (AIP-133).
+  rpc CreateEtching(CreateEtchingRequest) returns (CreateEtchingResponse);
+  // ListEtchings returns all etchings in the inbox (AIP-132).
+  rpc ListEtchings(ListEtchingsRequest) returns (ListEtchingsResponse);
+  // GetEtching returns a single etching by ID (AIP-131).
+  rpc GetEtching(GetEtchingRequest) returns (GetEtchingResponse);
+  // DeleteEtching removes an etching from the inbox (AIP-135).
+  rpc DeleteEtching(DeleteEtchingRequest) returns (DeleteEtchingResponse);
+}
+
+// Etching represents a raw capture in the inbox.
+message Etching {
+  // Resource name (e.g. "etchings/a1b2c3d4").
+  string name = 1;
+  // Raw content of the etch.
+  string content = 2;
+  // Output only. Creation time in RFC 3339 format.
+  string create_time = 3;
+}
+
+// CreateEtchingRequest is the request for CreateEtching.
+message CreateEtchingRequest {
+  // Required. The content to capture.
+  string content = 1;
+}
+
+// CreateEtchingResponse is the response for CreateEtching.
+message CreateEtchingResponse {
+  // The created etching.
+  Etching etching = 1;
+}
+
+// ListEtchingsRequest is the request for ListEtchings.
+message ListEtchingsRequest {}
+
+// ListEtchingsResponse is the response for ListEtchings.
+message ListEtchingsResponse {
+  // All etchings in the inbox.
+  repeated Etching etchings = 1;
+  // Total count.
+  int32 total_count = 2;
+}
+
+// GetEtchingRequest is the request for GetEtching.
+message GetEtchingRequest {
+  // Required. Etching ID.
+  string id = 1;
+}
+
+// GetEtchingResponse is the response for GetEtching.
+message GetEtchingResponse {
+  // The requested etching.
+  Etching etching = 1;
+}
+
+// DeleteEtchingRequest is the request for DeleteEtching.
+message DeleteEtchingRequest {
+  // Required. Etching ID.
+  string id = 1;
+}
+
+// DeleteEtchingResponse is the response for DeleteEtching.
+message DeleteEtchingResponse {}

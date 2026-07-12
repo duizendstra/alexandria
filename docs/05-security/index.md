@@ -4,7 +4,7 @@ domain: security
 type: index
 diataxis_quadrant: explanation
 status: active
-maturity: seed
+maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Dependency policy, vulnerability handling, and supply chain security practices for Alexandria.
@@ -22,4 +22,4 @@ This folder documents the security policies and practices that protect the Alexa
 
 ## Contents
 
-_No documents yet. This is a seed directory._
+- [zero-trust-workload-security.md](zero-trust-workload-security.md) — Standardized data classification, secure secret management (pass), and keyless cloud authentication policies.

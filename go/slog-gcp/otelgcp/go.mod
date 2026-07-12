@@ -2,6 +2,8 @@ module github.com/duizendstra/alexandria/go/slog-gcp/otelgcp
 
 go 1.26
 
+replace github.com/duizendstra/alexandria/go/slog-gcp => ../
+
 require (
 	github.com/duizendstra/alexandria/go/slog-gcp v0.0.1
 	go.opentelemetry.io/otel/trace v1.44.0
@@ -12,3 +14,5 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 )
+
+replace github.com/duizendstra/alexandria/go/slog-gcp => ../

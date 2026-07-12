@@ -9,21 +9,24 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 )
 
 var (
-	seq    atomic.Uint64
-	pidStr string
-)
+	//nolint:gochecknoglobals // Global sequence counter for generating unique event IDs.
+	seq atomic.Uint64
 
-func init() {
-	pidStr = strconv.Itoa(os.Getpid())
-}
+	//nolint:gochecknoglobals // Process-wide cached PID string resolved lazily.
+	pidStr = sync.OnceValue(func() string {
+		return strconv.Itoa(os.Getpid())
+	})
+)
 
 func fastUniqueID() string {
 	val := seq.Add(1)
-	return pidStr + "-" + strconv.FormatUint(val, 10)
+
+	return pidStr() + "-" + strconv.FormatUint(val, 10)
 }
 
 // IDResolver extracts trace and span IDs from context.

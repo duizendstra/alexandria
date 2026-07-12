@@ -1,0 +1,49 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Brain types — project-local persistent memory for repo state
+// and component ownership. Go package registry/brain implements
+// the file-based cache.
+
+syntax = "proto3";
+
+package registry.brain.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/registry/brain/v1;brainv1";
+
+// RepoState holds the cached state of a single repository.
+message RepoState {
+  // Short alias (e.g. "alexandria", "example").
+  string alias = 1;
+  // Filesystem path relative to the workspace root.
+  string path = 2;
+  // GitHub owner (e.g. "duizendstra-com").
+  string owner = 3;
+  // GitHub repository name.
+  string repo = 4;
+  // Whether the repo was reachable on last check.
+  bool accessible = 5;
+  // When the repo was last seen/checked.
+  google.protobuf.Timestamp last_seen = 6;
+}
+
+// ComponentOwner maps a component path to its advisory panel owners.
+message ComponentOwner {
+  // Component path (e.g. "library/go/identity").
+  string component = 1;
+  // Primary owner name.
+  string primary = 2;
+  // Supporting owner names.
+  repeated string supporting = 3;
+}
+
+// Brain is a project's persistent memory.
+message Brain {
+  // Cached repository states.
+  repeated RepoState repos = 1;
+  // Component ownership from the advisory panel.
+  repeated ComponentOwner ownership = 2;
+  // When the brain was last refreshed.
+  google.protobuf.Timestamp updated_at = 3;
+}

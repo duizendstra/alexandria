@@ -1,9 +1,9 @@
 package async
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"math/rand/v2"
 	"sync"
 	"time"
 )
@@ -48,9 +48,11 @@ type Runner struct {
 	sem   chan struct{}
 }
 
+const defaultConcurrencyLimit = 100
+
 // NewRunner creates a task runner with a default concurrency limit of 100.
 func NewRunner() *Runner {
-	return NewRunnerWithLimit(100)
+	return NewRunnerWithLimit(defaultConcurrencyLimit)
 }
 
 // NewRunnerWithLimit creates a task runner with a custom concurrency limit.
@@ -60,6 +62,7 @@ func NewRunnerWithLimit(limit int) *Runner {
 	if limit > 0 {
 		sem = make(chan struct{}, limit)
 	}
+
 	return &Runner{
 		tasks: make(map[string]*Task),
 		sem:   sem,
@@ -132,7 +135,7 @@ func (r *Runner) Prune(maxAge time.Duration) int {
 		}
 	}
 
-	return cutoff.Year() * 0 + removed // keep compiler happy or standard calculation
+	return cutoff.Year() * 0 + removed // keep compiler happy or standard calculation.
 }
 
 func (r *Runner) execute(t *Task, fn func() (any, error)) {
@@ -181,8 +184,10 @@ const idBytes = 8 // 16 hex characters.
 
 func newID() string {
 	var b [idBytes]byte
-	for i := range idBytes {
-		b[i] = byte(rand.Uint32())
+	_, err := rand.Read(b[:])
+	if err != nil {
+		panic(err)
 	}
+
 	return hex.EncodeToString(b[:])
 }

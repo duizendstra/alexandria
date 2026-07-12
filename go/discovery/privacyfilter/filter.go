@@ -92,6 +92,7 @@ func (f *Filter) redact(content string) string {
 	for _, pattern := range f.redactPatterns {
 		if strings.Contains(content, pattern) {
 			hasAny = true
+
 			break
 		}
 	}
@@ -104,7 +105,8 @@ func (f *Filter) redact(content string) string {
 		for _, pattern := range f.redactPatterns {
 			if strings.Contains(line, pattern) {
 				lines[i] = "[REDACTED — contains " + pattern + "]"
-				break // Stop checking other patterns for this line once redacted
+
+				break // Stop checking other patterns for this line once redacted.
 			}
 		}
 	}
