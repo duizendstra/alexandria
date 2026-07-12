@@ -6,4 +6,3 @@ require (
 	github.com/duizendstra/alexandria/go/retry v0.0.1
 	google.golang.org/api v0.287.0
 )
-

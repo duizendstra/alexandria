@@ -1,2 +1,4 @@
+github.com/duizendstra/alexandria/go/retry v0.0.1 h1:NtF7LH6g5yvFUSzxtiA5an26s/CCKSH3HfMUBD/pxJU=
+github.com/duizendstra/alexandria/go/retry v0.0.1/go.mod h1:h53W1EEE1Bj3IsN6jaqW5nEcLKDdEUOJYHEKU2LfDmM=
 google.golang.org/api v0.287.0 h1:CQDMqUiqZZ0U/Yge3zyjAhNQ0OSYEH0PaA7l4xtEen4=
 google.golang.org/api v0.287.0/go.mod h1:pPW85yt3Iuc3unkpaMhFtMmOqnTdCwCqEOaUlnuxRlQ=

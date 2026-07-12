@@ -2,6 +2,7 @@ package retry
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -43,8 +44,23 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		lastErr error
 	)
 
+	// Shallow clone request to avoid modifying the caller's request
+	activeReq := req
+	if req.Body != nil && req.GetBody != nil {
+		activeReq = new(http.Request)
+		*activeReq = *req
+	}
+
 	for attempt := range t.maxAttempts {
-		resp, lastErr = t.base.RoundTrip(req)
+		if attempt > 0 && activeReq.Body != nil && activeReq.GetBody != nil {
+			body, err := activeReq.GetBody()
+			if err != nil {
+				return nil, fmt.Errorf("retry: failed to get request body: %w", err)
+			}
+			activeReq.Body = body
+		}
+
+		resp, lastErr = t.base.RoundTrip(activeReq)
 
 		// Network error — retryable unless marked permanent.
 		if lastErr != nil {
@@ -53,7 +69,7 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			}
 
 			if attempt < t.maxAttempts-1 {
-				if waitErr := t.wait(req, attempt); waitErr != nil {
+				if waitErr := t.wait(activeReq, attempt); waitErr != nil {
 					return nil, waitErr
 				}
 			}
@@ -67,10 +83,13 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		// Drain and close body before retry to reuse the connection.
-		_ = resp.Body.Close()
+		if resp.Body != nil {
+			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+			_ = resp.Body.Close()
+		}
 
 		if attempt < t.maxAttempts-1 {
-			if waitErr := t.wait(req, attempt); waitErr != nil {
+			if waitErr := t.wait(activeReq, attempt); waitErr != nil {
 				return nil, waitErr
 			}
 		}
@@ -98,3 +117,4 @@ func (t *retryTransport) wait(req *http.Request, attempt int) error {
 		return fmt.Errorf("retry: %w", req.Context().Err())
 	}
 }
+

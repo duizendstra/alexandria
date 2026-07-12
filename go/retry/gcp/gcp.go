@@ -1,4 +1,3 @@
-// Package gcp provides GCP/Google API specific error-classification and retry utilities.
 package gcp
 
 import (
@@ -10,10 +9,30 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/duizendstra/alexandria/go/retry"
 	"google.golang.org/api/googleapi"
 )
+
+var defaultLogger atomic.Pointer[slog.Logger]
+
+// SetLogger sets the logger to be used by the package.
+// If nil is passed, it will revert to using slog.Default().
+func SetLogger(l *slog.Logger) {
+	if l == nil {
+		defaultLogger.Store(nil)
+		return
+	}
+	defaultLogger.Store(l)
+}
+
+func logger() *slog.Logger {
+	if l := defaultLogger.Load(); l != nil {
+		return l
+	}
+	return slog.Default()
+}
 
 // WithRetry executes an operation callback function with exponential backoff and GCP-specific error classification.
 // It fails fast on permanent failures (like OAuth/impersonation issues) and retries on transient errors.
@@ -65,7 +84,7 @@ func Classify(ctx context.Context, err error, attempt int) error {
 		strings.Contains(errStr, "unauthorized_client") ||
 		strings.Contains(errStr, "invalid_grant") ||
 		strings.Contains(errStr, "oauth2: cannot fetch token") {
-		slog.Error("Permanent OAuth2/DWD error, not retrying",
+		logger().Error("Permanent OAuth2/DWD error, not retrying",
 			slog.Int("attempt", attempt),
 			slog.String("error", errStr))
 
@@ -81,7 +100,7 @@ func Classify(ctx context.Context, err error, attempt int) error {
 	// Detect if the error implements standard Go net.Error interface or is io.EOF.
 	var netErr net.Error
 	if errors.As(err, &netErr) {
-		slog.Warn("Transient network error, will retry",
+		logger().Warn("Transient network error, will retry",
 			slog.Int("attempt", attempt),
 			slog.String("error", err.Error()))
 
@@ -89,7 +108,7 @@ func Classify(ctx context.Context, err error, attempt int) error {
 	}
 
 	if errors.Is(err, io.EOF) {
-		slog.Warn("Transient end-of-file error, will retry",
+		logger().Warn("Transient end-of-file error, will retry",
 			slog.Int("attempt", attempt),
 			slog.String("error", err.Error()))
 
@@ -97,7 +116,7 @@ func Classify(ctx context.Context, err error, attempt int) error {
 	}
 
 	// Non-API errors (OAuth failures, scope mismatches, other errors) are permanent.
-	slog.Error("Non-API error, not retrying",
+	logger().Error("Non-API error, not retrying",
 		slog.Int("attempt", attempt),
 		slog.String("error", err.Error()))
 
@@ -127,7 +146,7 @@ func classifyAPIError(apiErr *googleapi.Error, attempt int) error {
 	}
 
 	if isRetryable {
-		slog.Warn(logMsg,
+		logger().Warn(logMsg,
 			slog.Int("attempt", attempt),
 			slog.Int("http_code", apiErr.Code),
 			slog.String("error", apiErr.Message))
@@ -136,7 +155,7 @@ func classifyAPIError(apiErr *googleapi.Error, attempt int) error {
 	}
 
 	// Permanent API error (e.g., non-retryable 403 Forbidden, 404 Not Found).
-	slog.Error("Permanent API error, not retrying",
+	logger().Error("Permanent API error, not retrying",
 		slog.Int("attempt", attempt),
 		slog.Int("http_code", apiErr.Code),
 		slog.String("error", apiErr.Message))

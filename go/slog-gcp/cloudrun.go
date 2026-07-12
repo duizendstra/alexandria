@@ -6,7 +6,6 @@ package sloggcp
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -173,7 +172,14 @@ func TraceMiddleware(next http.Handler) http.Handler {
 // The generated trace context is picked up by the handler's IDResolver
 // transparently, just like TraceMiddleware does for HTTP requests.
 func WithTrace(ctx context.Context) context.Context {
-	traceID := strings.ReplaceAll(uuid.New().String(), "-", "")
+	u := uuid.New()
+	var buf [32]byte
+	const hexChars = "0123456789abcdef"
+	for i := range 16 {
+		buf[i*2] = hexChars[u[i]>>4]
+		buf[i*2+1] = hexChars[u[i]&0xf]
+	}
+	traceID := string(buf[:])
 	header := traceID + "/0;o=1"
 
 	return context.WithValue(ctx, traceHeaderKey{}, header)
@@ -187,7 +193,7 @@ func WithTraceContext(ctx context.Context, tc TraceContext) context.Context {
 	if tc.Sampled {
 		sampledVal = "1"
 	}
-	header := fmt.Sprintf("%s/%s;o=%s", tc.TraceID, tc.SpanID, sampledVal)
+	header := tc.TraceID + "/" + tc.SpanID + ";o=" + sampledVal
 
 	return context.WithValue(ctx, traceHeaderKey{}, header)
 }
