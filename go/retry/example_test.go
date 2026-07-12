@@ -30,7 +30,7 @@ func ExampleDo() {
 }
 
 func ExampleTransport() {
-	// Setup a local test server to mimic a transient failure
+	// Setup a local test server to mimic a transient failure.
 	serverAttempts := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serverAttempts++
@@ -51,7 +51,7 @@ func ExampleTransport() {
 		Transport: retry.Transport(3, shouldRetry, nil),
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL, http.NoBody)
 	if err != nil {
 		fmt.Printf("failed request creation: %v\n", err)
 		return
