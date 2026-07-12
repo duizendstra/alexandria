@@ -6,7 +6,7 @@ Project scaffolding templates for bootstrapping new repositories.
 
 | Blueprint | Description |
 |---|---|
-| — | _No blueprints published yet_ |
+| [service/.ko.yaml](service/.ko.yaml) | Golden ko build config for Go Cloud Run services |
 
 ## Categories
 

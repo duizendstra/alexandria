@@ -1,0 +1,35 @@
+# ko build configuration.
+# ko replaces the Dockerfile — builds Go source directly into minimal container images.
+#
+# Usage:
+#   ko build .                     — build + push to KO_DOCKER_REPO
+#   ko build . --local             — build to local Docker daemon
+#   ko build . --tarball=<name>    — build to OCI tarball
+#
+# See: https://ko.build/configuration/
+#
+# IMPORTANT: Ensure every service imports time/tzdata in main.go:
+#   import _ "time/tzdata"
+# The static distroless image has no /usr/share/zoneinfo.
+
+# Base image — Chainguard static for minimal attack surface.
+# This is ko's own default; being explicit for documentation.
+# Pinned to digest for reproducible builds. Update with:
+#   crane digest cgr.dev/chainguard/static:latest
+defaultBaseImage: cgr.dev/chainguard/static:latest@sha256:77d8b8925dc27970ec2f48243f44c7a260d52c49cd778288e4ee97566e0cb75b
+
+defaultPlatforms:
+  - linux/amd64
+
+# Explicit SBOM generation (ko default, declared for visibility).
+sbom: spdx
+
+builds:
+  - dir: .
+    main: .
+    flags:
+      - -trimpath
+    ldflags:
+      - -w
+    env:
+      - CGO_ENABLED=0 # explicit (ko default)
