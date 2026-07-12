@@ -15,6 +15,7 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
+//nolint:gochecknoglobals // defaultLogger allows configuring package-level logging.
 var defaultLogger atomic.Pointer[slog.Logger]
 
 // SetLogger sets the logger to be used by the package.
@@ -22,6 +23,7 @@ var defaultLogger atomic.Pointer[slog.Logger]
 func SetLogger(l *slog.Logger) {
 	if l == nil {
 		defaultLogger.Store(nil)
+
 		return
 	}
 	defaultLogger.Store(l)
@@ -31,6 +33,7 @@ func logger() *slog.Logger {
 	if l := defaultLogger.Load(); l != nil {
 		return l
 	}
+
 	return slog.Default()
 }
 

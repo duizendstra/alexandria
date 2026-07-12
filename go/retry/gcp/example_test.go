@@ -16,7 +16,7 @@ func ExampleWithRetry() {
 	err := gcp.WithRetry(ctx, func() error {
 		attempt++
 		if attempt < 2 {
-			// Simulate a transient Google API rate limit limit error (429)
+			// Simulate a transient Google API rate limit error (429).
 			return &googleapi.Error{
 				Code:    429,
 				Message: "Rate limit exceeded",
@@ -37,7 +37,7 @@ func ExampleWithRetry() {
 func ExampleClassify() {
 	ctx := context.Background()
 
-	// Simulate a permanent 404 error
+	// Simulate a permanent 404 error.
 	err := &googleapi.Error{
 		Code:    404,
 		Message: "Not found",
@@ -45,7 +45,7 @@ func ExampleClassify() {
 
 	classified := gcp.Classify(ctx, err, 1)
 
-	// Since 404 is a permanent failure, retry.IsPermanent should be true
+	// Since 404 is a permanent failure, retry.IsPermanent should be true.
 	if retry.IsPermanent(classified) {
 		fmt.Println("Error classified as permanent (fail-fast)")
 	} else {
