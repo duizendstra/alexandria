@@ -4,7 +4,7 @@ domain: architecture
 type: index
 diataxis_quadrant: explanation
 status: active
-maturity: seed
+maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Package design patterns, module boundaries, decorator patterns, and handler chains used across Alexandria modules.
@@ -23,4 +23,4 @@ This folder documents the technical design principles and structural patterns sh
 
 ## Contents
 
-_No documents yet. This is a seed directory._
+- [domain-driven-design-boundaries.md](domain-driven-design-boundaries.md) — Definitive standards for Domain-Driven Design (DDD) layer boundaries and dependency directions across all modules.

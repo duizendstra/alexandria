@@ -25,3 +25,4 @@ This folder contains look-up material — specifications, API references, and st
 | Document | Description |
 |---|---|
 | [Alexandria OKF Profile](okf-profile.md) | How Alexandria uses and extends the Open Knowledge Format. |
+| [Glossary](glossary.md) | The canonical lexicon of terms and Ubiquitous Language establishing architectural patterns. |

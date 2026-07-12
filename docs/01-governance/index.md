@@ -4,7 +4,7 @@ domain: governance
 type: index
 diataxis_quadrant: explanation
 status: active
-maturity: seed
+maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Licensing, contributing guidelines, changelog, release policy, and code of conduct for the Alexandria project.
@@ -24,4 +24,4 @@ This folder contains the foundational policies and community standards that gove
 
 ## Contents
 
-_No documents yet. This is a seed directory._
+- [charter.md](charter.md) — Alexandria Charter defining the mission, scope, success criteria, and engineering principles.
