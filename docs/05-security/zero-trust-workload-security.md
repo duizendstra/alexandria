@@ -18,7 +18,7 @@ relations: []
 ---
 # Zero-Trust Workload Security & Credential Hygiene
 
-> **Classification: INTERNAL**
+> **Classification: PUBLIC**
 > This policy establishes the secure credential injection and keyless authorization standards across our software ecosystem.
 
 ## Core Security Rules

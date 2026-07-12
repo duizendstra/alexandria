@@ -18,7 +18,7 @@ message RepoState {
   string alias = 1;
   // Filesystem path relative to the workspace root.
   string path = 2;
-  // GitHub owner (e.g. "duizendstra-com").
+  // GitHub owner (e.g. "OWNER").
   string owner = 3;
   // GitHub repository name.
   string repo = 4;

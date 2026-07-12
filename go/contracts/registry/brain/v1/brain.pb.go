@@ -35,7 +35,7 @@ type RepoState struct {
 	Alias string `protobuf:"bytes,1,opt,name=alias,proto3" json:"alias,omitempty"`
 	// Filesystem path relative to the workspace root.
 	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	// GitHub owner (e.g. "duizendstra-com").
+	// GitHub owner (e.g. "OWNER").
 	Owner string `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`
 	// GitHub repository name.
 	Repo string `protobuf:"bytes,4,opt,name=repo,proto3" json:"repo,omitempty"`
