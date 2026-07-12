@@ -267,6 +267,11 @@ linters:
         linters:
           - revive
 
+      # discovery/privacyfilter — local development replaces are allowed in go.mod.
+      - path: (go/discovery/privacyfilter/)?go\.mod
+        linters:
+          - gomoddirectives
+
       # Tests — relaxed for readability and test patterns.
       - path: .*_test\.go
         linters:
