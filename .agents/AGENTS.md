@@ -65,3 +65,17 @@ including chore commits (rules, docs, config).
 When writing tests that execute HTTP requests or verify contexts:
 - Always use `httptest.NewRequestWithContext(context.Background(), ...)` instead of `httptest.NewRequest` to satisfy the `noctx` linter.
 - Avoid capturing parent variables inside inline handler closures to verify context propagation, as it triggers `fatcontext`. Instead, define a small helper handler struct (e.g., `captureHandler`) that implements `http.Handler` and stores context values in struct fields.
+
+## 12. Skill Location
+Skills live at `skills/` (repo root), not `.agents/skills/`. Other repos
+inherit skills via `skills.json` in their `.agents/` directory.
+
+## 13. Public Repo Hygiene
+Never reference private GitHub orgs (e.g., `duizendstra-com`) in public
+repositories. Use generic placeholders (`OWNER/REPO`) in templates and
+documentation.
+
+## 14. Shell Portability in Documentation
+Shell commands in public documentation must work on both macOS and Linux.
+Known pitfalls: `sed -i ''` (macOS-only, use `sed -i.bak`),
+`readlink -f` (GNU-only), `grep -P` (GNU-only).
