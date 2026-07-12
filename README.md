@@ -26,6 +26,14 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v0.0.1 |
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.0.1 |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.0.1 |
+| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.0.1 |
+| [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.0.1 |
+| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v0.0.1 |
+| [discovery/privacyfilter](go/discovery/privacyfilter/) | `github.com/duizendstra/alexandria/go/discovery/privacyfilter` | v0.0.1 |
+| [discovery/search](go/discovery/search/) | `github.com/duizendstra/alexandria/go/discovery/search` | v0.0.1 |
+| [platform/apierr](go/platform/apierr/) | `github.com/duizendstra/alexandria/go/platform/apierr` | v0.0.1 |
+| [platform/async](go/platform/async/) | `github.com/duizendstra/alexandria/go/platform/async` | v0.0.1 |
+
 
 ## Documentation
 

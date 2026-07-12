@@ -7,9 +7,24 @@ package sloggcp
 import (
 	"context"
 	"log/slog"
-
-	"github.com/google/uuid"
+	"os"
+	"strconv"
+	"sync/atomic"
 )
+
+var (
+	seq    atomic.Uint64
+	pidStr string
+)
+
+func init() {
+	pidStr = strconv.Itoa(os.Getpid())
+}
+
+func fastUniqueID() string {
+	val := seq.Add(1)
+	return pidStr + "-" + strconv.FormatUint(val, 10)
+}
 
 // IDResolver extracts trace and span IDs from context.
 // The log package does not know how traces are stored — callers provide
@@ -30,7 +45,7 @@ type handler struct {
 type Option func(*handler)
 
 // WithEventID controls whether a unique event_id is generated per log
-// record. Default is true.
+// record. Default is false.
 func WithEventID(enabled bool) Option {
 	return func(h *handler) {
 		h.eventID = enabled
@@ -58,7 +73,7 @@ func NewHandler(inner slog.Handler, resolve IDResolver, projectID string, opts .
 		resolve:     resolve,
 		projectID:   projectID,
 		tracePrefix: "projects/" + projectID + "/traces/",
-		eventID:     true,
+		eventID:     false,
 	}
 
 	for _, opt := range opts {
@@ -77,7 +92,7 @@ func (h *handler) Enabled(ctx context.Context, level slog.Level) bool {
 // inner handler. The resolver is called once per log line.
 func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:gocritic // slog.Record passed by value per slog.Handler contract.
 	if h.eventID {
-		rec.AddAttrs(slog.String("event_id", uuid.New().String()))
+		rec.AddAttrs(slog.String("event_id", fastUniqueID()))
 	}
 
 	if h.resolve != nil {

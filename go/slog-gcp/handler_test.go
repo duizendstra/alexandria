@@ -48,7 +48,7 @@ func TestHandler_InjectsAllFields(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "my-project"))
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "my-project", sloggcp.WithEventID(true)))
 
 	logger.InfoContext(context.Background(), "test message")
 
@@ -80,7 +80,7 @@ func TestHandler_EventIDUnique(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "", false), "proj"))
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "", false), "proj", sloggcp.WithEventID(true)))
 
 	logger.InfoContext(context.Background(), "first")
 	logger.InfoContext(context.Background(), "second")
@@ -98,7 +98,7 @@ func TestHandler_NoResolver(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, nil, "proj"))
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "proj", sloggcp.WithEventID(true)))
 
 	logger.InfoContext(context.Background(), "no resolver")
 
@@ -225,7 +225,7 @@ func TestHandler_WithAttrs(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	h := sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj")
+	h := sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj", sloggcp.WithEventID(true))
 	wrapped := h.WithAttrs([]slog.Attr{
 		slog.String("service", "test"),
 	})
@@ -598,7 +598,7 @@ func TestHandler_ConcurrentWrites(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj"))
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj", sloggcp.WithEventID(true)))
 
 	const goroutines = 100
 
@@ -925,7 +925,7 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 	})
 
 	resolver := testResolver("abc123def456", testSpanID, true)
-	h := sloggcp.NewHandler(inner, resolver, "my-gcp-project")
+	h := sloggcp.NewHandler(inner, resolver, "my-gcp-project", sloggcp.WithEventID(true))
 	logger := slog.New(h)
 
 	logger.WarnContext(context.Background(), "sync failed")

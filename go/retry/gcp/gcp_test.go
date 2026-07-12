@@ -1,11 +1,14 @@
 package gcp
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/retry"
@@ -233,3 +236,19 @@ func TestWithRetry_ContextDone(t *testing.T) {
 
 // Ensure net.Error is verified.
 var _ net.Error = mockNetError{}
+
+func TestSetLogger(t *testing.T) {
+	var buf bytes.Buffer
+	h := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	l := slog.New(h)
+
+	SetLogger(l)
+	defer SetLogger(nil)
+
+	_ = Classify(context.Background(), io.EOF, 1)
+
+	if !strings.Contains(buf.String(), "Transient end-of-file error") {
+		t.Errorf("expected log to contain 'Transient end-of-file error', got: %s", buf.String())
+	}
+}
+

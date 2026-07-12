@@ -101,13 +101,26 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 
 // RequestLoggerMiddleware returns an http.Handler that logs each request
 // using sloggcp.HTTPRequestAttr. It intercepts the response to capture
-// the status code and response size.
+// the status code and response size, dynamically forwarding http.Flusher
+// and http.Hijacker interfaces if supported by the underlying ResponseWriter.
 func RequestLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &responseRecorder{ResponseWriter: w, Status: http.StatusOK}
 
-		next.ServeHTTP(rec, r)
+		var wrapped http.ResponseWriter = rec
+		f, hasFlusher := w.(http.Flusher)
+		h, hasHijacker := w.(http.Hijacker)
+
+		if hasFlusher && hasHijacker {
+			wrapped = &flushHijackRecorder{responseRecorder: rec, Flusher: f, Hijacker: h}
+		} else if hasFlusher {
+			wrapped = &flushRecorder{responseRecorder: rec, Flusher: f}
+		} else if hasHijacker {
+			wrapped = &hijackRecorder{responseRecorder: rec, Hijacker: h}
+		}
+
+		next.ServeHTTP(wrapped, r)
 
 		latency := time.Since(start)
 
@@ -125,4 +138,21 @@ func RequestLoggerMiddleware(next http.Handler) http.Handler {
 		slog.LogAttrs(r.Context(), slog.LevelInfo, "HTTP Request", HTTPRequestAttr(&reqAttr))
 	})
 }
+
+type flushRecorder struct {
+	*responseRecorder
+	http.Flusher
+}
+
+type hijackRecorder struct {
+	*responseRecorder
+	http.Hijacker
+}
+
+type flushHijackRecorder struct {
+	*responseRecorder
+	http.Flusher
+	http.Hijacker
+}
+
 

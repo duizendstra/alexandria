@@ -5,7 +5,6 @@
 package sloggcp
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -42,9 +41,6 @@ func parseCloudTraceHeader(header string) cloudTrace {
 	return info
 }
 
-// decimalToHexSpan converts a decimal span ID string to a 16-character
-// zero-padded hexadecimal string. Returns the input unchanged if
-// parsing fails.
 func decimalToHexSpan(decimal string) string {
 	n, err := strconv.ParseUint(decimal, 10, 64)
 	if err != nil {
@@ -52,5 +48,11 @@ func decimalToHexSpan(decimal string) string {
 		return decimal
 	}
 
-	return fmt.Sprintf("%016x", n)
+	var buf [16]byte
+	const hexChars = "0123456789abcdef"
+	for i := 15; i >= 0; i-- {
+		buf[i] = hexChars[n&0xf]
+		n >>= 4
+	}
+	return string(buf[:])
 }

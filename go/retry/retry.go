@@ -2,10 +2,9 @@ package retry
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"time"
 )
 
@@ -65,14 +64,14 @@ func IsPermanent(err error) bool {
 // Backoff returns an exponential delay for the given attempt (0-indexed).
 //
 // The delay is 2^attempt × 100ms, capped at 5s, plus 0–20% jitter from
-// crypto/rand. Attempt 0 returns ~100ms, attempt 5 returns ~3.2s,
+// math/rand/v2. Attempt 0 returns ~100ms, attempt 5 returns ~3.2s,
 // attempt 6+ returns ~5s.
 func Backoff(attempt int) time.Duration {
 	shift := min(max(attempt, 0), maxAttemptShift)
 	base := min(time.Duration(int64(1)<<uint(shift))*backoffBase, maxBackoff)
-	jitter := cryptoJitter(base / jitterFraction)
+	jit := jitter(base / jitterFraction)
 
-	return base + jitter
+	return base + jit
 }
 
 // Do calls fn up to maxAttempts times. Between failures it waits using
@@ -119,16 +118,11 @@ func Do(ctx context.Context, maxAttempts int, fn func() error) error {
 	return lastErr
 }
 
-// cryptoJitter returns a random duration in [0, ceiling) using crypto/rand.
-func cryptoJitter(ceiling time.Duration) time.Duration {
+// jitter returns a random duration in [0, ceiling) using math/rand/v2.
+func jitter(ceiling time.Duration) time.Duration {
 	if ceiling <= 0 {
 		return 0
 	}
 
-	var b [8]byte
-
-	_, _ = rand.Read(b[:])
-	n := binary.LittleEndian.Uint64(b[:])
-
-	return time.Duration(int64(n % uint64(ceiling))) //nolint:gosec // ceiling is int64, so modulo result is guaranteed to fit in int64.
+	return time.Duration(rand.Int64N(int64(ceiling)))
 }
