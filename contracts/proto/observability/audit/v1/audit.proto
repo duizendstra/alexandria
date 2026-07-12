@@ -1,0 +1,37 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Audit log types for observability.
+// Go package observability/audit implements the writer and scorecard.
+
+syntax = "proto3";
+
+package observability.audit.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/observability/audit/v1;auditv1";
+
+// Entry represents a single audit log entry.
+// Serialized as JSONL in the audit log file.
+message Entry {
+  // Point-in-time when this audit log was recorded.
+  google.protobuf.Timestamp event_time = 1;
+  // Who performed the action (user, service account, system).
+  string actor = 2;
+  // What action was performed (e.g. "create_story", "list_repos").
+  string action = 3;
+  // Which resource was acted upon (e.g. "duizendstra-com/alexandria#42").
+  string resource = 4;
+}
+
+// Scorecard summarizes audit activity for reporting.
+message Scorecard {
+  // Total number of audit entries.
+  int32 total = 1;
+  // Count of entries per actor.
+  map<string, int32> by_actor = 2;
+  // Count of entries per action.
+  map<string, int32> by_action = 3;
+  // Most frequently accessed resources (formatted as "resource (count)").
+  repeated string top_resources = 4;
+}

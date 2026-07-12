@@ -1,0 +1,99 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Party: the canonical entity representing a person or organization.
+// Alexandria is the source of truth. Vendor systems (Google Contacts,
+// EasyFlor, Eitje) are usage layers that sync with this model.
+
+syntax = "proto3";
+
+package domain.party.v1;
+
+import "domain/common/v1/common.proto";
+import "domain/contact/v1/contact.proto";
+import "domain/role/v1/role.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/domain/party/v1;partyv1";
+
+// PartyType distinguishes between persons and organizations.
+enum PartyType {
+  PARTY_TYPE_UNSPECIFIED = 0;
+  PARTY_TYPE_PERSON = 1;
+  PARTY_TYPE_ORGANIZATION = 2;
+}
+
+// Person holds attributes specific to a natural person.
+message Person {
+  string given_name = 1; // First name.
+  string family_name = 2; // Last name / surname.
+  string middle_name = 3; // Middle name(s).
+  string prefix = 4; // Title prefix (e.g. "Mr.", "Dr.").
+  // 5-19 reserved for future person fields (e.g. suffix, nickname,
+  // date_of_birth, gender, photo_url).
+}
+
+// Organization holds attributes specific to a legal entity or group.
+message Organization {
+  string name = 1; // Legal or display name.
+  string trade_name = 2; // Trade name / DBA if different from legal name.
+  // 3-19 reserved for future org fields (e.g. registration_number,
+  // vat_number, industry, website, logo_url).
+}
+
+// Party is the canonical entity: a person or organization that can play
+// roles, have contact points, addresses, and be linked to external systems.
+// Resource name pattern: "parties/{party_id}" (AIP-122).
+//
+// Design: oneof for type-specific details, shared fields at Party level.
+// This keeps the model flat and queryable while supporting polymorphism.
+message Party {
+  // Canonical Alexandria identifier. Immutable once assigned.
+  string id = 1;
+
+  // Human-readable display name (computed from Person or Organization).
+  string display_name = 2;
+
+  // The type of this party.
+  PartyType type = 3;
+
+  // Type-specific details. Exactly one must be set.
+  oneof details {
+    Person person = 4;
+    Organization organization = 5;
+  }
+  // 6-9 reserved for future top-level fields.
+
+  // Contact points (email, phone, URL, etc.).
+  repeated domain.contact.v1.ContactPoint contact_points = 10;
+
+  // Physical addresses.
+  repeated domain.contact.v1.PostalAddress addresses = 11;
+
+  // Links to source systems (Google Contacts, EasyFlor, Eitje, etc.).
+  repeated domain.common.v1.ExternalId external_ids = 12;
+
+  // Roles this party plays (contact, supplier, employee, customer, etc.).
+  repeated domain.role.v1.Role roles = 13;
+
+  // Future: personal relationships (family, friend, mentor, colleague).
+  // repeated domain.relationship.v1.Relationship relationships = 14;
+
+  // Future: user-defined group labels (e.g. "Wedding guests", "Book club").
+  // repeated domain.group.v1.Group groups = 15;
+
+  // 16-19 reserved for future repeated fields.
+
+  // When this party record was created in Alexandria.
+  google.protobuf.Timestamp created_at = 20;
+
+  // When this party record was last updated.
+  google.protobuf.Timestamp updated_at = 21;
+
+  // Professional headline (e.g. "CTO at Acme Corp").
+  string headline = 22;
+
+  // Summary / about section — free-text bio.
+  string bio = 23;
+
+  // 24-29 reserved for future metadata fields.
+}
