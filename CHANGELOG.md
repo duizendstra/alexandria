@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **go/retry**: Zero-dependency general-purpose exponential backoff retry engine with fail-fast `Permanent` error classification and HTTP client `Transport` retrier.
-- **go/retry/gcp**: Specialized sub-module extending `go/retry` with comprehensive Google API/GCP error classification (handling rate limits, transient network failures, quota exceeded, and OAuth/DWD permanent fail-fast cases).
+- **go/retry/gcp**: Specialized Go module extending `go/retry` with comprehensive Google API/GCP error classification (handling rate limits, transient network failures, quota exceeded, and OAuth/DWD permanent fail-fast cases).
 - Root `.golangci.yml` using the duizendstra-com Library Lint Standard
 - **skills/diffract-review**: Agentic Diffract review skill with 9 parallel tool-equipped lens agents and CHECK mediator, based on contextvibes/diffract
 - **blueprints/service/.ko.yaml**: Golden ko build template for Go Cloud Run services (pinned Chainguard static base, reproducible builds)
