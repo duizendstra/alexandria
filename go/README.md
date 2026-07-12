@@ -17,6 +17,9 @@ Each directory is a standalone Go module with its own `go.mod`.
 | [observability/audit](observability/audit/) | Dependency-free audit logging domains & size-rotated file adapters | v0.0.1 |
 | [contracts](contracts/) | Unified, compiled Protocol Buffer contracts representing Alexandria's Ubiquitous Language | v0.0.1 |
 | [discovery/privacyfilter](discovery/privacyfilter/) | Fast, single-pass sensitive document and credential content redactor | v0.0.1 |
+| [discovery/search](discovery/search/) | Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic | v0.0.1 |
+| [discovery/search/searchtest](discovery/search/searchtest/) | Reusable contract tests for the `search.Index` port | v0.0.1 |
+| [platform/apierr](platform/apierr/) | General-purpose REST API/gRPC error mapping layer with retryable classification, unified status responses, and error-unwrapping middleware | v0.0.1 |
 | [platform/async](platform/async/) | SRE-hardened panic-resilient bounded asynchronous worker pool | v0.0.1 |
 
 ## Install

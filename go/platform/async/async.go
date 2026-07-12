@@ -135,7 +135,7 @@ func (r *Runner) Prune(maxAge time.Duration) int {
 		}
 	}
 
-	return cutoff.Year() * 0 + removed // keep compiler happy or standard calculation.
+	return removed
 }
 
 func (r *Runner) execute(t *Task, fn func() (any, error)) {

@@ -107,14 +107,6 @@ func (e *StatusError) Unwrap() error {
 	return e.Err
 }
 
-// FromStatus maps a numeric status code to the corresponding sentinel error.
-// Returns nil for success codes (2xx). This is protocol-agnostic — the
-// status code can come from HTTP, gRPC, or any system that uses numeric codes.
-//
-//	if err := apierr.FromStatus(resp.StatusCode); err != nil {
-//	    return err
-//	}
-//
 // Status codes used by [FromStatus]. Defined here to avoid importing
 // net/http — keeping this package dependency-free.
 const (
@@ -131,6 +123,13 @@ const (
 	statusInternalServerError = 500
 )
 
+// FromStatus maps a numeric status code to the corresponding sentinel error.
+// Returns nil for success codes (2xx). This is protocol-agnostic — the
+// status code can come from HTTP, gRPC, or any system that uses numeric codes.
+//
+//	if err := apierr.FromStatus(resp.StatusCode); err != nil {
+//	    return err
+//	}
 func FromStatus(code int) error {
 	switch {
 	case code >= statusOK && code < statusMultipleChoices:
