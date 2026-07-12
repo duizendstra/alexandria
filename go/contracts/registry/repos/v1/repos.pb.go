@@ -106,7 +106,7 @@ func (Capability) EnumDescriptor() ([]byte, []int) {
 // Resource name pattern: "repositories/{owner}/{repo}" (AIP-122).
 type RepositoryDescriptor struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Fully qualified repository name (e.g. "duizendstra-com/bloem").
+	// Fully qualified repository name (e.g. "OWNER/REPO").
 	FullName string `protobuf:"bytes,1,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
 	// Capabilities available for this repository.
 	Capabilities  []Capability `protobuf:"varint,2,rep,packed,name=capabilities,proto3,enum=registry.repos.v1.Capability" json:"capabilities,omitempty"`

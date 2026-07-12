@@ -64,13 +64,10 @@ direnv allow
 *   *Note: On your first run, Nix downloads and caches all required dependencies. This occurs once. Subsequent directory entries are instant (under 1 second).*
 
 ### Step 3: Run the Local Integration Tests
-We use **Colima** to run fast, CPU-optimized, rootless virtualized container environments on macOS:
+Verify that you can run automated checks locally in a module directory (e.g., `go/google/`):
 ```bash
-# Start your local rootless virtual container runtime
-colima start --cpu 4 --memory 8 --vz-rosetta
-
-# Execute the complete, SRE-hardened validation test suite
-go test -v ./...
+cd go/google
+GOWORK=off go test -v ./...
 ```
 
 ---
@@ -82,8 +79,5 @@ When working on Alexandria modules:
 1.  **Synchronize Your Work** — Always branch off a clean, up-to-date `main` branch.
 2.  **Define Your Contract First** — If changing service payloads, edit or write the Protobuf contracts in `contracts/proto/` first, and run `buf generate`.
 3.  **Harden Your Code** — Ensure your Go changes pass our SRE performance metrics (minimal allocations on hot paths, proper Keep-Alive socket connection recycling).
-4.  **Validate Metadata** — Run our automated documentation linter before submitting your branch:
-    ```bash
-    alexandria-cli docs lint --path=./docs
-    ```
+4.  **Validate Metadata** — Ensure all links and OKF metadata files are valid before submitting.
 5.  **Submit a Pull Request** — Code is merged to `main` using squash merges to preserve history purity. Direct commits to `main` are blocked.

@@ -28,7 +28,7 @@ To establish a continuous integration and automated release delivery model that 
 
 ## The Multi-Module Monorepo Release Problem
 
-In a monorepo housing several independent Go modules (such as `/go/retry` and `/go/slog-gcp`), standard repository-wide versioning is a anti-pattern. 
+In a monorepo housing several independent Go modules (such as `/go/retry` and `/go/slog-gcp`), standard repository-wide versioning is an anti-pattern. 
 Consumers importing `go/retry` should not have their dependency bumped because of changes in `go/slog-gcp`.
 
 Therefore, we enforce **path-prefixed multi-module semantic versioning**. Each subdirectory acts as an independent release boundary.
@@ -37,7 +37,7 @@ Therefore, we enforce **path-prefixed multi-module semantic versioning**. Each s
 
 ## Continuous Integration Quality Rules
 
-Our GitHub Actions pipeline executes the following checks on every Pull Request targetting the `main` branch:
+Our GitHub Actions pipeline executes the following checks on every Pull Request targeting the `main` branch:
 
 ```
 [ Pull Request ]
@@ -51,14 +51,14 @@ Our GitHub Actions pipeline executes the following checks on every Pull Request 
                                                     v
                                             +---------------+
                                             | OKF Doc Lint  |
-                                            | (cli docs)    |
+                                            | (link check)  |
                                             +---------------+
 ```
 
 1.  **Strict Linting & Style** — Runs `golangci-lint` to audit formatting, imports, and static vulnerability patterns. Any linter failure blocks the merge.
 2.  **Regression Benchmarks** — Runs micro-benchmarks on critical hot-paths. If a PR introduces memory allocations on designated zero-allocation paths, the build fails.
 3.  **Buf Schema Validation** — Audits Protobuf schemas under `contracts/proto/` for backward compatibility breakages using `buf breaking`.
-4.  **OKF Document Integrity** — Executes `alexandria-cli docs lint` to audit the documentation directory, blocking PRs on duplicate UUIDs or dangling relations.
+4.  **OKF Document Integrity** — Runs automated checks to verify documentation links and OKF metadata conformance, blocking PRs on duplicate UUIDs or dangling relations.
 
 ---
 

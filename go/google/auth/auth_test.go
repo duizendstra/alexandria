@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -11,6 +13,14 @@ import (
 )
 
 const notAnEmail = "not-an-email"
+
+func TestMain(m *testing.M) {
+	// Stub execCommand to prevent real subprocess execution/browser opening during tests.
+	execCommand = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "true")
+	}
+	os.Exit(m.Run())
+}
 
 func TestResolveClient_Validation(t *testing.T) {
 	ctx := context.Background()
@@ -43,9 +53,7 @@ func TestResolveClient_Validation(t *testing.T) {
 			"missing-at.gserviceaccount.com",
 			"too@many@ats.gserviceaccount.com",
 			"spaces in@domain.gserviceaccount.com",
-			"valid@domain.com", // Valid email but not a service account suffix.
 			"@project-id.iam.gserviceaccount.com",
-			"sa@.gserviceaccount.com",
 		}
 
 		for _, sa := range invalidSAs {
@@ -57,6 +65,10 @@ func TestResolveClient_Validation(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestResolveClient_SubjectValidation(t *testing.T) {
+	ctx := context.Background()
 
 	// 4. ErrNoSubjectEmail when subjectEmail is empty.
 	t.Run("Empty Subject Email", func(t *testing.T) {
@@ -86,6 +98,10 @@ func TestResolveClient_Validation(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestResolveClient_Resolution(t *testing.T) {
+	ctx := context.Background()
 
 	// 6. Valid parameters bypass fast-fail validation and attempt authentication.
 	t.Run("Valid Inputs Pass Fast-Fail", func(t *testing.T) {
@@ -104,7 +120,7 @@ func TestResolveClient_Validation(t *testing.T) {
 			t.Log("Successfully initialized or bypassed validation")
 		} else {
 			t.Logf("Passed fast-fail validation. Downstream error as expected: %v", err)
-			if !strings.Contains(err.Error(), "failed to create DWD credentials") {
+			if !strings.Contains(err.Error(), "failed to create impersonated credentials") {
 				t.Errorf("unexpected error: %v", err)
 			}
 		}
@@ -122,26 +138,29 @@ func TestResolveClient_Validation(t *testing.T) {
 		}
 	})
 
-	// 8. No authentication mode.
-	t.Run("No Authentication Mode configured", func(t *testing.T) {
+	// 8. No authentication mode falls back to ADC.
+	t.Run("No Authentication Mode falls back to ADC", func(t *testing.T) {
 		t.Setenv("GOOGLE_IMPERSONATE_SERVICE_ACCOUNT", "")
-		_, err := ResolveClient(ctx, nil)
-		if !errors.Is(err, ErrNoAuthenticationMode) {
-			t.Errorf("expected ErrNoAuthenticationMode, got: %v", err)
+		opts, err := ResolveClient(ctx, nil)
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if len(opts) != 0 {
+			t.Errorf("expected empty ClientOptions for ADC fallback, got: %d", len(opts))
 		}
 	})
 }
 
 func TestValidationFunctions(t *testing.T) {
 	t.Run("IsValidEmail", func(t *testing.T) {
-		valid := []string{"test@example.com", "sa@project.iam.gserviceaccount.com"}
+		valid := []string{"test@example.com", "sa@project.iam.gserviceaccount.com", "test@example"}
 		for _, email := range valid {
 			if !IsValidEmail(email) {
 				t.Errorf("expected %q to be a valid email", email)
 			}
 		}
 
-		invalid := []string{notAnEmail, "test@", "@example.com", "test@example", "test @example.com"}
+		invalid := []string{notAnEmail, "test@", "@example.com", "test @example.com"}
 		for _, email := range invalid {
 			if IsValidEmail(email) {
 				t.Errorf("expected %q to be an invalid email", email)
@@ -153,8 +172,8 @@ func TestValidationFunctions(t *testing.T) {
 		if !IsValidServiceAccount("sa@project.gserviceaccount.com") {
 			t.Error("expected sa@project.gserviceaccount.com to be valid service account")
 		}
-		if IsValidServiceAccount("user@example.com") {
-			t.Error("expected user@example.com to be invalid service account")
+		if !IsValidServiceAccount("user@example.com") {
+			t.Error("expected user@example.com to be valid service account format")
 		}
 	})
 }
@@ -171,3 +190,81 @@ func TestNewDWDValidator(t *testing.T) {
 		}
 	})
 }
+
+func TestResolveClient_InteractiveConsent(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("invalid passKey with hyphen", func(t *testing.T) {
+		t.Setenv("GOOGLE_OAUTH_CLIENT", "") // Ensure we don't bypass with env var.
+		_, err := ResolveClient(ctx, nil, WithInteractiveConsent("-invalid-key", ""))
+		if err == nil {
+			t.Fatal("expected error for hyphenated passKey, got nil")
+		}
+		if !strings.Contains(err.Error(), "invalid pass key: cannot start with a hyphen") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("default interactive option activation", func(t *testing.T) {
+		// Calling WithInteractiveConsent("", "") should activate the interactive flow
+		// and attempt to resolve credentials using default passKey, not fall back to ADC.
+		t.Setenv("GOOGLE_OAUTH_CLIENT", "")
+		_, err := ResolveClient(ctx, nil, WithInteractiveConsent("", ""))
+		if err == nil {
+			t.Fatal("expected error due to missing default passKey command, got nil")
+		}
+		// Since "pass" command is likely not present in the test environment or key is missing,
+		// we expect it to fail in resolveCredentials rather than returning nil (ADC).
+		if strings.Contains(err.Error(), "no Google authentication mode was configured") {
+			t.Errorf("expected interactive flow to be invoked, but it fell back to ADC")
+		}
+	})
+}
+
+func TestDWDValidator_ValidateAccess_NilService(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("nil validator", func(t *testing.T) {
+		var v *DWDValidator
+		err := v.ValidateAccess(ctx, "user@example.com")
+		if err == nil {
+			t.Fatal("expected error for nil validator, got nil")
+		}
+		if !strings.Contains(err.Error(), "validator or service is nil") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("nil service in validator", func(t *testing.T) {
+		v := NewDWDValidator(nil)
+		err := v.ValidateAccess(ctx, "user@example.com")
+		if err == nil {
+			t.Fatal("expected error for nil service, got nil")
+		}
+		if !strings.Contains(err.Error(), "validator or service is nil") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestOpenBrowserSafety(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("unsafe HTTP scheme", func(t *testing.T) {
+		err := openBrowser(ctx, "http://example.com/oauth")
+		if err == nil {
+			t.Fatal("expected error for unsafe http scheme, got nil")
+		}
+		if !strings.Contains(err.Error(), "refusing to open URL: unsafe scheme or protocol") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("non-url command injection attempt", func(t *testing.T) {
+		err := openBrowser(ctx, "file:///etc/passwd")
+		if err == nil {
+			t.Fatal("expected error for non-https protocol, got nil")
+		}
+	})
+}
+

@@ -30,7 +30,7 @@ func ExampleFileWriter_Log() {
 	_ = w.Log(context.Background(), audit.Entry{
 		Actor:    "agent",
 		Action:   "pulls.merge",
-		Resource: "duizendstra-com/alexandria#42",
+		Resource: "OWNER/REPO#42",
 	})
 
 	data, _ := os.ReadFile(path)
