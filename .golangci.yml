@@ -234,6 +234,11 @@ linters:
       - staging/   # Legacy staging area — will be removed.
 
     rules:
+      # Searchtest - gomoddirectives local replacement allowed for submodule development.
+      - path: go/discovery/search/searchtest/go\.mod
+        linters:
+          - gomoddirectives
+
       # CLI packages — Cobra patterns need globals, inits, and relaxed style.
       - path: go/cli/.*
         linters:
