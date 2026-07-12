@@ -13,6 +13,8 @@ import (
 
 	"github.com/duizendstra/alexandria/go/retry"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type mockNetError struct {
@@ -249,6 +251,28 @@ func TestSetLogger(t *testing.T) {
 
 	if !strings.Contains(buf.String(), "Transient end-of-file error") {
 		t.Errorf("expected log to contain 'Transient end-of-file error', got: %s", buf.String())
+	}
+}
+
+func TestClassify_gRPCStatus(t *testing.T) {
+	// Transient gRPC error status.
+	transientStatus := status.New(codes.Unavailable, "connection drops")
+	err := Classify(context.Background(), transientStatus.Err(), 1)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if retry.IsPermanent(err) {
+		t.Error("expected codes.Unavailable to be classified as transient, but got permanent")
+	}
+
+	// Permanent gRPC error status.
+	permanentStatus := status.New(codes.InvalidArgument, "invalid input value")
+	err = Classify(context.Background(), permanentStatus.Err(), 1)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !retry.IsPermanent(err) {
+		t.Error("expected codes.InvalidArgument to be classified as permanent, but got transient")
 	}
 }
 
