@@ -25,7 +25,24 @@ import (
 	"google.golang.org/api/option"
 )
 
+const (
+	envImpersonateServiceAccount = "GOOGLE_IMPERSONATE_SERVICE_ACCOUNT"
+	envOAuthClient               = "GOOGLE_OAUTH_CLIENT"
+	defaultServerTimeout         = 3 * time.Second
+)
+
+//nolint:gochecknoglobals // Stubbable for testing.
+var execCommand = exec.CommandContext
+
 var (
+	// ErrNilValidator is returned when the DWD validator or its underlying service is nil.
+	ErrNilValidator = errors.New("validator or service is nil")
+
+	// ErrUnsafeURL is returned when trying to open a URL that does not use a secure scheme (https://).
+	ErrUnsafeURL = errors.New("refusing to open URL: unsafe scheme or protocol")
+
+	// ErrInvalidPassKey is returned when a pass store key starts with a hyphen to prevent argument injection.
+	ErrInvalidPassKey = errors.New("invalid pass key: cannot start with a hyphen")
 	// ErrNoImpersonationAccount is returned when the required impersonation service account
 	// email address is not supplied and the fallback environment variable
 	// GOOGLE_IMPERSONATE_SERVICE_ACCOUNT is also empty.
@@ -36,8 +53,8 @@ var (
 	ErrNoSubjectEmail = errors.New("subjectEmail must not be empty for Domain-Wide Delegation")
 
 	// ErrInvalidServiceAccount is returned when the service account email address does not follow
-	// a standard service account address formatting (e.g., must end with '.gserviceaccount.com').
-	ErrInvalidServiceAccount = errors.New("invalid service account email: must follow a standard service account address formatting")
+	// a standard email address formatting.
+	ErrInvalidServiceAccount = errors.New("invalid service account email: must follow a standard email address formatting")
 
 	// ErrInvalidSubjectEmail is returned when the subject email address being impersonated does
 	// not resemble a correct, valid email pattern.
@@ -57,14 +74,15 @@ const defaultPassKey = "dui/google-oauth-client" //nolint:gosec // Key is not a 
 type Option func(*config)
 
 type config struct {
-	targetSA     string
-	subjectEmail string
-	isDWD        bool
-	passKey      string
-	tokenPath    string
-	scopes       []string
-	logger       *slog.Logger
-	httpClient   *http.Client
+	targetSA      string
+	subjectEmail  string
+	isDWD         bool
+	passKey       string
+	tokenPath     string
+	scopes        []string
+	logger        *slog.Logger
+	httpClient    *http.Client
+	isInteractive bool
 }
 
 // WithServiceAccountImpersonation configures direct SA-to-SA impersonation.
@@ -88,6 +106,7 @@ func WithInteractiveConsent(passKey, tokenPath string) Option {
 	return func(c *config) {
 		c.passKey = passKey
 		c.tokenPath = tokenPath
+		c.isInteractive = true
 	}
 }
 
@@ -127,7 +146,7 @@ func IsValidEmail(email string) bool {
 	return local != "" && domain != "" && !strings.ContainsAny(email, " \t\n\r")
 }
 
-// IsValidServiceAccount checks if the email follows a standard service account address formatting.
+// IsValidServiceAccount checks if the email follows a standard email address formatting.
 func IsValidServiceAccount(email string) bool {
 	return IsValidEmail(email)
 }
@@ -144,8 +163,8 @@ func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) 
 	}
 
 	// Dynamic fallback to Environment service account if no mode is selected.
-	if cfg.targetSA == "" && cfg.passKey == "" && cfg.tokenPath == "" {
-		cfg.targetSA = os.Getenv("GOOGLE_IMPERSONATE_SERVICE_ACCOUNT")
+	if cfg.targetSA == "" && !cfg.isInteractive {
+		cfg.targetSA = os.Getenv(envImpersonateServiceAccount)
 	}
 
 	if cfg.isDWD && cfg.targetSA == "" {
@@ -161,7 +180,7 @@ func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) 
 		return resolveImpersonationClient(cfg)
 	}
 
-	if cfg.passKey != "" || cfg.tokenPath != "" {
+	if cfg.isInteractive {
 		return resolveInteractiveClient(ctx, cfg)
 	}
 
@@ -179,27 +198,18 @@ func resolveImpersonationClient(cfg *config) ([]option.ClientOption, error) {
 		return nil, ErrNoSubjectEmail
 	}
 
+	var subject string
 	if cfg.subjectEmail != "" {
 		if !IsValidEmail(cfg.subjectEmail) {
 			return nil, ErrInvalidSubjectEmail
 		}
-
-		creds, err := impersonate.NewCredentials(&impersonate.CredentialsOptions{
-			TargetPrincipal: cfg.targetSA,
-			Scopes:          cfg.scopes,
-			Subject:         cfg.subjectEmail,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create DWD credentials: %w", err)
-		}
-
-		return []option.ClientOption{option.WithAuthCredentials(creds)}, nil
+		subject = cfg.subjectEmail
 	}
 
-	// Direct SA Impersonation (No DWD).
 	creds, err := impersonate.NewCredentials(&impersonate.CredentialsOptions{
 		TargetPrincipal: cfg.targetSA,
 		Scopes:          cfg.scopes,
+		Subject:         subject,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create impersonated credentials: %w", err)
@@ -242,6 +252,10 @@ func NewDWDValidator(srv *drive.Service) *DWDValidator {
 
 // ValidateAccess performs a basic root-level validation.
 func (v *DWDValidator) ValidateAccess(ctx context.Context, userEmail string) error {
+	if v == nil || v.service == nil {
+		return fmt.Errorf("DWD validation failed for %s: %w", userEmail, ErrNilValidator)
+	}
+
 	err := gcp.WithRetry(ctx, func() error {
 		_, innerErr := v.service.Files.Get("root").Fields("id").Context(ctx).Do()
 		if innerErr != nil {
@@ -302,17 +316,18 @@ func (h *callbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // openBrowser opens the specified URL in the default browser.
 func openBrowser(ctx context.Context, authURL string) error {
+	if !strings.HasPrefix(authURL, "https://") {
+		return ErrUnsafeURL
+	}
+
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		//nolint:gosec // Launch browser with constructed trusted URL.
-		cmd = exec.CommandContext(ctx, "open", authURL)
+		cmd = execCommand(ctx, "open", authURL)
 	case "windows":
-		//nolint:gosec // Launch browser with constructed trusted URL.
-		cmd = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", authURL)
+		cmd = execCommand(ctx, "rundll32", "url.dll,FileProtocolHandler", authURL)
 	default:
-		//nolint:gosec // Launch browser with constructed trusted URL.
-		cmd = exec.CommandContext(ctx, "xdg-open", authURL)
+		cmd = execCommand(ctx, "xdg-open", authURL)
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -342,7 +357,7 @@ func interactiveConsentClient(ctx context.Context, passKey, tokenPath string, sc
 	if err != nil {
 		log.Info("no cached token, starting consent flow", slog.String("reason", err.Error()))
 
-		tok, err = consentFlow(ctx, oauthCfg)
+		tok, err = consentFlow(ctx, oauthCfg, log)
 		if err != nil {
 			return nil, fmt.Errorf("oauth: consent flow: %w", err)
 		}
@@ -356,12 +371,15 @@ func interactiveConsentClient(ctx context.Context, passKey, tokenPath string, sc
 }
 
 func resolveCredentials(ctx context.Context, passKey string) ([]byte, error) {
-	if v := os.Getenv("GOOGLE_OAUTH_CLIENT"); v != "" {
+	if v := os.Getenv(envOAuthClient); v != "" {
 		return []byte(v), nil
 	}
 
-	//nolint:gosec // Subprocess command strictly configured via trusted pass key options.
-	out, err := exec.CommandContext(ctx, "pass", "show", passKey).Output()
+	if strings.HasPrefix(passKey, "-") {
+		return nil, ErrInvalidPassKey
+	}
+
+	out, err := execCommand(ctx, "pass", "show", passKey).Output()
 	if err != nil {
 		return nil, fmt.Errorf("set GOOGLE_OAUTH_CLIENT or run: pass insert %s: %w", passKey, err)
 	}
@@ -369,7 +387,7 @@ func resolveCredentials(ctx context.Context, passKey string) ([]byte, error) {
 	return out, nil
 }
 
-func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error) {
+func consentFlow(ctx context.Context, cfg *oauth2.Config, logger *slog.Logger) (*oauth2.Token, error) {
 	const stateBytesLen = 16
 	stateBytes := make([]byte, stateBytesLen)
 	if _, err := rand.Read(stateBytes); err != nil {
@@ -397,7 +415,7 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 
 	srv := &http.Server{
 		Handler:           handler,
-		ReadHeaderTimeout: 3 * time.Second, //nolint:mnd // Header timeout prevents Slowloris attacks.
+		ReadHeaderTimeout: defaultServerTimeout,
 	}
 
 	go func() {
@@ -411,8 +429,7 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 
 	//nolint:contextcheck // Teardown executes on fresh background context with custom timeout.
 	defer func() {
-		//nolint:mnd // 3-second timeout is a standard, robust SRE value.
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
@@ -421,6 +438,9 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 	fmt.Printf("\nOpening browser for Google OAuth2 consent...\n")
 
 	if oErr := openBrowser(ctx, authURL); oErr != nil {
+		if logger != nil {
+			logger.Warn("could not open browser automatically", slog.String("error", oErr.Error()))
+		}
 		fmt.Printf("Could not open browser. Visit this URL manually:\n\n  %s\n\n", authURL)
 	}
 

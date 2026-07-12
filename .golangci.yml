@@ -187,7 +187,7 @@ linters:
             - github.com/mdp/qrterminal/v3
             - modernc.org/sqlite
           deny:
-            - pkg: github.com/duizendstra-com/flow-sdk
+            - pkg: github.com/OWNER/flow-sdk
               desc: "flow-sdk is deprecated (ADR-002). Migrate to Alexandria."
 
     ireturn:
@@ -228,86 +228,83 @@ linters:
         - pattern: "^log\\.(Print|Fatal|Panic).*$"
           msg: "use log/slog for structured logging"
 
-  exclusions:
-    paths:
-      - gen/       # Generated proto code — never lint these.
-      - staging/   # Legacy staging area — will be removed.
-
-    rules:
-      # Searchtest - gomoddirectives local replacement allowed for submodule development.
-      - path: go/discovery/search/searchtest/go\.mod
-        linters:
-          - gomoddirectives
-
-      # slog-gcp/otelgcp submodule — uses local replace directive for development.
-      - path: go/slog-gcp/otelgcp/go\.mod
-        linters:
-          - gomoddirectives
-
-      # CLI packages — Cobra patterns need globals, inits, and relaxed style.
-      - path: go/cli/.*
-        linters:
-          - gochecknoglobals
-          - gochecknoinits
-          - forbidigo
-          - wrapcheck
-          - err113
-          - nlreturn
-          - gosec
-          - revive
-
-      # Console — globals are the API surface.
-      - path: go/console/.*
-        linters:
-          - gochecknoglobals
-
-      # Cloud/GCP — Pulumi orchestrators, trusted subprocess calls.
-      - path: go/cloud/.*
-        linters:
-          - gosec
-          - ireturn
-
-      # Registry — trusted file I/O with internal paths.
-      - path: go/registry/.*
-        linters:
-          - gosec
-
-      # identity/api — 'api' is the canonical short name.
-      - path: go/identity/identity/api/.*
-        linters:
-          - revive
-
-      # discovery/privacyfilter — local development replaces are allowed in go.mod.
-      - path: (go/discovery/privacyfilter/)?go\.mod
-        linters:
-          - gomoddirectives
-
-      # Tests — relaxed for readability and test patterns.
-      - path: .*_test\.go
-        linters:
-          - depguard
-          - gochecknoglobals
-          - gosec
-          - errcheck
-          - testpackage
-          - nonamedreturns
-          - nilerr
-          - paralleltest
-          - wrapcheck
-          - err113
-          - nlreturn
-          - ireturn
-          - funlen
-          - cyclop
-          - maintidx
-          - containedctx
-
-      # context.Err() is idiomatically returned unwrapped.
-      - linters: [wrapcheck]
-        source: "return ctx\\.Err\\(\\)"
-
-
-
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+
+  exclude-dirs:
+    - gen/
+    - staging/
+
+  exclude-rules:
+    # Searchtest - gomoddirectives local replacement allowed for submodule development.
+    - path: go/discovery/search/searchtest/go\.mod
+      linters:
+        - gomoddirectives
+
+    # slog-gcp/otelgcp submodule — uses local replace directive for development.
+    - path: go/slog-gcp/otelgcp/go\.mod
+      linters:
+        - gomoddirectives
+
+    # CLI packages — Cobra patterns need globals, inits, and relaxed style.
+    - path: go/cli/.*
+      linters:
+        - gochecknoglobals
+        - gochecknoinits
+        - forbidigo
+        - wrapcheck
+        - err113
+        - nlreturn
+        - gosec
+        - revive
+
+    # Console — globals are the API surface.
+    - path: go/console/.*
+      linters:
+        - gochecknoglobals
+
+    # Cloud/GCP — Pulumi orchestrators, trusted subprocess calls.
+    - path: go/cloud/.*
+      linters:
+        - gosec
+        - ireturn
+
+    # Registry — trusted file I/O with internal paths.
+    - path: go/registry/.*
+      linters:
+        - gosec
+
+    # identity/api — 'api' is the canonical short name.
+    - path: go/identity/identity/api/.*
+      linters:
+        - revive
+
+    # discovery/privacyfilter — local development replaces are allowed in go.mod.
+    - path: (go/discovery/privacyfilter/)?go\.mod
+      linters:
+        - gomoddirectives
+
+    # Tests — relaxed for readability and test patterns.
+    - path: .*_test\.go
+      linters:
+        - depguard
+        - gochecknoglobals
+        - gosec
+        - errcheck
+        - testpackage
+        - nonamedreturns
+        - nilerr
+        - paralleltest
+        - wrapcheck
+        - err113
+        - nlreturn
+        - ireturn
+        - funlen
+        - cyclop
+        - maintidx
+        - containedctx
+
+    # context.Err() is idiomatically returned unwrapped.
+    - linters: [wrapcheck]
+      source: "return ctx\\.Err\\(\\)"

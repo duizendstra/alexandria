@@ -20,7 +20,7 @@ message Entry {
   string actor = 2;
   // What action was performed (e.g. "create_story", "list_repos").
   string action = 3;
-  // Which resource was acted upon (e.g. "duizendstra-com/alexandria#42").
+  // Which resource was acted upon (e.g. "OWNER/REPO#42").
   string resource = 4;
 }
 

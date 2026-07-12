@@ -31,7 +31,7 @@ enum Capability {
 // RepositoryDescriptor describes a repo and its available capabilities.
 // Resource name pattern: "repositories/{owner}/{repo}" (AIP-122).
 message RepositoryDescriptor {
-  // Fully qualified repository name (e.g. "duizendstra-com/bloem").
+  // Fully qualified repository name (e.g. "OWNER/REPO").
   string full_name = 1;
   // Capabilities available for this repository.
   repeated Capability capabilities = 2;

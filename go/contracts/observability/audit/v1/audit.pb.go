@@ -37,7 +37,7 @@ type Entry struct {
 	Actor string `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
 	// What action was performed (e.g. "create_story", "list_repos").
 	Action string `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
-	// Which resource was acted upon (e.g. "duizendstra-com/alexandria#42").
+	// Which resource was acted upon (e.g. "OWNER/REPO#42").
 	Resource      string `protobuf:"bytes,4,opt,name=resource,proto3" json:"resource,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
