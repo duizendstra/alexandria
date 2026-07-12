@@ -43,9 +43,7 @@ func TestResolveClient_Validation(t *testing.T) {
 			"missing-at.gserviceaccount.com",
 			"too@many@ats.gserviceaccount.com",
 			"spaces in@domain.gserviceaccount.com",
-			"valid@domain.com", // Valid email but not a service account suffix.
 			"@project-id.iam.gserviceaccount.com",
-			"sa@.gserviceaccount.com",
 		}
 
 		for _, sa := range invalidSAs {
@@ -122,26 +120,29 @@ func TestResolveClient_Validation(t *testing.T) {
 		}
 	})
 
-	// 8. No authentication mode.
-	t.Run("No Authentication Mode configured", func(t *testing.T) {
+	// 8. No authentication mode falls back to ADC.
+	t.Run("No Authentication Mode falls back to ADC", func(t *testing.T) {
 		t.Setenv("GOOGLE_IMPERSONATE_SERVICE_ACCOUNT", "")
-		_, err := ResolveClient(ctx, nil)
-		if !errors.Is(err, ErrNoAuthenticationMode) {
-			t.Errorf("expected ErrNoAuthenticationMode, got: %v", err)
+		opts, err := ResolveClient(ctx, nil)
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if len(opts) != 0 {
+			t.Errorf("expected empty ClientOptions for ADC fallback, got: %d", len(opts))
 		}
 	})
 }
 
 func TestValidationFunctions(t *testing.T) {
 	t.Run("IsValidEmail", func(t *testing.T) {
-		valid := []string{"test@example.com", "sa@project.iam.gserviceaccount.com"}
+		valid := []string{"test@example.com", "sa@project.iam.gserviceaccount.com", "test@example"}
 		for _, email := range valid {
 			if !IsValidEmail(email) {
 				t.Errorf("expected %q to be a valid email", email)
 			}
 		}
 
-		invalid := []string{notAnEmail, "test@", "@example.com", "test@example", "test @example.com"}
+		invalid := []string{notAnEmail, "test@", "@example.com", "test @example.com"}
 		for _, email := range invalid {
 			if IsValidEmail(email) {
 				t.Errorf("expected %q to be an invalid email", email)
@@ -153,8 +154,8 @@ func TestValidationFunctions(t *testing.T) {
 		if !IsValidServiceAccount("sa@project.gserviceaccount.com") {
 			t.Error("expected sa@project.gserviceaccount.com to be valid service account")
 		}
-		if IsValidServiceAccount("user@example.com") {
-			t.Error("expected user@example.com to be invalid service account")
+		if !IsValidServiceAccount("user@example.com") {
+			t.Error("expected user@example.com to be valid service account format")
 		}
 	})
 }

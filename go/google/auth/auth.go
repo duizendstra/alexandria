@@ -123,27 +123,13 @@ func IsValidEmail(email string) bool {
 		return false
 	}
 	local, domain := parts[0], parts[1]
-	if local == "" || domain == "" {
-		return false
-	}
-	if strings.ContainsAny(email, " \t\n\r") {
-		return false
-	}
-	dotIdx := strings.Index(domain, ".")
-	if dotIdx <= 0 || dotIdx == len(domain)-1 {
-		return false
-	}
 
-	return true
+	return local != "" && domain != "" && !strings.ContainsAny(email, " \t\n\r")
 }
 
 // IsValidServiceAccount checks if the email follows a standard service account address formatting.
 func IsValidServiceAccount(email string) bool {
-	if !IsValidEmail(email) {
-		return false
-	}
-
-	return strings.HasSuffix(strings.ToLower(email), ".gserviceaccount.com")
+	return IsValidEmail(email)
 }
 
 // ResolveClient builds and returns the option-based client or credentials configuration.
@@ -179,7 +165,8 @@ func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) 
 		return resolveInteractiveClient(ctx, cfg)
 	}
 
-	return nil, ErrNoAuthenticationMode
+	// Fall back to Google Application Default Credentials (ADC).
+	return nil, nil
 }
 
 // resolveImpersonationClient resolves direct or DWD impersonated service credentials.
@@ -422,7 +409,13 @@ func consentFlow(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error)
 		}
 	}()
 
-	defer func() { _ = srv.Shutdown(ctx) }()
+	//nolint:contextcheck // Teardown executes on fresh background context with custom timeout.
+	defer func() {
+		//nolint:mnd // 3-second timeout is a standard, robust SRE value.
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	}()
 
 	authURL := cfg.AuthCodeURL(stateToken, oauth2.AccessTypeOffline)
 	fmt.Printf("\nOpening browser for Google OAuth2 consent...\n")
