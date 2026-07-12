@@ -12,6 +12,11 @@ import (
 	"github.com/duizendstra/alexandria/go/observability/audit/file"
 )
 
+const (
+	actionCreateIdeas = "ideas.create"
+	actionView        = "view"
+)
+
 var fixedTime = func() time.Time {
 	return time.Date(2026, 2, 13, 14, 0, 0, 0, time.UTC)
 }
@@ -31,7 +36,7 @@ func TestFileWriter_Log(t *testing.T) {
 
 	err = w.Log(context.Background(), audit.Entry{
 		Actor:    "mcp",
-		Action:   "ideas.create",
+		Action:   actionCreateIdeas,
 		Resource: "ideas/abc123",
 	})
 	if err != nil {
@@ -62,7 +67,7 @@ func TestFileWriter_AppendsEntries(t *testing.T) {
 		}
 	}()
 
-	_ = w.Log(context.Background(), audit.Entry{Actor: "cli", Action: "ideas.create", Resource: "ideas/a"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: "cli", Action: actionCreateIdeas, Resource: "ideas/a"})
 	_ = w.Log(context.Background(), audit.Entry{Actor: "mcp", Action: "ideas.delete", Resource: "ideas/b"})
 
 	got, err := os.ReadFile(path)
@@ -89,7 +94,7 @@ func TestFileWriter_CreatesFile(t *testing.T) {
 		}
 	}()
 
-	_ = w.Log(context.Background(), audit.Entry{Actor: "api", Action: "ideas.create", Resource: "ideas/x"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: "api", Action: actionCreateIdeas, Resource: "ideas/x"})
 
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("audit log not created: %v", err)
@@ -125,7 +130,7 @@ func TestFileWriter_RotatesOnSize(t *testing.T) {
 	for range 5 {
 		_ = w.Log(context.Background(), audit.Entry{
 			Actor:    "cli",
-			Action:   "ideas.create",
+			Action:   actionCreateIdeas,
 			Resource: "ideas/test-rotation",
 		})
 	}
@@ -155,10 +160,10 @@ func TestReadScorecard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = w.Log(context.Background(), audit.Entry{Actor: "alice", Action: "view", Resource: "r1"})
-	_ = w.Log(context.Background(), audit.Entry{Actor: "alice", Action: "view", Resource: "r1"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: "alice", Action: actionView, Resource: "r1"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: "alice", Action: actionView, Resource: "r1"})
 	_ = w.Log(context.Background(), audit.Entry{Actor: "bob", Action: "edit", Resource: "r2"})
-	_ = w.Log(context.Background(), audit.Entry{Actor: "bob", Action: "view", Resource: "r3"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: "bob", Action: actionView, Resource: "r3"})
 	_ = w.Log(context.Background(), audit.Entry{Actor: "charlie", Action: "delete", Resource: "r4"})
 
 	_ = w.Close()
@@ -180,7 +185,7 @@ func TestReadScorecard(t *testing.T) {
 		t.Errorf("unexpected ByAction counts: %+v", sc.ByAction)
 	}
 
-	// Check top resources
+	// Check top resources.
 	if len(sc.TopResources) == 0 || !strings.HasPrefix(sc.TopResources[0], "r1") {
 		t.Errorf("expected r1 to be top resource, got: %+v", sc.TopResources)
 	}
