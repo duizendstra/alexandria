@@ -461,7 +461,7 @@ func TestParseCloudTraceHeader_HexSpanPassthrough(t *testing.T) {
 }
 
 type captureHandler struct {
-	ctx context.Context //nolint:containedctx // Test helper intentionally captures request context for assertion.
+	ctx context.Context
 }
 
 func (c *captureHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
