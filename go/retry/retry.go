@@ -36,6 +36,10 @@ func (e permanentError) Unwrap() error {
 	return e.error
 }
 
+func (e permanentError) Permanent() bool {
+	return true
+}
+
 // Permanent wraps an error to mark it as permanent so Do or Transport
 // will not retry it.
 func Permanent(err error) error {
@@ -53,12 +57,8 @@ func IsPermanent(err error) bool {
 		return false
 	}
 	var pe PermanentError
-	if errors.As(err, &pe) {
-		return pe.Permanent()
-	}
-	var p permanentError
 
-	return errors.As(err, &p)
+	return errors.As(err, &pe) && pe.Permanent()
 }
 
 // Backoff returns an exponential delay for the given attempt (0-indexed).
@@ -87,6 +87,12 @@ func Do(ctx context.Context, maxAttempts int, fn func() error) error {
 	}
 
 	var lastErr error
+	var timer *time.Timer
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
 
 	for attempt := range maxAttempts {
 		lastErr = fn()
@@ -104,13 +110,21 @@ func Do(ctx context.Context, maxAttempts int, fn func() error) error {
 		}
 
 		delay := Backoff(attempt)
-		timer := time.NewTimer(delay)
+		if timer == nil {
+			timer = time.NewTimer(delay)
+		} else {
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(delay)
+		}
 
 		select {
 		case <-timer.C:
 		case <-ctx.Done():
-			timer.Stop()
-
 			return fmt.Errorf("retry: %w", ctx.Err())
 		}
 	}

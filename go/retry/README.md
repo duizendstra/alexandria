@@ -33,14 +33,10 @@ import (
 )
 
 func main() {
-	policy := retry.Policy{
-		MaxAttempts: 5,
-		Initial:     100 * time.Millisecond,
-		MaxDelay:    2 * time.Second,
-		Factor:      2.0,
-	}
+	ctx := context.Background()
 
-	err := policy.Do(context.Background(), func(ctx context.Context) error {
+	// Retry the operation up to 5 times using exponential backoff + jitter
+	err := retry.Do(ctx, 5, func() error {
 		// Your custom transient network or database operation here
 		return errors.New("temporary transient error")
 	})
@@ -65,14 +61,13 @@ import (
 )
 
 func main() {
-	policy := retry.Policy{
-		MaxAttempts: 3,
-		Initial:     200 * time.Millisecond,
+	shouldRetry := func(code int) bool {
+		return code == 429 || code >= 500
 	}
 
-	// Create an HTTP client decorated with auto-retries and TCP connection draining
+	// Create an HTTP client decorated with auto-retries (3 attempts) and TCP connection draining
 	client := &http.Client{
-		Transport: retry.NewTransport(http.DefaultTransport, policy),
+		Transport: retry.Transport(3, shouldRetry, http.DefaultTransport),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

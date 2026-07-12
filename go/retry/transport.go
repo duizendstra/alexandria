@@ -1,11 +1,16 @@
 package retry
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
+
+// ErrNonRewindableBody is returned when an HTTP request contains a body but no GetBody method,
+// preventing the transport from safely rewinding and retrying.
+var ErrNonRewindableBody = errors.New("retry: cannot retry request with non-rewindable body")
 
 // Transport returns an [http.RoundTripper] that retries requests when
 // shouldRetry returns true for the status code. It uses [Backoff]
@@ -41,14 +46,7 @@ type retryTransport struct {
 }
 
 func cloneRequest(req *http.Request) *http.Request {
-	if req.Body != nil && req.GetBody != nil {
-		activeReq := new(http.Request)
-		*activeReq = *req
-
-		return activeReq
-	}
-
-	return req
+	return req.Clone(req.Context())
 }
 
 func rewindRequestBody(req *http.Request) error {
@@ -66,7 +64,7 @@ func rewindRequestBody(req *http.Request) error {
 
 func drainBody(resp *http.Response) {
 	if resp != nil && resp.Body != nil {
-		const maxDrainBytes = 4096
+		const maxDrainBytes = 512 * 1024 // 512KB limit to fully drain bulk API failures safely.
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDrainBytes))
 		_ = resp.Body.Close()
 	}
@@ -82,6 +80,9 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	for attempt := range t.maxAttempts {
 		if attempt > 0 {
+			if activeReq.Body != nil && activeReq.Body != http.NoBody && activeReq.GetBody == nil {
+				return nil, ErrNonRewindableBody
+			}
 			if err := rewindRequestBody(activeReq); err != nil {
 				return nil, err
 			}
