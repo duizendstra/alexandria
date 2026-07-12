@@ -17,7 +17,7 @@ jobs:
       modules: ${{ steps.find.outputs.modules }}
       has_modules: ${{ steps.find.outputs.has_modules }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: find
         name: Find Go modules
@@ -43,7 +43,7 @@ jobs:
       matrix:
         module: ${{ fromJson(needs.detect-modules.outputs.modules) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v5
         with:
@@ -68,7 +68,7 @@ jobs:
     name: Validate docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check for broken internal links
         run: |
