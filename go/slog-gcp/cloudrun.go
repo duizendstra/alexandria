@@ -6,17 +6,16 @@ package sloggcp
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
-// traceHeaderKey is the context key for the X-Cloud-Trace-Context
-// header value stored by [TraceMiddleware].
-type traceHeaderKey struct{}
+// traceContextKey is the context key for the pre-parsed TraceContext struct.
+type traceContextKey struct{}
 
 // SetupOption configures [Setup] and [InitCloudRun].
 type SetupOption func(*setupConfig)
@@ -95,14 +94,8 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 
 	// If not running on GCP (no K_SERVICE, CLOUD_RUN_JOB, or KUBERNETES_SERVICE_HOST),
 	// use a human-readable text handler unless JSON format is explicitly requested.
-	if os.Getenv("K_SERVICE") == "" && os.Getenv("CLOUD_RUN_JOB") == "" && os.Getenv("KUBERNETES_SERVICE_HOST") == "" && !strings.EqualFold(format, "json") {
-		return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-			Level: level,
-		})
-	}
-
-	// Cloud Run or explicit JSON: structured JSON with GCP fields.
-	if strings.EqualFold(format, "text") {
+	isGCP := os.Getenv("K_SERVICE") != "" || os.Getenv("CLOUD_RUN_JOB") != "" || os.Getenv("KUBERNETES_SERVICE_HOST") != ""
+	if (!isGCP && !strings.EqualFold(format, "json")) || strings.EqualFold(format, "text") {
 		return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			Level: level,
 		})
@@ -113,13 +106,14 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 		resolver = cfg.resolver
 	} else {
 		resolver = func(ctx context.Context) TraceContext {
-			info := parseCloudTraceHeader(traceHeaderFromCtx(ctx))
-
-			return TraceContext{
-				TraceID: info.traceID,
-				SpanID:  info.spanID,
-				Sampled: info.sampled,
+			if ctx == nil {
+				return TraceContext{}
 			}
+			if tc, ok := ctx.Value(traceContextKey{}).(TraceContext); ok {
+				return tc
+			}
+
+			return TraceContext{}
 		}
 	}
 
@@ -137,7 +131,7 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 	h := NewHandler(inner, resolver, cfg.projectID, handlerOpts...)
 
 	if len(cfg.labels) > 0 {
-		var labelAttrs []any
+		labelAttrs := make([]any, 0, len(cfg.labels))
 		for k, v := range cfg.labels {
 			labelAttrs = append(labelAttrs, slog.String(k, v))
 		}
@@ -153,13 +147,20 @@ func Setup(opts ...SetupOption) {
 	slog.SetDefault(slog.New(InitCloudRun(opts...)))
 }
 
-// TraceMiddleware extracts X-Cloud-Trace-Context from HTTP requests
+// TraceMiddleware extracts X-Cloud-Trace-Context or traceparent from HTTP requests
 // and stores it in context for downstream slog calls.
 func TraceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("X-Cloud-Trace-Context")
+		var tc TraceContext
 		if header != "" {
-			ctx := context.WithValue(r.Context(), traceHeaderKey{}, header)
+			tc = parseCloudTraceHeader(header)
+		} else if tpHeader := r.Header.Get("traceparent"); tpHeader != "" { //nolint:canonicalheader // W3C standard traceparent is always lower-case.
+			tc = parseTraceparentHeader(tpHeader)
+		}
+
+		if tc.TraceID != "" {
+			ctx := context.WithValue(r.Context(), traceContextKey{}, tc)
 			r = r.WithContext(ctx)
 		}
 
@@ -172,38 +173,28 @@ func TraceMiddleware(next http.Handler) http.Handler {
 // The generated trace context is picked up by the handler's IDResolver
 // transparently, just like TraceMiddleware does for HTTP requests.
 func WithTrace(ctx context.Context) context.Context {
-	u := uuid.New()
-	var buf [32]byte
-	const hexChars = "0123456789abcdef"
-	for i := range 16 {
-		buf[i*2] = hexChars[u[i]>>4]
-		buf[i*2+1] = hexChars[u[i]&0xf]
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	traceID := string(buf[:])
-	header := traceID + "/0;o=1"
+	traceID := fmt.Sprintf("%016x%016x", rand.Uint64(), rand.Uint64()) //nolint:gosec // Weak random ID generation is sufficient for trace IDs.
+	tc := TraceContext{
+		TraceID: traceID,
+		SpanID:  "0000000000000000",
+		Sampled: true,
+	}
 
-	return context.WithValue(ctx, traceHeaderKey{}, header)
+	return context.WithValue(ctx, traceContextKey{}, tc)
 }
 
 // WithTraceContext returns a context containing the given TraceContext.
 // This allows background workers (e.g. Pub/Sub processors) to propagate
 // trace context received from external systems.
 func WithTraceContext(ctx context.Context, tc TraceContext) context.Context {
-	sampledVal := "0"
-	if tc.Sampled {
-		sampledVal = "1"
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	header := tc.TraceID + "/" + tc.SpanID + ";o=" + sampledVal
 
-	return context.WithValue(ctx, traceHeaderKey{}, header)
-}
-
-// traceHeaderFromCtx retrieves the X-Cloud-Trace-Context header value
-// from context, as stored by [TraceMiddleware].
-func traceHeaderFromCtx(ctx context.Context) string {
-	v, _ := ctx.Value(traceHeaderKey{}).(string)
-
-	return v
+	return context.WithValue(ctx, traceContextKey{}, tc)
 }
 
 // parseLogLevel returns the slog.Level corresponding to the LOG_LEVEL
@@ -219,11 +210,10 @@ func parseLogLevel() slog.Level {
 	case "ERROR":
 		return slog.LevelError
 	default:
-		if os.Getenv("K_SERVICE") != "" {
+		if os.Getenv("K_SERVICE") != "" || os.Getenv("CLOUD_RUN_JOB") != "" || os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
 			return slog.LevelInfo
 		}
 
 		return slog.LevelDebug
 	}
 }
-

@@ -15,13 +15,17 @@ import (
 )
 
 var (
+	//nolint:gochecknoglobals // Package-level mutex to guard metadata cache.
+	metadataMu sync.RWMutex
 	//nolint:gochecknoglobals // Package-level cache for metadata project ID.
 	metadataProjectID string
-	//nolint:gochecknoglobals // sync.Once to guard metadata resolution.
-	metadataOnce sync.Once
 	//nolint:gochecknoglobals // Default GCE metadata URL.
 	metadataURL = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
 )
+
+// maxMetadataBodyBytes is the maximum number of bytes to read from the
+// GCE metadata response body.
+const maxMetadataBodyBytes = 1024
 
 // detectProjectID reads the GCP project ID from environment variables,
 // then falls back to the GCE metadata service on managed GCP platforms.
@@ -44,10 +48,23 @@ func detectProjectID() string {
 	}
 
 	// Priority 2: GCE metadata service (available on Cloud Run, GKE, etc.).
-	metadataOnce.Do(func() {
-		metadataProjectID = queryMetadataProjectID()
-	})
+	metadataMu.RLock()
+	cached := metadataProjectID
+	metadataMu.RUnlock()
 
+	if cached != "" {
+		return cached
+	}
+
+	metadataMu.Lock()
+	defer metadataMu.Unlock()
+
+	// Double-checked locking.
+	if metadataProjectID != "" {
+		return metadataProjectID
+	}
+
+	metadataProjectID = queryMetadataProjectID()
 	if metadataProjectID != "" {
 		return metadataProjectID
 	}
@@ -79,11 +96,10 @@ func queryMetadataProjectID() string {
 		return ""
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxMetadataBodyBytes))
 	if err != nil {
 		return ""
 	}
 
 	return strings.TrimSpace(string(body))
 }
-

@@ -119,3 +119,30 @@ func AssertLogCount(t *testing.T, entries []map[string]any, want int) {
 	}
 }
 
+// AssertLogContainsSubstring checks that at least one log entry has a string field
+// under the given key that contains the specified substring.
+func AssertLogContainsSubstring(t *testing.T, entries []map[string]any, key, want string) {
+	t.Helper()
+
+	for _, entry := range entries {
+		if v, ok := entry[key].(string); ok && strings.Contains(v, want) {
+			return
+		}
+	}
+
+	t.Errorf("no log entry with %s containing %q", key, want)
+}
+
+// AssertLogField checks that at least one log entry has the given field with
+// the exact expected value (supports string, bool, float64, etc.).
+func AssertLogField(t *testing.T, entries []map[string]any, key string, want any) {
+	t.Helper()
+
+	for _, entry := range entries {
+		if v, ok := entry[key]; ok && v == want {
+			return
+		}
+	}
+
+	t.Errorf("no log entry with %s=%v", key, want)
+}

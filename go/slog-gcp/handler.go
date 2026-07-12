@@ -25,8 +25,15 @@ var (
 
 func fastUniqueID() string {
 	val := seq.Add(1)
+	pid := pidStr()
 
-	return pidStr() + "-" + strconv.FormatUint(val, 10)
+	var arr [64]byte
+	buf := arr[:0]
+	buf = append(buf, pid...)
+	buf = append(buf, '-')
+	buf = strconv.AppendUint(buf, val, 10) //nolint:mnd // Base 10 is standard.
+
+	return string(buf)
 }
 
 // IDResolver extracts trace and span IDs from context.
@@ -67,6 +74,10 @@ func WithEventID(enabled bool) Option {
 //	})
 //	slog.SetDefault(slog.New(log.NewHandler(inner, resolver, "")))
 func NewHandler(inner slog.Handler, resolve IDResolver, projectID string, opts ...Option) slog.Handler {
+	if inner == nil {
+		panic("sloggcp: inner handler cannot be nil")
+	}
+
 	if projectID == "" {
 		projectID = detectProjectID()
 	}
@@ -134,4 +145,3 @@ func (h *handler) WithGroup(name string) slog.Handler {
 		eventID:     h.eventID,
 	}
 }
-
