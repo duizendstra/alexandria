@@ -267,6 +267,11 @@ linters:
         linters:
           - revive
 
+      # Submodules are allowed to use local replace directives for development.
+      - path: go/slog-gcp/otelgcp/go\.mod
+        linters:
+          - gomoddirectives
+
       # Tests — relaxed for readability and test patterns.
       - path: .*_test\.go
         linters:

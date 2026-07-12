@@ -112,11 +112,12 @@ func RequestLoggerMiddleware(next http.Handler) http.Handler {
 		f, hasFlusher := w.(http.Flusher)
 		h, hasHijacker := w.(http.Hijacker)
 
-		if hasFlusher && hasHijacker {
+		switch {
+		case hasFlusher && hasHijacker:
 			wrapped = &flushHijackRecorder{responseRecorder: rec, Flusher: f, Hijacker: h}
-		} else if hasFlusher {
+		case hasFlusher:
 			wrapped = &flushRecorder{responseRecorder: rec, Flusher: f}
-		} else if hasHijacker {
+		case hasHijacker:
 			wrapped = &hijackRecorder{responseRecorder: rec, Hijacker: h}
 		}
 
