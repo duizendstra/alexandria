@@ -27,11 +27,11 @@ func fastUniqueID() string {
 	val := seq.Add(1)
 	pid := pidStr()
 
-	// Allocate a single byte slice on the stack to build the string
-	buf := make([]byte, 0, len(pid)+1+20)
+	var arr [64]byte
+	buf := arr[:0]
 	buf = append(buf, pid...)
 	buf = append(buf, '-')
-	buf = strconv.AppendUint(buf, val, 10)
+	buf = strconv.AppendUint(buf, val, 10) //nolint:mnd // Base 10 is standard.
 
 	return string(buf)
 }
@@ -41,11 +41,6 @@ func fastUniqueID() string {
 // the bridge via this function type.
 type IDResolver func(ctx context.Context) TraceContext
 
-type traceCache struct {
-	traceID      string
-	fullTraceURI string
-}
-
 // handler wraps an inner slog.Handler and auto-injects event_id and
 // GCP Cloud Logging trace fields into every log record.
 type handler struct {
@@ -54,7 +49,6 @@ type handler struct {
 	projectID   string
 	tracePrefix string
 	eventID     bool
-	lastTrace   *atomic.Pointer[traceCache]
 }
 
 // Option configures [NewHandler].
@@ -80,18 +74,20 @@ func WithEventID(enabled bool) Option {
 //	})
 //	slog.SetDefault(slog.New(log.NewHandler(inner, resolver, "")))
 func NewHandler(inner slog.Handler, resolve IDResolver, projectID string, opts ...Option) slog.Handler {
+	if inner == nil {
+		panic("sloggcp: inner handler cannot be nil")
+	}
+
 	if projectID == "" {
 		projectID = detectProjectID()
 	}
 
-	var lastTrace atomic.Pointer[traceCache]
 	h := &handler{
 		inner:       inner,
 		resolve:     resolve,
 		projectID:   projectID,
 		tracePrefix: "projects/" + projectID + "/traces/",
 		eventID:     false,
-		lastTrace:   &lastTrace,
 	}
 
 	for _, opt := range opts {
@@ -117,19 +113,8 @@ func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:
 		tc := h.resolve(ctx)
 
 		if !tc.IsEmpty() {
-			var fullTraceURI string
-			if cache := h.lastTrace.Load(); cache != nil && cache.traceID == tc.TraceID {
-				fullTraceURI = cache.fullTraceURI
-			} else {
-				fullTraceURI = h.tracePrefix + tc.TraceID
-				h.lastTrace.Store(&traceCache{
-					traceID:      tc.TraceID,
-					fullTraceURI: fullTraceURI,
-				})
-			}
-
 			rec.AddAttrs(
-				slog.String(FieldTrace, fullTraceURI),
+				slog.String(FieldTrace, h.tracePrefix+tc.TraceID),
 				slog.String(FieldSpanID, tc.SpanID),
 				slog.Bool(FieldTraceSampled, tc.Sampled),
 			)
@@ -147,7 +132,6 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		projectID:   h.projectID,
 		tracePrefix: h.tracePrefix,
 		eventID:     h.eventID,
-		lastTrace:   h.lastTrace,
 	}
 }
 
@@ -159,6 +143,5 @@ func (h *handler) WithGroup(name string) slog.Handler {
 		projectID:   h.projectID,
 		tracePrefix: h.tracePrefix,
 		eventID:     h.eventID,
-		lastTrace:   h.lastTrace,
 	}
 }

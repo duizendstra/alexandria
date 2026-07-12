@@ -40,15 +40,3 @@ const (
 
 // ErrorReportingType is the protobuf type URL for Cloud Error Reporting events.
 const ErrorReportingType = "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
-
-// TraceContext holds parsed trace context from a request.
-type TraceContext struct {
-	TraceID string
-	SpanID  string
-	Sampled bool
-}
-
-// IsEmpty reports whether the trace context has no trace ID.
-func (tc TraceContext) IsEmpty() bool {
-	return tc.TraceID == ""
-}

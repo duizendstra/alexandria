@@ -23,6 +23,10 @@ var (
 	metadataURL = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
 )
 
+// maxMetadataBodyBytes is the maximum number of bytes to read from the
+// GCE metadata response body.
+const maxMetadataBodyBytes = 1024
+
 // detectProjectID reads the GCP project ID from environment variables,
 // then falls back to the GCE metadata service on managed GCP platforms.
 func detectProjectID() string {
@@ -55,7 +59,7 @@ func detectProjectID() string {
 	metadataMu.Lock()
 	defer metadataMu.Unlock()
 
-	// Double-checked locking
+	// Double-checked locking.
 	if metadataProjectID != "" {
 		return metadataProjectID
 	}
@@ -92,7 +96,7 @@ func queryMetadataProjectID() string {
 		return ""
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxMetadataBodyBytes))
 	if err != nil {
 		return ""
 	}

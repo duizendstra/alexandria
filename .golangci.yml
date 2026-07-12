@@ -218,7 +218,10 @@ linters:
       require-specific: true
 
     gomoddirectives:
-      replace-local: false
+      replace-local: true
+      replace-allow-list:
+        - github.com/duizendstra/alexandria/go/slog-gcp
+        - github.com/duizendstra/alexandria/go/discovery/search
 
     godot:
       scope: all
@@ -237,16 +240,6 @@ issues:
     - staging/
 
   exclude-rules:
-    # Searchtest - gomoddirectives local replacement allowed for submodule development.
-    - path: go/discovery/search/searchtest/go\.mod
-      linters:
-        - gomoddirectives
-
-    # slog-gcp/otelgcp submodule — uses local replace directive for development.
-    - path: go/slog-gcp/otelgcp/go\.mod
-      linters:
-        - gomoddirectives
-
     # CLI packages — Cobra patterns need globals, inits, and relaxed style.
     - path: go/cli/.*
       linters:
@@ -279,11 +272,6 @@ issues:
     - path: go/identity/identity/api/.*
       linters:
         - revive
-
-    # discovery/privacyfilter — local development replaces are allowed in go.mod.
-    - path: (go/discovery/privacyfilter/)?go\.mod
-      linters:
-        - gomoddirectives
 
     # Tests — relaxed for readability and test patterns.
     - path: .*_test\.go

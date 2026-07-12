@@ -37,7 +37,7 @@ func stackTrace(skip int) string {
 		b.WriteString(frame.File)
 		b.WriteByte(':')
 		var lineBuf [20]byte
-		b.Write(strconv.AppendInt(lineBuf[:0], int64(frame.Line), 10))
+		b.Write(strconv.AppendInt(lineBuf[:0], int64(frame.Line), 10)) //nolint:mnd // Base-10 is the only valid radix for line numbers.
 		b.WriteByte('\n')
 
 		if !more {

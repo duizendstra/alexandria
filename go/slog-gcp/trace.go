@@ -5,15 +5,26 @@
 package sloggcp
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
 
-// cloudTrace holds trace context parsed from X-Cloud-Trace-Context.
-type cloudTrace struct {
-	traceID string
-	spanID  string // 16-char hex, converted from decimal.
-	sampled bool
+const (
+	maxTraceIDLen = 32
+	maxSpanIDLen  = 16
+)
+
+// TraceContext holds parsed trace context from a request.
+type TraceContext struct {
+	TraceID string
+	SpanID  string
+	Sampled bool
+}
+
+// IsEmpty reports whether the trace context has no trace ID.
+func (tc TraceContext) IsEmpty() bool {
+	return tc.TraceID == ""
 }
 
 // parseCloudTraceHeader parses the X-Cloud-Trace-Context header.
@@ -21,21 +32,26 @@ type cloudTrace struct {
 //
 // The span ID in the header is decimal; this function converts it to
 // 16-character zero-padded hexadecimal as Cloud Logging expects.
-func parseCloudTraceHeader(header string) cloudTrace {
-	var info cloudTrace
+func parseCloudTraceHeader(header string) TraceContext {
+	var info TraceContext
 
-	parts := strings.SplitN(header, ";", 2) //nolint:mnd // Clear from context.
-	traceSpan := parts[0]
-
-	if len(parts) > 1 && strings.Contains(parts[1], "o=1") {
-		info.sampled = true
+	traceSpan, params, found := strings.Cut(header, ";")
+	if found && strings.Contains(params, "o=1") {
+		info.Sampled = true
 	}
 
-	tsParts := strings.SplitN(traceSpan, "/", 2) //nolint:mnd // Clear from context.
-	info.traceID = tsParts[0]
+	traceID, spanDec, found := strings.Cut(traceSpan, "/")
+	if len(traceID) > maxTraceIDLen {
+		traceID = traceID[:maxTraceIDLen]
+	}
+	info.TraceID = traceID
 
-	if len(tsParts) > 1 {
-		info.spanID = decimalToHexSpan(tsParts[1])
+	if found {
+		spanVal := decimalToHexSpan(spanDec)
+		if len(spanVal) > maxSpanIDLen {
+			spanVal = spanVal[:maxSpanIDLen]
+		}
+		info.SpanID = spanVal
 	}
 
 	return info
@@ -48,29 +64,40 @@ func decimalToHexSpan(decimal string) string {
 		return decimal
 	}
 
-	var buf [16]byte
-	const hexChars = "0123456789abcdef"
-	for i := 15; i >= 0; i-- {
-		buf[i] = hexChars[n&0xf]
-		n >>= 4
-	}
-
-	return string(buf[:])
+	return fmt.Sprintf("%016x", n)
 }
 
 // parseTraceparentHeader parses the W3C traceparent header.
-// Format: version-trace_id-parent_id-trace_flags
-func parseTraceparentHeader(header string) cloudTrace {
-	var info cloudTrace
-	parts := strings.Split(header, "-")
-	if len(parts) < 4 {
+// Format: version-trace_id-parent_id-trace_flags.
+func parseTraceparentHeader(header string) TraceContext {
+	var info TraceContext
+
+	// Skip version.
+	_, rest, found := strings.Cut(header, "-")
+	if !found {
+		return info
+	}
+	traceID, rest, found := strings.Cut(rest, "-")
+	if !found {
+		return info
+	}
+	spanID, flags, found := strings.Cut(rest, "-")
+	if !found {
 		return info
 	}
 
-	info.traceID = parts[1]
-	info.spanID = parts[2]
-	if parts[3] == "01" {
-		info.sampled = true
+	// Bounds checking.
+	if len(traceID) > maxTraceIDLen {
+		traceID = traceID[:maxTraceIDLen]
+	}
+	if len(spanID) > maxSpanIDLen {
+		spanID = spanID[:maxSpanIDLen]
+	}
+
+	info.TraceID = traceID
+	info.SpanID = spanID
+	if flags == "01" {
+		info.Sampled = true
 	}
 
 	return info
