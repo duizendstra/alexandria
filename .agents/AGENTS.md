@@ -79,3 +79,6 @@ documentation.
 Shell commands in public documentation must work on both macOS and Linux.
 Known pitfalls: `sed -i ''` (macOS-only, use `sed -i.bak`),
 `readlink -f` (GNU-only), `grep -P` (GNU-only).
+
+## 15. Isolated Wildcard Compilation & Testing
+In multi-module monorepos, nested subdirectories (such as `go/slog-gcp/otelgcp` nested inside `go/slog-gcp`) cause wildcard expansions (`./...`) to error in workspace mode due to directory prefix overlapping. To perform clean, isolated compilation, testing, or linting of any module, always prepend `GOWORK=off` to the execution command (e.g., `GOWORK=off go test ./...`). This disables workspace resolution and guarantees that the module builds self-sufficiently against its pinned dependencies.
