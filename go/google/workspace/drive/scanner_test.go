@@ -64,14 +64,14 @@ func TestScanner_Scan(t *testing.T) {
 			roundTripFunc: func(req *http.Request) (*http.Response, error) {
 				var jsonResponse string
 				q := req.URL.Query()
-				pageToken := q.Get("pageToken")
 
-				if pageToken == "" {
+				switch pageToken := q.Get("pageToken"); pageToken {
+				case "":
 					jsonResponse = `{
 						"nextPageToken": "token-page-2",
 						"files": [{"id": "file-page-1", "name": "Doc Page 1"}]
 					}`
-				} else if pageToken == "token-page-2" {
+				case "token-page-2":
 					jsonResponse = `{
 						"files": [{"id": "file-page-2", "name": "Doc Page 2"}]
 					}`
@@ -125,7 +125,6 @@ func TestScanner_Scan(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

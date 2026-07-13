@@ -27,7 +27,10 @@
 // target users. Provide the Workspace Super Administrator with the following direct link to authorize
 // the client ID and scopes in the Google Workspace Admin console:
 //
-//	https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/drive.metadata.readonly,https://www.googleapis.com/auth/drive.readonly&clientIdToAdd=[YOUR_CLIENT_ID]&overwriteClientId=true
+//	https://admin.google.com/ac/owl/domainwidedelegation?
+//	clientScopeToAdd=https://www.googleapis.com/auth/drive.metadata.readonly,
+//	https://www.googleapis.com/auth/drive.readonly&
+//	clientIdToAdd=[YOUR_CLIENT_ID]&overwriteClientId=true
 //
 // 4. Context Propagation: All network operations accept a context.Context. Ensure your orchestrators
 // propagate context cancellation and deadlines to prevent thread exhaustion or command-line freezes.
