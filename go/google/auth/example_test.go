@@ -16,7 +16,7 @@ func ExampleResolveClient_serviceAccountImpersonation() {
 	ctx := context.Background()
 	targetSA := "my-app-worker@my-gcp-project.iam.gserviceaccount.com"
 
-	// Resolve standard option.ClientOption list
+	// Resolve standard option.ClientOption list.
 	clientOpts, err := auth.ResolveClient(
 		ctx,
 		[]string{drive.DriveMetadataReadonlyScope},
@@ -27,7 +27,7 @@ func ExampleResolveClient_serviceAccountImpersonation() {
 		return
 	}
 
-	// The clientOpts can now be passed directly into any standard Google API service constructor
+	// The clientOpts can now be passed directly into any standard Google API service constructor.
 	srv, err := drive.NewService(ctx, clientOpts...)
 	if err != nil {
 		fmt.Printf("failed to create drive service: %v\n", err)
@@ -45,7 +45,7 @@ func ExampleResolveClient_domainWideDelegation() {
 	targetSA := "workspace-scanner@my-gcp-project.iam.gserviceaccount.com"
 	impersonatedUser := "ceo@my-company.com"
 
-	// Resolve client options with DWD configuration and least-privilege metadata scope
+	// Resolve client options with DWD configuration and least-privilege metadata scope.
 	clientOpts, err := auth.ResolveClient(
 		ctx,
 		[]string{drive.DriveMetadataReadonlyScope},
@@ -103,7 +103,7 @@ func ExampleResolveClient_interactiveConsent() {
 func ExampleDWDValidator_ValidateAccess() {
 	ctx := context.Background()
 
-	// 1. Resolve credentials for DWD
+	// 1. Resolve credentials for DWD.
 	clientOpts, err := auth.ResolveClient(
 		ctx,
 		[]string{drive.DriveMetadataReadonlyScope},
@@ -117,14 +117,14 @@ func ExampleDWDValidator_ValidateAccess() {
 		return
 	}
 
-	// 2. Instantiate Google Drive Service under impersonated user context
+	// 2. Instantiate Google Drive Service under impersonated user context.
 	srv, err := drive.NewService(ctx, clientOpts...)
 	if err != nil {
 		fmt.Printf("failed to create drive service: %v\n", err)
 		return
 	}
 
-	// 3. Create the validator with the drive service
+	// 3. Create the validator with the drive service.
 	validator := auth.NewDWDValidator(srv)
 
 	// 4. Assert that we can access root metadata (e.g., verifying delegation is active).
