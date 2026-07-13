@@ -2,11 +2,21 @@ package drive
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
 )
+
+// Default parameters for high-performance scanning to avoid magic number lints.
+const (
+	defaultPageSize = int64(1000)
+	defaultMaxPages = 10000
+)
+
+// ErrNilService is returned when a nil Google Drive service client is provided to the scanner.
+var ErrNilService = errors.New("google drive service must not be nil")
 
 // Scanner orchestrates paginated flat file indexing operations against Google Drive.
 type Scanner struct {
@@ -30,9 +40,9 @@ func WithPageSize(size int64) ScannerOption {
 }
 
 // WithMaxPages sets a hard ceiling on the number of crawled pages to prevent execution runaway.
-func WithMaxPages(max int) ScannerOption {
+func WithMaxPages(limit int) ScannerOption {
 	return func(s *Scanner) {
-		s.maxPages = max
+		s.maxPages = limit
 	}
 }
 
@@ -62,8 +72,8 @@ func WithCorpora(corpora string) ScannerOption {
 // NewScanner initializes a new Scanner instance with the provided options and sane defaults.
 func NewScanner(opts ...ScannerOption) *Scanner {
 	s := &Scanner{
-		pageSize: 1000,
-		maxPages: 10000,
+		pageSize: defaultPageSize,
+		maxPages: defaultMaxPages,
 		fields:   "nextPageToken, files(id, name, mimeType, parents, size, createdTime, driveId)",
 	}
 
@@ -77,7 +87,7 @@ func NewScanner(opts ...ScannerOption) *Scanner {
 // Scan crawls Google Drive using flat list pagination and invokes the callback for each file resource.
 func (s *Scanner) Scan(ctx context.Context, srv *drive.Service, onFile func(*drive.File) error) error {
 	if srv == nil {
-		return fmt.Errorf("google drive service must not be nil")
+		return ErrNilService
 	}
 
 	var pageToken string
