@@ -35,10 +35,6 @@ func ExampleResolveClient_serviceAccountImpersonation() {
 	}
 
 	_ = srv
-	fmt.Println("Client options resolved successfully for service account impersonation")
-
-	// Output:
-	// Client options resolved successfully for service account impersonation
 }
 
 // ExampleResolveClient_domainWideDelegation demonstrates how to resolve Google client options using
@@ -67,10 +63,6 @@ func ExampleResolveClient_domainWideDelegation() {
 	}
 
 	_ = srv
-	fmt.Println("Client options resolved successfully for Domain-Wide Delegation")
-
-	// Output:
-	// Client options resolved successfully for Domain-Wide Delegation
 }
 
 // ExampleResolveClient_interactiveConsent demonstrates how to resolve Google client options using
