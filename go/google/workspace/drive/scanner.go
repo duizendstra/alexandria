@@ -25,6 +25,7 @@ type Scanner struct {
 	query    string
 	fields   string
 	corpora  string
+	driveID  string
 }
 
 // ScannerOption defines a functional option configuration callback for our Scanner.
@@ -69,6 +70,13 @@ func WithCorpora(corpora string) ScannerOption {
 	}
 }
 
+// WithDriveID configures the specific Shared Drive ID scope to crawl (requires Corpora("drive")).
+func WithDriveID(id string) ScannerOption {
+	return func(s *Scanner) {
+		s.driveID = id
+	}
+}
+
 // NewScanner initializes a new Scanner instance with the provided options and sane defaults.
 func NewScanner(opts ...ScannerOption) *Scanner {
 	s := &Scanner{
@@ -102,25 +110,7 @@ func (s *Scanner) Scan(ctx context.Context, srv *drive.Service, onFile func(*dri
 		}
 
 		// Configure the API listing call.
-		call := srv.Files.List().
-			PageSize(s.pageSize).
-			Fields(googleapi.Field(s.fields)).
-			SupportsAllDrives(true).
-			IncludeItemsFromAllDrives(true).
-			Context(ctx)
-
-		if s.corpora != "" {
-			call = call.Corpora(s.corpora)
-		} else {
-			call = call.Corpora("allDrives")
-		}
-
-		if s.query != "" {
-			call = call.Q(s.query)
-		}
-		if pageToken != "" {
-			call = call.PageToken(pageToken)
-		}
+		call := s.buildListCall(ctx, srv, pageToken)
 
 		// Execute the network request.
 		res, err := call.Do()
@@ -151,4 +141,33 @@ func (s *Scanner) Scan(ctx context.Context, srv *drive.Service, onFile func(*dri
 	}
 
 	return nil
+}
+
+// buildListCall constructs and configures the raw Google Drive API FilesListCall.
+func (s *Scanner) buildListCall(ctx context.Context, srv *drive.Service, pageToken string) *drive.FilesListCall {
+	call := srv.Files.List().
+		PageSize(s.pageSize).
+		Fields(googleapi.Field(s.fields)).
+		SupportsAllDrives(true).
+		IncludeItemsFromAllDrives(true).
+		Context(ctx)
+
+	if s.corpora != "" {
+		call = call.Corpora(s.corpora)
+	} else {
+		call = call.Corpora("allDrives")
+	}
+
+	if s.driveID != "" {
+		call = call.DriveId(s.driveID)
+	}
+
+	if s.query != "" {
+		call = call.Q(s.query)
+	}
+	if pageToken != "" {
+		call = call.PageToken(pageToken)
+	}
+
+	return call
 }
