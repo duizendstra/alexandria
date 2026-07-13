@@ -25,6 +25,7 @@ type Scanner struct {
 	query    string
 	fields   string
 	corpora  string
+	driveID  string
 }
 
 // ScannerOption defines a functional option configuration callback for our Scanner.
@@ -66,6 +67,13 @@ func WithFields(fields string) ScannerOption {
 func WithCorpora(corpora string) ScannerOption {
 	return func(s *Scanner) {
 		s.corpora = corpora
+	}
+}
+
+// WithDriveID configures the specific Shared Drive ID scope to crawl (requires Corpora("drive")).
+func WithDriveID(id string) ScannerOption {
+	return func(s *Scanner) {
+		s.driveID = id
 	}
 }
 
@@ -113,6 +121,10 @@ func (s *Scanner) Scan(ctx context.Context, srv *drive.Service, onFile func(*dri
 			call = call.Corpora(s.corpora)
 		} else {
 			call = call.Corpora("allDrives")
+		}
+
+		if s.driveID != "" {
+			call = call.DriveId(s.driveID)
 		}
 
 		if s.query != "" {
