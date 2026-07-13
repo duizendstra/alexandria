@@ -6,12 +6,13 @@ import (
 	"sync"
 )
 
-// BatchBuffer handles the in-memory accumulating and batch flushing of items of any type T.
+// BatchBuffer provides a thread-safe generic slice buffer that automatically flushes
+// its elements once a specified capacity limit is hit.
 type BatchBuffer[T any] struct {
 	mu      sync.Mutex
-	items   []T
 	limit   int
 	onFlush func(ctx context.Context, batch []T) error
+	items   []T
 }
 
 // NewBatchBuffer creates a new type-safe BatchBuffer.
@@ -19,6 +20,7 @@ func NewBatchBuffer[T any](limit int, onFlush func(ctx context.Context, batch []
 	if limit <= 0 {
 		limit = 500
 	}
+
 	return &BatchBuffer[T]{
 		limit:   limit,
 		onFlush: onFlush,
@@ -32,7 +34,7 @@ func (b *BatchBuffer[T]) Add(ctx context.Context, item T) error {
 	b.items = append(b.items, item)
 
 	if len(b.items) >= b.limit {
-		// Release lock to avoid blocking during network I/O in the flush function
+		// Release lock to avoid blocking during network I/O in the flush function.
 		batch := b.items
 		b.items = make([]T, 0, b.limit)
 		b.mu.Unlock()
@@ -40,10 +42,12 @@ func (b *BatchBuffer[T]) Add(ctx context.Context, item T) error {
 		if err := b.onFlush(ctx, batch); err != nil {
 			return fmt.Errorf("failed to flush buffer batch: %w", err)
 		}
+
 		return nil
 	}
 
 	b.mu.Unlock()
+
 	return nil
 }
 
@@ -52,6 +56,7 @@ func (b *BatchBuffer[T]) Flush(ctx context.Context) error {
 	b.mu.Lock()
 	if len(b.items) == 0 {
 		b.mu.Unlock()
+
 		return nil
 	}
 
@@ -62,6 +67,7 @@ func (b *BatchBuffer[T]) Flush(ctx context.Context) error {
 	if err := b.onFlush(ctx, batch); err != nil {
 		return fmt.Errorf("failed to flush remaining buffer items: %w", err)
 	}
+
 	return nil
 }
 
@@ -69,5 +75,6 @@ func (b *BatchBuffer[T]) Flush(ctx context.Context) error {
 func (b *BatchBuffer[T]) Len() int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	return len(b.items)
 }
