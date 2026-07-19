@@ -2,12 +2,14 @@ package delivery
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/duizendstra/alexandria/go/governance/exports"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/connections"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/projects"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/registries"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/triggers"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/secretmanager"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -231,7 +233,36 @@ func applyGitHub(ctx *pulumi.Context, cfg *config.Config, region string, project
 		return false, fmt.Errorf("github connection: %w", err)
 	}
 
+	if err := applySecretAccessor(ctx, oauthSecret, projectOutputs); err != nil {
+		return false, err
+	}
+
 	return false, applyRepos(ctx, cfg, region, projectOutputs, connOutputs)
+}
+
+// applySecretAccessor grants the Compute default SA Secret Manager
+// access to the OAuth token secret — Cloud Build v2 triggers run as the
+// Compute default SA and read the connection's authorizer credential.
+func applySecretAccessor(ctx *pulumi.Context, oauthSecret string, projectOutputs *projects.Outputs) error {
+	// Reduce a secret version name to its secret ID if necessary:
+	// projects/{p}/secrets/{s}/versions/{v} -> projects/{p}/secrets/{s}.
+	secretID := oauthSecret
+	if lastIndex := strings.LastIndex(oauthSecret, "/versions/"); lastIndex != -1 {
+		secretID = oauthSecret[:lastIndex]
+	}
+
+	member := pulumi.Sprintf("serviceAccount:%s-compute@developer.gserviceaccount.com", projectOutputs.ProjectNumber)
+
+	if _, err := secretmanager.NewSecretIamMember(ctx, "github-oauth-secret-accessor", &secretmanager.SecretIamMemberArgs{
+		Project:  projectOutputs.ProjectID,
+		SecretId: pulumi.String(secretID),
+		Role:     pulumi.String("roles/secretmanager.secretAccessor"),
+		Member:   member,
+	}); err != nil {
+		return fmt.Errorf("oauth secret accessor: %w", err)
+	}
+
+	return nil
 }
 
 // applyRepos links the configured repositories and creates their
