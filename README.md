@@ -38,7 +38,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/cache](go/platform/cache/) | `github.com/duizendstra/alexandria/go/platform/cache` | v0.0.1 | Generic, concurrent-safe in-memory TTL cache |
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.0.1 | Project-agnostic HTTP server, client, and response utilities |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.1.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
-| [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.1.0 | Pulumi adapter packages for Google Cloud infrastructure |
+| [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.2.0 | Pulumi adapter packages for Google Cloud infrastructure |
 | [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning GCP governance |
 
 Version numbers signal maturity: `v0.0.x` modules are experimental; `v0.1.x`
