@@ -10,6 +10,15 @@ import (
 // defaultMemory is the container memory limit when none is configured.
 const defaultMemory = "512Mi"
 
+// Resource-limit map keys and IgnoreChanges paths shared by the
+// service, job, and sidecar-service appliers.
+const (
+	limitMemory         = "memory"
+	limitCPU            = "cpu"
+	ignoreClient        = "client"
+	ignoreClientVersion = "clientVersion"
+)
+
 // ServiceOutputs holds references to the created Cloud Run service.
 type ServiceOutputs struct {
 	Name pulumi.StringOutput
@@ -45,9 +54,9 @@ func ApplyService(
 		memLimit = defaultMemory
 	}
 
-	svcLimits := pulumi.StringMap{"memory": pulumi.String(memLimit)}
+	svcLimits := pulumi.StringMap{limitMemory: pulumi.String(memLimit)}
 	if cfg.CPU != "" {
-		svcLimits["cpu"] = pulumi.String(cfg.CPU)
+		svcLimits[limitCPU] = pulumi.String(cfg.CPU)
 	}
 
 	svc, err := cloudrunv2.NewService(ctx, cfg.Name, &cloudrunv2.ServiceArgs{
@@ -67,7 +76,7 @@ func ApplyService(
 			},
 		},
 	}, pulumi.DependsOn(deps),
-		pulumi.IgnoreChanges([]string{"client", "clientVersion", "template.containers[0].image"}))
+		pulumi.IgnoreChanges([]string{ignoreClient, ignoreClientVersion, "template.containers[0].image"}))
 	if err != nil {
 		return nil, fmt.Errorf("create cloud run service %s: %w", cfg.Name, err)
 	}
@@ -111,9 +120,9 @@ func ApplyJob(
 		jobMemLimit = defaultMemory
 	}
 
-	jobLimits := pulumi.StringMap{"memory": pulumi.String(jobMemLimit)}
+	jobLimits := pulumi.StringMap{limitMemory: pulumi.String(jobMemLimit)}
 	if cfg.CPU != "" {
-		jobLimits["cpu"] = pulumi.String(cfg.CPU)
+		jobLimits[limitCPU] = pulumi.String(cfg.CPU)
 	}
 
 	job, err := cloudrunv2.NewJob(ctx, cfg.Name, &cloudrunv2.JobArgs{
@@ -136,7 +145,7 @@ func ApplyJob(
 			},
 		},
 	}, pulumi.DependsOn(deps),
-		pulumi.IgnoreChanges([]string{"client", "clientVersion", "template.template.containers[0].image"}))
+		pulumi.IgnoreChanges([]string{ignoreClient, ignoreClientVersion, "template.template.containers[0].image"}))
 	if err != nil {
 		return nil, fmt.Errorf("create cloud run job %s: %w", cfg.Name, err)
 	}

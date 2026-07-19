@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **go/iac/pulumi/gcpinfra**: `cloudrun.ApplySidecarService` provisions a
+  multi-container (sidecar) Cloud Run v2 service — one ingress container
+  plus localhost sidecars — with optional Identity-Aware Proxy
+  (`IAPEnabled`), a scaling cap (`MaxInstances`), per-container
+  env/limits/start-order (`DependsOn`), and container image changes
+  ignored for CI/CD deploys. A nil service account runs the service as
+  the project's default compute SA. Intended tag:
+  `go/iac/pulumi/gcpinfra/v0.5.0`.
+
 ## 2026-07-19 — cloudrun explicit CPU limit
 
 Released tags: `go/iac/pulumi/gcpinfra/v0.4.2`.
