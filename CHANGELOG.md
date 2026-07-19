@@ -27,6 +27,7 @@ least one real consumer.
 
 ### Added
 
+- **go/iac/delivery**: Configuration-driven Pulumi Delivery blueprint — dedicated CI/CD project with an Artifact Registry (build-SA writer grant), a Cloud Build v2 Git connection with per-repo tag-push triggers, and cross-project registry reader grants for consumer workload stacks; placement resolved from a governance stack reference.
 - **scripts/okf-lint.py**: the OKF vault integrity lint ADR-0002 promised —
   validates the full frontmatter schema (required fields, enums, ISO 8601
   timestamps, domain↔folder agreement), rejects malformed/duplicate UUIDs,
