@@ -92,10 +92,9 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 	}
 	format := os.Getenv("LOG_FORMAT")
 
-	// If not running on GCP (no K_SERVICE, CLOUD_RUN_JOB, or KUBERNETES_SERVICE_HOST),
-	// use a human-readable text handler unless JSON format is explicitly requested.
-	isGCP := os.Getenv("K_SERVICE") != "" || os.Getenv("CLOUD_RUN_JOB") != "" || os.Getenv("KUBERNETES_SERVICE_HOST") != ""
-	if (!isGCP && !strings.EqualFold(format, "json")) || strings.EqualFold(format, "text") {
+	// If not running on GCP, use a human-readable text handler unless JSON
+	// format is explicitly requested.
+	if (!runningOnGCP() && !strings.EqualFold(format, "json")) || strings.EqualFold(format, "text") {
 		return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			Level: level,
 		})
@@ -210,10 +209,19 @@ func parseLogLevel() slog.Level {
 	case "ERROR":
 		return slog.LevelError
 	default:
-		if os.Getenv("K_SERVICE") != "" || os.Getenv("CLOUD_RUN_JOB") != "" || os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		if runningOnGCP() {
 			return slog.LevelInfo
 		}
 
 		return slog.LevelDebug
 	}
+}
+
+// runningOnGCP reports whether the process runs on a managed GCP platform:
+// Cloud Run services (K_SERVICE), Cloud Run jobs (CLOUD_RUN_JOB), or GKE
+// (KUBERNETES_SERVICE_HOST).
+func runningOnGCP() bool {
+	return os.Getenv("K_SERVICE") != "" ||
+		os.Getenv("CLOUD_RUN_JOB") != "" ||
+		os.Getenv("KUBERNETES_SERVICE_HOST") != ""
 }

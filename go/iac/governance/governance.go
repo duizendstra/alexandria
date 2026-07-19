@@ -28,12 +28,19 @@ func Apply(ctx *pulumi.Context) error {
 		return fmt.Errorf("governance: %w", err)
 	}
 
+	// Organization scope exports the org ID downstream; Container scope
+	// must leave it empty (folders.OrgID passes non-org parents through).
+	var orgID string
+	if s.SupportsOrgExport() {
+		orgID = folders.OrgID(parent)
+	}
+
 	// Build the plan based on tier.
 	var p *plan.Plan
 
 	switch tierName {
 	case "starter":
-		p, err = plan.NewStarter(s, parent, rootFolder)
+		p, err = plan.NewStarter(s, parent, rootFolder, orgID)
 
 	case "enterprise":
 		var children []string
@@ -43,13 +50,13 @@ func Apply(ctx *pulumi.Context) error {
 		_ = cfg.TryObject("tagKeys", &dims)
 
 		p, err = plan.NewEnterprise(parent, rootFolder, children, dims,
-			cfg.Get("billingAccount"), folders.OrgID(parent))
+			cfg.Get("billingAccount"), orgID)
 
 	default: // "standard" or unset — backward compatible default.
 		var children []string
 		cfg.RequireObject("environments", &children)
 
-		p, err = plan.NewStandard(s, parent, rootFolder, children)
+		p, err = plan.NewStandard(s, parent, rootFolder, children, orgID)
 	}
 
 	if err != nil {

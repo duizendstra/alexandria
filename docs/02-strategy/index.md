@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Vision, roadmap, module growth strategy, and publication criteria for Alexandria.
+uuid: 3add0192-ef54-492c-b982-a687138b7db1
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "strategy" ]
+relations: []
 ---
 
 # 02 — Strategy

@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Licensing, contributing guidelines, changelog, release policy, and code of conduct for the Alexandria project.
+uuid: e8470e91-1b6b-4afe-b151-b07b7a541fe1
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "governance" ]
+relations: []
 ---
 
 # 01 — Governance

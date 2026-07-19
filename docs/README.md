@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Entry point to the Alexandria documentation vault — the arctic vault of shared engineering knowledge.
+uuid: bfa87686-2f8c-48d3-8729-9a2288591d95
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "vault", "overview" ]
+relations: []
 ---
 
 # Alexandria — Documentation Vault

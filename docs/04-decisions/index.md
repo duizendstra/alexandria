@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Architecture Decision Records (ADRs) in MADR format, documenting key technical choices and their rationale.
+uuid: 9484a996-e89c-4a2b-bab0-f4606f8eaa1c
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "decisions" ]
+relations: []
 ---
 
 # 04 — Decisions

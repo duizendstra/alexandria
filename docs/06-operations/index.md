@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: CI/CD pipeline design, release-please automation, Dependabot configuration, and tagging conventions.
+uuid: 3fbc550a-2bed-4f5a-bb7a-d853e9e67cf1
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "operations" ]
+relations: []
 ---
 
 # 06 — Operations

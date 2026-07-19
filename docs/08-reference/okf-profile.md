@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: How Alexandria uses and extends the Open Knowledge Format (OKF) for its documentation vault.
+uuid: 2766d6ff-0830-4010-a0b8-313da19f21ad
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "okf", "frontmatter", "reference" ]
+relations: []
 ---
 
 # Alexandria OKF Profile
@@ -37,8 +42,14 @@ not part of the upstream spec — they are conventions specific to this project.
 
 ### Frontmatter Schema
 
+This is the canonical schema mandated by
+[ADR-0002](../04-decisions/adr-0002-vault-centric-documentation.md) and
+enforced by the OKF integrity lint in CI (`scripts/okf-lint.py`). Every
+document in the vault declares all of these fields.
+
 | Field | Required | Type | Description |
 |---|---|---|---|
+| `uuid` | ✅ | string | Alexandria-specific. Immutable RFC 4122 v4 identifier; unique across the vault. Relations point at these. |
 | `type` | ✅ | string | OKF-standard. The kind of document (e.g., `index`, `guide`, `architecture_decision_record`). |
 | `title` | ✅ | string | OKF-recommended. Human-readable display name. |
 | `domain` | ✅ | string | Alexandria-specific. Which of the 8 domains this document belongs to. |
@@ -47,7 +58,26 @@ not part of the upstream spec — they are conventions specific to this project.
 | `maturity` | ✅ | string | Alexandria-specific. Quality/completeness level. |
 | `audience` | ✅ | list | Alexandria-specific. Who the document is for. |
 | `owner` | ✅ | string | Alexandria-specific. GitHub handle of the responsible maintainer. |
-| `summary` | ✅ | string | OKF-recommended (as `description`). One-line summary of the document. |
+| `summary` | ✅ | string | OKF-recommended (as `description`). One-line summary of the document; written as a dense digest to optimize semantic retrieval. |
+| `created_at` | ✅ | string | Alexandria-specific. ISO 8601 UTC timestamp of first authoring; immutable. |
+| `updated_at` | ✅ | string | Alexandria-specific. ISO 8601 UTC timestamp of the last substantive edit. |
+| `tags` | ✅ | list | Alexandria-specific. Free-form lowercase topic tags for filtering and retrieval. |
+| `relations` | ✅ | list | Alexandria-specific. Typed links to other vault documents; `[]` when none. See below. |
+
+### Relations
+
+Each relation is a map with exactly two keys, pointing at another vault
+document's `uuid`:
+
+```yaml
+relations:
+  - target_uuid: "7c10b0bc-5cb8-4eb4-b99b-efb829623dc1"
+    rel_type: "depends_on"
+```
+
+`rel_type` is free-form but drawn from a small working set (`depends_on`,
+`extends`, `supersedes`, `relates_to`). The lint verifies every
+`target_uuid` resolves to a document in the vault.
 
 ### Field Values
 

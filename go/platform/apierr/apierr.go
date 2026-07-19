@@ -72,6 +72,37 @@ func IsRetryable(err error) bool {
 		errors.Is(err, ErrTimeout)
 }
 
+// RetryableStatus reports whether an HTTP status code names a transient
+// failure worth retrying with backoff: 408 (request timeout), 429
+// (throttling), and all 5xx server errors.
+//
+// This is the ecosystem's single source of truth for HTTP retryability —
+// retry policies (e.g. retry/gcp) consume it rather than maintaining their
+// own status table. Equivalent to IsRetryable(FromStatus(code)).
+func RetryableStatus(code int) bool {
+	return code == statusTimeout ||
+		code == statusRateLimited ||
+		code >= statusInternalServerError
+}
+
+// RetryableGRPCCode reports whether a gRPC status code names a transient
+// failure worth retrying with backoff: DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED,
+// ABORTED, INTERNAL, and UNAVAILABLE.
+//
+// This is the ecosystem's single source of truth for gRPC retryability.
+// Note the one deliberate divergence from IsRetryable(FromGRPCCode(code)):
+// ABORTED maps to ErrConflict (not retryable as a sentinel, mirroring HTTP
+// 409), yet is retryable here because Google Cloud guidance is to retry
+// aborted transactions.
+func RetryableGRPCCode(code uint32) bool {
+	switch code {
+	case grpcDeadlineExceeded, grpcResourceExhausted, grpcAborted, grpcInternal, grpcUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // StatusError wraps a sentinel error with the HTTP status code and
 // response body excerpt. Use [errors.As] to extract context:
 //
@@ -171,7 +202,7 @@ func FromGRPCCode(code uint32) error {
 		return ErrInvalidInput
 	case grpcNotFound:
 		return ErrNotFound
-	case grpcAlreadyExists:
+	case grpcAlreadyExists, grpcAborted:
 		return ErrConflict
 	case grpcPermissionDenied:
 		return ErrForbidden
@@ -198,6 +229,7 @@ const (
 	grpcAlreadyExists     = 6
 	grpcPermissionDenied  = 7
 	grpcResourceExhausted = 8
+	grpcAborted           = 10
 	grpcUnauthenticated   = 16
 	grpcUnavailable       = 14
 	grpcDeadlineExceeded  = 4

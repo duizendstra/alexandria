@@ -37,13 +37,30 @@ cd go/slog-gcp
 go test -race -count=1 ./...
 ```
 
-Test all Go modules:
+Test all Go modules with [`just`](https://just.systems) (provided by the Nix
+dev shell):
 
 ```bash
-for dir in go/*/; do
-    (cd "$dir" && go test -race -count=1 ./...)
+just test-all    # go test -race across every module
+just lint-all    # golangci-lint across every module
+just cover-all   # per-module coverage summary
+just check       # vet + lint + test — the full pre-push gate
+```
+
+The recipes iterate `find go -name go.mod` — the same discovery the CI
+matrix uses — so local runs and CI cannot diverge on module coverage.
+Without `just`, run the equivalent loop directly:
+
+```bash
+for modfile in $(find go -name go.mod); do
+    (cd "$(dirname "$modfile")" && GOWORK=off go test -race -count=1 ./...)
 done
 ```
+
+CI enforces a per-module coverage ratchet
+(`.github/coverage-baselines.json`): coverage may not drop below the
+recorded baseline. Raise baselines as coverage improves; the long-term
+target is the 80% publication bar.
 
 ## Commit Conventions
 
@@ -58,7 +75,8 @@ docs: update module index in README
 ```
 
 Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
-`build`, `ci`, `chore`, `revert`.
+`build`, `ci`, `chore`, `revert`. Mark breaking changes with `!` before the
+colon (e.g. `feat(async)!: redesign Runner lifecycle`).
 
 ## Git Hooks
 
@@ -67,6 +85,13 @@ Activate the versioned hooks after cloning:
 ```bash
 git config core.hooksPath .githooks
 ```
+
+The hooks are instances of the golden [`blueprints/githooks`](blueprints/githooks/)
+set: `commit-msg` validates Conventional Commits (including the `!`
+breaking-change marker; git-generated merge/revert messages pass through),
+`pre-commit` checks staged content for gofmt cleanliness and leaked
+credentials, and `pre-push` runs the fail-closed vet/lint/test/build gate
+across every module.
 
 ## Adding a New Go Module
 
