@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: How-to guides for adding modules, migrating from private packages, and publishing to pkg.go.dev.
+uuid: f93b71c5-2fef-48e3-9219-714ad1543083
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "playbooks" ]
+relations: []
 ---
 
 # 07 — Playbooks

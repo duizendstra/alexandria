@@ -166,6 +166,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: OKF vault integrity lint
+        run: python3 scripts/okf-lint.py --github
+
       - name: Check for broken internal links
         run: |
           status=0

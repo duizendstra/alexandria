@@ -18,6 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **scripts/okf-lint.py**: the OKF vault integrity lint ADR-0002 promised —
+  validates the full frontmatter schema (required fields, enums, ISO 8601
+  timestamps, domain↔folder agreement), rejects malformed/duplicate UUIDs,
+  and blocks relations with dangling `target_uuid`s. Wired into the CI
+  `docs` job alongside the link checker. Self-contained python3, no
+  third-party packages.
+- **docs**: canonical frontmatter schema unified — `okf-profile.md` now
+  documents the full ADR-0002 schema (`uuid`, `created_at`, `updated_at`,
+  `tags`, `relations` were previously undocumented there); the 11 documents
+  missing those fields (all indexes, `adr-0001`, `okf-profile.md`,
+  `docs/README.md`) backfilled; the divergent relations syntax in
+  `writing-enterprise-go-packages.md` converted to the canonical
+  `target_uuid`/`rel_type` form. `05-security/index.md` now links the root
+  `SECURITY.md` and marks unwritten policies as planned instead of
+  advertising them.
 - **go/platform/apierr** (pending `v0.1.0`): `RetryableStatus(int)` and
   `RetryableGRPCCode(uint32)` — the ecosystem's single source of truth for
   transient-failure classification (HTTP 408/429/5xx; gRPC
