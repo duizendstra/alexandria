@@ -37,11 +37,12 @@ cd go/slog-gcp
 go test -race -count=1 ./...
 ```
 
-Test all Go modules:
+Test all Go modules (modules are nested, so iterate `go.mod` files rather
+than top-level directories):
 
 ```bash
-for dir in go/*/; do
-    (cd "$dir" && go test -race -count=1 ./...)
+for modfile in $(find go -name go.mod); do
+    (cd "$(dirname "$modfile")" && GOWORK=off go test -race -count=1 ./...)
 done
 ```
 
@@ -58,7 +59,8 @@ docs: update module index in README
 ```
 
 Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
-`build`, `ci`, `chore`, `revert`.
+`build`, `ci`, `chore`, `revert`. Mark breaking changes with `!` before the
+colon (e.g. `feat(async)!: redesign Runner lifecycle`).
 
 ## Git Hooks
 
@@ -67,6 +69,13 @@ Activate the versioned hooks after cloning:
 ```bash
 git config core.hooksPath .githooks
 ```
+
+The hooks are instances of the golden [`blueprints/githooks`](blueprints/githooks/)
+set: `commit-msg` validates Conventional Commits (including the `!`
+breaking-change marker; git-generated merge/revert messages pass through),
+`pre-commit` checks staged content for gofmt cleanliness and leaked
+credentials, and `pre-push` runs the fail-closed vet/lint/test/build gate
+across every module.
 
 ## Adding a New Go Module
 
