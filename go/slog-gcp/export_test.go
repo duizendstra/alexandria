@@ -6,6 +6,8 @@ package sloggcp
 
 import (
 	"context"
+
+	"github.com/duizendstra/alexandria/go/platform/gcpenv"
 )
 
 // TraceContextKeyType is an exported alias of traceContextKey for
@@ -37,12 +39,10 @@ func ParseCloudTraceHeaderForTest(header string) CloudTraceForTest {
 // ResetMetadataCacheForTest resets the metadata project ID cache,
 // allowing tests to re-trigger metadata detection.
 func ResetMetadataCacheForTest() {
-	metadataMu.Lock()
-	defer metadataMu.Unlock()
-	metadataProjectID = ""
+	projectResolver = &gcpenv.Resolver{MetadataURL: projectResolver.MetadataURL}
 }
 
 // SetMetadataURLForTest overrides the metadata service URL for testing.
 func SetMetadataURLForTest(url string) {
-	metadataURL = url
+	projectResolver.MetadataURL = url
 }
