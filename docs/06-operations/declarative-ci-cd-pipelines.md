@@ -8,10 +8,11 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-03-04T09:00:00Z"
-updated_at: "2026-07-12T14:30:00Z"
+updated_at: "2026-07-19T12:00:00Z"
 summary: >
   Defines the continuous integration rules, release workflows, and semantic tagging
-  standards for multi-module monorepos.
+  standards for multi-module monorepos, distinguishing the pipeline that runs today
+  from planned automation.
 audience: [public]
 tags: [ "operations", "ci-cd", "tagging" ]
 relations:
@@ -22,7 +23,9 @@ relations:
 
 ## Operational Objective
 
-To establish a continuous integration and automated release delivery model that validates codebase performance, ensures contract compatibility, and handles multi-module semantic tagging with absolute zero manual intervention.
+To establish a continuous integration and automated release delivery model that validates code quality, ensures contract compatibility, and handles multi-module semantic tagging with minimal manual intervention.
+
+This document separates the **current pipeline** (what `.github/workflows/ci.yml` actually runs) from **planned automation** (checks we intend to add but which are not yet enforced). Treat only the former as a gate you can rely on.
 
 ---
 
@@ -35,39 +38,48 @@ Therefore, we enforce **path-prefixed multi-module semantic versioning**. Each s
 
 ---
 
-## Continuous Integration Quality Rules
+## Current Pipeline
 
-Our GitHub Actions pipeline executes the following checks on every Pull Request targeting the `main` branch:
+`.github/workflows/ci.yml` executes the following jobs on every Pull Request targeting the `main` branch (and on pushes to `main`):
 
 ```
 [ Pull Request ]
        |
        v
-+---------------+     +---------------+     +---------------+
-| Go Unit Tests | --> | Go Benchmarks | --> | Buf Linter    |
-| (test -v)     |     | (bench -mem)  |     | (buf lint)    |
-+---------------+     +---------------+     +---------------+
-                                                    |
-                                                    v
-                                            +---------------+
-                                            | OKF Doc Lint  |
-                                            | (link check)  |
-                                            +---------------+
++------------------+     +----------------------------------+
+| Detect Modules   | --> | Per-module: vet / test / lint    |
+| (find go.mod)    |     | (go vet, go test -race, golangci)|
++------------------+     +----------------------------------+
+
++------------------+     +------------------+     +------------------+
+| Module Hygiene   |     | Contracts (buf)  |     | Docs Link Check  |
+| (mod-hygiene)    |     | lint/break/drift |     | (relative links) |
++------------------+     +------------------+     +------------------+
 ```
 
-1.  **Strict Linting & Style** — Runs `golangci-lint` to audit formatting, imports, and static vulnerability patterns. Any linter failure blocks the merge.
-2.  **Regression Benchmarks** — Runs micro-benchmarks on critical hot-paths. If a PR introduces memory allocations on designated zero-allocation paths, the build fails.
-3.  **Buf Schema Validation** — Audits Protobuf schemas under `contracts/proto/` for backward compatibility breakages using `buf breaking`.
-4.  **OKF Document Integrity** — Runs automated checks to verify documentation links and OKF metadata conformance, blocking PRs on duplicate UUIDs or dangling relations.
+1.  **Module Discovery** — Dynamically finds every `go.mod` under `go/` so new modules are tested without pipeline edits.
+2.  **Per-Module Vet, Test & Lint** — For each module: `go vet ./...`, `go test -race -count=1 -coverprofile=coverage.out ./...`, and `golangci-lint`. Any failure blocks the merge. Coverage is *collected* but no minimum percentage is enforced.
+3.  **Module Hygiene** (`mod-hygiene`, introduced by PR [#37](https://github.com/duizendstra/alexandria/pull/37)) — Rejects committed `replace` directives, unresolvable `v0.0.0` pins, and modules missing Dependabot coverage.
+4.  **Contracts** (`contracts`, introduced by PR [#38](https://github.com/duizendstra/alexandria/pull/38)) — Runs `buf lint`, `buf breaking` against `main`, and a generated-code drift check so `go/contracts` never goes stale relative to `contracts/proto/`.
+5.  **Docs Link Check** — Verifies that relative markdown links across the repository resolve to existing files.
+
+## Planned (Not Yet Enforced)
+
+The following checks are design goals. They do **not** run in CI today; do not rely on them as gates:
+
+*   **Regression Benchmarks** — Micro-benchmarks on critical hot-paths that fail the build when a PR introduces allocations on designated zero-allocation paths. Today the repository contains a single benchmark (`go/slog-gcp`) and no benchmark job.
+*   **OKF Document Integrity Lint** — Schema validation of OKF frontmatter (duplicate UUIDs, dangling `relations`, required fields). Only the link check above exists today.
+*   **`release-please` Automation** — Parsing Conventional Commits to draft release PRs and changelogs automatically. Changelog and release management are currently manual.
+*   **Publication Validation** — A post-tag dry-run `go list -m` invocation confirming the Go module proxy can resolve the new version.
 
 ---
 
-## Release & Version Tagging Automation
+## Release & Version Tagging (Current Practice)
 
-Once a PR is merged into `main`, our release pipeline triggers:
+Once a PR is merged into `main`, releases are cut manually:
 
-### 1. Automated Changelogs
-We utilize `release-please` automation to parse Conventional Commits and draft release PRs. This generates consistent, clean, and automated changelogs.
+### 1. Changelogs
+`CHANGELOG.md` is maintained by hand using Conventional Commit history as input. (Automation via `release-please` is planned; see above.)
 
 ### 2. Path-Prefixed Annotated Tags
 Releases are marked utilizing path-prefixed git tags matching the module subdirectory. The tags must be **annotated** to contain metadata:
@@ -77,5 +89,5 @@ git tag -a go/retry/v0.1.0 -m "Release go/retry v0.1.0"
 git push origin go/retry/v0.1.0
 ```
 
-### 3. Publication Validation
-Once tagged, the pipeline runs a dry-run `go list -m` invocation to ensure the Go module proxy can resolve and index the package cleanly.
+### 3. Post-Tag Sanity Check
+After tagging, manually verify the Go module proxy resolves the new version (e.g. `GOPROXY=proxy.golang.org go list -m github.com/duizendstra/alexandria/go/retry@v0.1.0`).

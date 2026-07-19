@@ -47,6 +47,11 @@ Each Go module under `go/` is a standalone module with its own `go.mod`. Modules
 are tagged with path-prefixed tags (e.g., `go/slog-gcp/v0.1.0`) following the
 [Go module reference](https://go.dev/ref/mod#vcs-version).
 
+Version numbers are a deliberate signal: a module stays at `v0.0.x` while its
+API shape is experimental, and is bumped to `v0.1.x` only once that API shape
+has been validated by at least one real consumer (which is why `go/governance`
+sits at v0.1.0 while most siblings are v0.0.x).
+
 A `go.work` file (not committed) enables local cross-module development.
 
 ## Consequences

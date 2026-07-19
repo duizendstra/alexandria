@@ -24,3 +24,4 @@ This folder documents the technical design principles and structural patterns sh
 ## Contents
 
 - [domain-driven-design-boundaries.md](domain-driven-design-boundaries.md) — Definitive standards for Domain-Driven Design (DDD) layer boundaries and dependency directions across all modules.
+- [governance-domain-model.md](governance-domain-model.md) — The go/governance domain model (plan, scope, tiers, hierarchy, classification) and how the iac blueprints realize it on Google Cloud.
