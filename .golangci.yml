@@ -218,10 +218,7 @@ linters:
       require-specific: true
 
     gomoddirectives:
-      replace-local: true
-      replace-allow-list:
-        - github.com/duizendstra/alexandria/go/slog-gcp
-        - github.com/duizendstra/alexandria/go/discovery/search
+      replace-local: false
 
     godot:
       scope: all

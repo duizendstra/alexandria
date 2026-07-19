@@ -53,7 +53,11 @@ prose descriptions or backtick-escaped syntax instead.
 ## 9. CI Tool Compatibility
 When updating Go versions, also verify `golangci-lint-action` version compatibility.
 The action major version must support the Go version used by the module.
-In multi-module monorepos where submodules use local `replace` directives in `go.mod` for development, add an exclusion path for their `go.mod` files under the `gomoddirectives` linter in `.golangci.yml` rather than globally disabling it.
+Committed `replace` directives are forbidden in `go/**/go.mod` (enforced by the
+`mod-hygiene` CI job and the `gomoddirectives` linter). Inter-module requires
+must pin published tags; cross-module local development uses an uncommitted
+`go.work` file (see CONTRIBUTING.md). After tagging a module, bump any sibling
+modules that pin it.
 
 ## 10. PR Merge Strategy
 Merge PRs with `gh pr merge --squash --delete-branch` to keep main history
