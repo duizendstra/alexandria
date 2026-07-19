@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **go/iac/pulumi/gcpinfra**: Pulumi building blocks for GCP — folder hierarchies (`folders`) and org-level tag keys (`tagkeys`), both deletion-protected, consuming validated `go/governance` domain input.
 - **go/iac/governance**: Configuration-driven Pulumi governance blueprint — reads stack config, builds a validated tiered plan, deploys via `gcpinfra`, and exports the downstream contract.
 - **blueprints/githooks**: Golden git hooks for Go repos — Conventional Commits validation (git-generated messages pass through), index-based gofmt + credential scan on commit, and a fail-closed vet/lint/test/build gate on push.
+- **blueprints/golangci**: Golden golangci-lint profiles — one quality bar in two dependency postures: `library` (curated external allowlist, relaxed complexity) and `consumer` (stdlib + library modules only, tight complexity).
 - **go/observability/audit**: Production-proven audit logger with structured file outputs, automatic file-size rotation, and scorecard readers.
 - **go/discovery/privacyfilter**: High-security, context-aware scan and redaction filter that skips sensitive directory patterns and redacts exposed credentials/tokens.
 - **go/discovery/search**: Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic.
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **.golangci.yml**: removed dead rules — exclusions for seven nonexistent paths, a deny entry for an unused package, and references to files that don't exist; the config is now an instance of `blueprints/golangci/library.golangci.yml`. No behavior change for existing modules.
 - **slog-gcp** refactoring and feature additions:
   - Added `WithProjectID`, `WithEventIDEnabled`, `WithTraceResolver`, and `WithLabels` setup options.
   - Added `WithTraceContext` public helper for context propagation in async workers.
