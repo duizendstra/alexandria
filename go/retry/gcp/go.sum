@@ -1,5 +1,5 @@
-github.com/duizendstra/alexandria/go/retry v0.0.3 h1:cmaXnWHhx2nf5NeIITG406fd8btUvB6kEsVLHsXpCuA=
-github.com/duizendstra/alexandria/go/retry v0.0.3/go.mod h1:h53W1EEE1Bj3IsN6jaqW5nEcLKDdEUOJYHEKU2LfDmM=
+github.com/duizendstra/alexandria/go/platform/apierr v0.1.0 h1:95BCKw+xFfs5Be5sPVQorm2YwtY70tp4mWbeBxEplx0=
+github.com/duizendstra/alexandria/go/platform/apierr v0.1.0/go.mod h1:TakPbhzfY6SOW3iY75DL5z9Booq8EtVuf7hu6RavD1A=
 github.com/duizendstra/alexandria/go/retry v0.0.4 h1:FcgHGSFnuKScvmQ78C5iBHWOddrlNw1LpOR8ljE7I08=
 github.com/duizendstra/alexandria/go/retry v0.0.4/go.mod h1:h53W1EEE1Bj3IsN6jaqW5nEcLKDdEUOJYHEKU2LfDmM=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
