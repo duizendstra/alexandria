@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **.githooks**: replaced the live hooks with the golden `blueprints/githooks`
+  set — `commit-msg` now accepts the `!` breaking-change marker (the previous
+  regex rejected the repo's own `feat(async)!:`-style commits) and passes
+  git-generated merge/revert/fixup messages; `pre-commit` gains the
+  index-based gofmt gate and fine-grained-PAT secret patterns; new
+  `pre-push` runs the fail-closed vet/lint/test/build gate across every
+  module (multi-module adaptation of the blueprint).
+- **.golangci.yml**: pruned 17 dead `depguard` allowlist entries for
+  externals no module imports (whatsmeow, libsignal, sqlite, cobra/viper,
+  qrterminal, uuid, go-github, …); the allowlist now matches the blueprint
+  starter set plus `connectrpc.com/connect` (required by generated
+  `go/contracts` code). No lint behavior change for existing code.
+- **CONTRIBUTING.md**: the "test all modules" loop now iterates `go.mod`
+  files (`find go -name go.mod`) — the previous `go/*/` glob missed all
+  nested modules and reached only 5 of 19.
+
 ### Added
 
 - **go/retry**: Zero-dependency general-purpose exponential backoff retry engine with fail-fast `Permanent` error classification and HTTP client `Transport` retrier.
