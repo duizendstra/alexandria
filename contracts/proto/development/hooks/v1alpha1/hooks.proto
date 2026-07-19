@@ -1,0 +1,72 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Git hook verification — API endpoints for pre-commit,
+// commit-msg, and pre-push checks. Client hooks call these
+// endpoints on the local Kratos API for fast feedback.
+//
+// Domain:  Development
+// Concern: How do we verify code quality at commit time?
+
+syntax = "proto3";
+
+package development.hooks.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/development/hooks/v1alpha1;hooksv1alpha1";
+
+// HooksService provides git hook verification endpoints.
+service HooksService {
+  // PreCommit checks code formatting on staged files.
+  rpc PreCommit(PreCommitRequest) returns (HookResponse);
+
+  // CommitMsg validates conventional commit message format.
+  rpc CommitMsg(CommitMsgRequest) returns (HookResponse);
+
+  // PrePush runs the full quality gate and submodule-pushed check.
+  rpc PrePush(PrePushRequest) returns (HookResponse);
+}
+
+// PreCommitRequest provides context for the pre-commit hook.
+message PreCommitRequest {
+  // Absolute path to the repository root.
+  string repo_path = 1;
+  // Staged files (relative to repo root).
+  repeated string staged_files = 2;
+}
+
+// CommitMsgRequest provides the commit message for validation.
+message CommitMsgRequest {
+  // Absolute path to the repository root.
+  string repo_path = 1;
+  // The commit message to validate.
+  string message = 2;
+}
+
+// PrePushRequest provides context for the pre-push hook.
+message PrePushRequest {
+  // Absolute path to the repository root.
+  string repo_path = 1;
+  // Remote name (e.g. "origin").
+  string remote = 2;
+  // Ref being pushed (e.g. "refs/heads/main").
+  string ref = 3;
+}
+
+// HookResponse is the result of any hook check.
+message HookResponse {
+  // Whether all checks passed.
+  bool pass = 1;
+  // Individual check results.
+  repeated CheckResult checks = 2;
+}
+
+// CheckResult is the outcome of a single check within a hook.
+message CheckResult {
+  // Check name (e.g. "lint", "test", "submodule", "format").
+  string check = 1;
+  // true if this check passed.
+  bool passed = 2;
+  // Human-readable message (error details if failed).
+  string message = 3;
+  // File reference if applicable (e.g. "handler.go:42").
+  string file = 4;
+}

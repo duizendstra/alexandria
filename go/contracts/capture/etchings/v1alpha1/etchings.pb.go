@@ -16,6 +16,7 @@ package etchingsv1alpha1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -35,8 +36,8 @@ type Etching struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Raw content of the etch.
 	Content string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
-	// Output only. Creation time in RFC 3339 format.
-	CreateTime    string `protobuf:"bytes,3,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// Output only. Creation time.
+	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -85,11 +86,11 @@ func (x *Etching) GetContent() string {
 	return ""
 }
 
-func (x *Etching) GetCreateTime() string {
+func (x *Etching) GetCreateTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreateTime
 	}
-	return ""
+	return nil
 }
 
 // CreateEtchingRequest is the request for CreateEtching.
@@ -186,7 +187,12 @@ func (x *CreateEtchingResponse) GetEtching() *Etching {
 
 // ListEtchingsRequest is the request for ListEtchings.
 type ListEtchingsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Maximum number of etchings to return. Default 50, max 100 (AIP-158).
+	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Optional. Token for the next page of results, returned in a previous
+	// [ListEtchingsResponse.next_page_token].
+	PageToken     string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,13 +227,29 @@ func (*ListEtchingsRequest) Descriptor() ([]byte, []int) {
 	return file_capture_etchings_v1alpha1_etchings_proto_rawDescGZIP(), []int{3}
 }
 
+func (x *ListEtchingsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListEtchingsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 // ListEtchingsResponse is the response for ListEtchings.
 type ListEtchingsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// All etchings in the inbox.
 	Etchings []*Etching `protobuf:"bytes,1,rep,name=etchings,proto3" json:"etchings,omitempty"`
 	// Total count.
-	TotalCount    int32 `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	TotalCount int32 `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	// Token for the next page. Empty if no more results.
+	NextPageToken string `protobuf:"bytes,3,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -274,6 +296,13 @@ func (x *ListEtchingsResponse) GetTotalCount() int32 {
 		return x.TotalCount
 	}
 	return 0
+}
+
+func (x *ListEtchingsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
 }
 
 // GetEtchingRequest is the request for GetEtching.
@@ -455,21 +484,25 @@ var File_capture_etchings_v1alpha1_etchings_proto protoreflect.FileDescriptor
 
 const file_capture_etchings_v1alpha1_etchings_proto_rawDesc = "" +
 	"\n" +
-	"(capture/etchings/v1alpha1/etchings.proto\x12\x19capture.etchings.v1alpha1\"X\n" +
+	"(capture/etchings/v1alpha1/etchings.proto\x12\x19capture.etchings.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"t\n" +
 	"\aEtching\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\x12\x1f\n" +
-	"\vcreate_time\x18\x03 \x01(\tR\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x12;\n" +
+	"\vcreate_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\"0\n" +
 	"\x14CreateEtchingRequest\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\"U\n" +
 	"\x15CreateEtchingResponse\x12<\n" +
-	"\aetching\x18\x01 \x01(\v2\".capture.etchings.v1alpha1.EtchingR\aetching\"\x15\n" +
-	"\x13ListEtchingsRequest\"w\n" +
+	"\aetching\x18\x01 \x01(\v2\".capture.etchings.v1alpha1.EtchingR\aetching\"Q\n" +
+	"\x13ListEtchingsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\x9f\x01\n" +
 	"\x14ListEtchingsResponse\x12>\n" +
 	"\betchings\x18\x01 \x03(\v2\".capture.etchings.v1alpha1.EtchingR\betchings\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
-	"totalCount\"#\n" +
+	"totalCount\x12&\n" +
+	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\"#\n" +
 	"\x11GetEtchingRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"R\n" +
 	"\x12GetEtchingResponse\x12<\n" +
@@ -507,24 +540,26 @@ var file_capture_etchings_v1alpha1_etchings_proto_goTypes = []any{
 	(*GetEtchingResponse)(nil),    // 6: capture.etchings.v1alpha1.GetEtchingResponse
 	(*DeleteEtchingRequest)(nil),  // 7: capture.etchings.v1alpha1.DeleteEtchingRequest
 	(*DeleteEtchingResponse)(nil), // 8: capture.etchings.v1alpha1.DeleteEtchingResponse
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
 }
 var file_capture_etchings_v1alpha1_etchings_proto_depIdxs = []int32{
-	0, // 0: capture.etchings.v1alpha1.CreateEtchingResponse.etching:type_name -> capture.etchings.v1alpha1.Etching
-	0, // 1: capture.etchings.v1alpha1.ListEtchingsResponse.etchings:type_name -> capture.etchings.v1alpha1.Etching
-	0, // 2: capture.etchings.v1alpha1.GetEtchingResponse.etching:type_name -> capture.etchings.v1alpha1.Etching
-	1, // 3: capture.etchings.v1alpha1.EtchingsService.CreateEtching:input_type -> capture.etchings.v1alpha1.CreateEtchingRequest
-	3, // 4: capture.etchings.v1alpha1.EtchingsService.ListEtchings:input_type -> capture.etchings.v1alpha1.ListEtchingsRequest
-	5, // 5: capture.etchings.v1alpha1.EtchingsService.GetEtching:input_type -> capture.etchings.v1alpha1.GetEtchingRequest
-	7, // 6: capture.etchings.v1alpha1.EtchingsService.DeleteEtching:input_type -> capture.etchings.v1alpha1.DeleteEtchingRequest
-	2, // 7: capture.etchings.v1alpha1.EtchingsService.CreateEtching:output_type -> capture.etchings.v1alpha1.CreateEtchingResponse
-	4, // 8: capture.etchings.v1alpha1.EtchingsService.ListEtchings:output_type -> capture.etchings.v1alpha1.ListEtchingsResponse
-	6, // 9: capture.etchings.v1alpha1.EtchingsService.GetEtching:output_type -> capture.etchings.v1alpha1.GetEtchingResponse
-	8, // 10: capture.etchings.v1alpha1.EtchingsService.DeleteEtching:output_type -> capture.etchings.v1alpha1.DeleteEtchingResponse
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	9, // 0: capture.etchings.v1alpha1.Etching.create_time:type_name -> google.protobuf.Timestamp
+	0, // 1: capture.etchings.v1alpha1.CreateEtchingResponse.etching:type_name -> capture.etchings.v1alpha1.Etching
+	0, // 2: capture.etchings.v1alpha1.ListEtchingsResponse.etchings:type_name -> capture.etchings.v1alpha1.Etching
+	0, // 3: capture.etchings.v1alpha1.GetEtchingResponse.etching:type_name -> capture.etchings.v1alpha1.Etching
+	1, // 4: capture.etchings.v1alpha1.EtchingsService.CreateEtching:input_type -> capture.etchings.v1alpha1.CreateEtchingRequest
+	3, // 5: capture.etchings.v1alpha1.EtchingsService.ListEtchings:input_type -> capture.etchings.v1alpha1.ListEtchingsRequest
+	5, // 6: capture.etchings.v1alpha1.EtchingsService.GetEtching:input_type -> capture.etchings.v1alpha1.GetEtchingRequest
+	7, // 7: capture.etchings.v1alpha1.EtchingsService.DeleteEtching:input_type -> capture.etchings.v1alpha1.DeleteEtchingRequest
+	2, // 8: capture.etchings.v1alpha1.EtchingsService.CreateEtching:output_type -> capture.etchings.v1alpha1.CreateEtchingResponse
+	4, // 9: capture.etchings.v1alpha1.EtchingsService.ListEtchings:output_type -> capture.etchings.v1alpha1.ListEtchingsResponse
+	6, // 10: capture.etchings.v1alpha1.EtchingsService.GetEtching:output_type -> capture.etchings.v1alpha1.GetEtchingResponse
+	8, // 11: capture.etchings.v1alpha1.EtchingsService.DeleteEtching:output_type -> capture.etchings.v1alpha1.DeleteEtchingResponse
+	8, // [8:12] is the sub-list for method output_type
+	4, // [4:8] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_capture_etchings_v1alpha1_etchings_proto_init() }
