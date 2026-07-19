@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **go/iac/delivery** (pending `v0.1.1`): the Compute default SA is granted `secretmanager.secretAccessor` on the GitHub OAuth token secret once the connection is configured — Cloud Build v2 triggers run as that SA and read the authorizer credential.
+
 ## 2026-07-19 — maturity & graduation wave
 
 Released tags: `go/platform/apierr/v0.1.0`, `go/retry/v0.1.0`,

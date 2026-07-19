@@ -14,7 +14,11 @@ reader grants for consumer workloads.
    Cloud Build default SA
 3. A Cloud Build v2 connection to GitHub (app installation +
    OAuth-token secret version); until both are configured, the stack
-   exports a `nextStep` hint and stops after the registry
+   exports a `nextStep` hint and stops after the registry. Once
+   configured, the Compute default SA is granted
+   `secretmanager.secretAccessor` on the OAuth token secret (Cloud
+   Build v2 triggers run as that SA and read the authorizer
+   credential)
 4. Repository links and tag-push build triggers, all from config
 5. `artifactregistry.reader` for each consumer workload stack's Cloud
    Run service agent (project numbers read via stack references)
