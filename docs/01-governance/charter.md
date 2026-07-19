@@ -8,7 +8,7 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-03-03T09:00:00Z"
-updated_at: "2026-07-12T14:30:00Z"
+updated_at: "2026-07-19T12:00:00Z"
 summary: >
   Defines the core mission, quality standards, and engineering principles governing
   the shared software ecosystem.
@@ -43,11 +43,11 @@ Establishing a unified, authoritative shared workspace addresses these issues at
 
 ## Success Criteria & Quality Gates
 
-To preserve the absolute integrity of our shared ecosystem, any component or library graduating into this workspace must meet five rigorous quality gates:
+To preserve the integrity of our shared ecosystem, any component or library graduating into this workspace is held to five quality gates. Gates 1, 4, and 5 are enforced today through review and CI; gates 2 and 3 are stated as targets, with their current enforcement status noted honestly:
 
 1.  **Architectural Purity** — Strict separation of core domains from external adapters.
-2.  **SRE-Hardening** — Zero-allocation hot paths, automatic TCP keep-alive socket body draining, and panic-resilient async workers.
-3.  **Hermetic Reproducibility** — 100% deterministic local environments managed entirely via Nix Flakes.
+2.  **SRE-Hardening** *(target, not yet enforced)* — We aim for zero-allocation hot paths, well-behaved HTTP transports, and panic-resilient async workers. There is currently no CI benchmark gate verifying allocation behavior; the repository contains a single benchmark. Treat this gate as a design aspiration checked in review, not an automated guarantee.
+3.  **Hermetic Development Toolchain** — The repository ships a Nix flake providing a pinned development shell (Go toolchain, `buf`, `golangci-lint`). This makes the *toolchain* reproducible; it does not claim hermetic management of 100% of all dependencies.
 4.  **Security-First Design** — Completely free of static credential dependencies; relying entirely on Workload Identity or declarative environment injection.
 5.  **Agentic Ready** — AI-readable YAML frontmatter on all documentation files and well-defined machine-readable schemas.
 
