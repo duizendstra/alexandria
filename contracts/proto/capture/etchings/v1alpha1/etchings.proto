@@ -8,6 +8,8 @@ syntax = "proto3";
 
 package capture.etchings.v1alpha1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/duizendstra/alexandria/go/contracts/capture/etchings/v1alpha1;etchingsv1alpha1";
 
 // EtchingsService manages raw captures (etchings) for later triage.
@@ -31,8 +33,8 @@ message Etching {
   string name = 1;
   // Raw content of the etch.
   string content = 2;
-  // Output only. Creation time in RFC 3339 format.
-  string create_time = 3;
+  // Output only. Creation time.
+  google.protobuf.Timestamp create_time = 3;
 }
 
 // CreateEtchingRequest is the request for CreateEtching.
@@ -48,7 +50,13 @@ message CreateEtchingResponse {
 }
 
 // ListEtchingsRequest is the request for ListEtchings.
-message ListEtchingsRequest {}
+message ListEtchingsRequest {
+  // Optional. Maximum number of etchings to return. Default 50, max 100 (AIP-158).
+  int32 page_size = 1;
+  // Optional. Token for the next page of results, returned in a previous
+  // [ListEtchingsResponse.next_page_token].
+  string page_token = 2;
+}
 
 // ListEtchingsResponse is the response for ListEtchings.
 message ListEtchingsResponse {
@@ -56,6 +64,8 @@ message ListEtchingsResponse {
   repeated Etching etchings = 1;
   // Total count.
   int32 total_count = 2;
+  // Token for the next page. Empty if no more results.
+  string next_page_token = 3;
 }
 
 // GetEtchingRequest is the request for GetEtching.

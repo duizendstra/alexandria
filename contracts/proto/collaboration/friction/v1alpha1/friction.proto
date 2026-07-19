@@ -1,0 +1,156 @@
+// Friction captures process pain points for retrospective analysis.
+//
+// Scrumban: Retro phase — captures what slowed us down.
+// CODE: Capture (instant logging) → Organize (sprint summary).
+// PARA: Projects — friction is per-sprint, time-bound.
+// Hexagonal: core domain — FrictionService defines the port contract.
+//
+// Models: Scrumban (retro), Theory of Constraints (find bottleneck),
+// OODA (friction slows the Observe→Act loop).
+syntax = "proto3";
+
+package collaboration.friction.v1alpha1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/collaboration/friction/v1alpha1;frictionv1alpha1";
+
+// FrictionStatus represents the lifecycle of a friction point.
+enum FrictionStatus {
+  // Default value.
+  FRICTION_STATUS_UNSPECIFIED = 0;
+  // Newly logged, unreviewed.
+  FRICTION_STATUS_NEW = 1;
+  // Acknowledged and being addressed.
+  FRICTION_STATUS_ACKNOWLEDGED = 2;
+  // Resolved — the pain point is gone.
+  FRICTION_STATUS_RESOLVED = 3;
+}
+
+// FrictionCategory classifies friction by type.
+enum FrictionCategory {
+  // Default value.
+  FRICTION_CATEGORY_UNSPECIFIED = 0;
+  // Tooling issues — broken terminals, slow builds, flaky tests.
+  FRICTION_CATEGORY_TOOLING = 1;
+  // Process issues — too much ceremony, unclear workflow.
+  FRICTION_CATEGORY_PROCESS = 2;
+  // Communication issues — unclear requirements, misalignment.
+  FRICTION_CATEGORY_COMMUNICATION = 3;
+  // Technical debt — missing tests, unrefactored code.
+  FRICTION_CATEGORY_DEBT = 4;
+}
+
+// Friction represents a logged pain point.
+// Resource name pattern: "friction/{friction_id}" (AIP-122).
+message Friction {
+  // Resource name (e.g. "friction/a1b2c3d4").
+  string name = 1;
+  // Description of the friction point.
+  string description = 2;
+  // Category of friction.
+  FrictionCategory category = 3;
+  // Lifecycle state.
+  FrictionStatus status = 4;
+  // Optional. Sprint this friction was logged during.
+  string sprint = 5;
+  // Output only. Creation time.
+  google.protobuf.Timestamp create_time = 6;
+}
+
+// FrictionService manages process friction for retrospectives.
+//
+// Friction flows: Log → Acknowledge → Resolve (or accept as known).
+// Sprint summaries aggregate friction for retro discussions.
+service FrictionService {
+  // LogFriction captures a new friction point (AIP-133).
+  rpc LogFriction(LogFrictionRequest) returns (LogFrictionResponse);
+  // ListFriction returns friction points with optional filtering (AIP-132).
+  rpc ListFriction(ListFrictionRequest) returns (ListFrictionResponse);
+  // UpdateFriction modifies status or description (AIP-134).
+  rpc UpdateFriction(UpdateFrictionRequest) returns (UpdateFrictionResponse);
+  // SprintSummary aggregates friction for a sprint retrospective.
+  rpc SprintSummary(SprintSummaryRequest) returns (SprintSummaryResponse);
+}
+
+// LogFrictionRequest is the request for
+// [FrictionService.LogFriction].
+message LogFrictionRequest {
+  // Required. Description of the friction.
+  string description = 1;
+  // Optional. Category. Defaults to UNSPECIFIED.
+  FrictionCategory category = 2;
+  // Optional. Sprint name (e.g. "sprints/3").
+  string sprint = 3;
+}
+
+// LogFrictionResponse is the response for
+// [FrictionService.LogFriction].
+message LogFrictionResponse {
+  // The logged friction point.
+  Friction friction = 1;
+}
+
+// ListFrictionRequest is the request for
+// [FrictionService.ListFriction].
+message ListFrictionRequest {
+  // Optional. Filter by status.
+  FrictionStatus status = 1;
+  // Optional. Filter by sprint.
+  string sprint = 2;
+  // Optional. Page size. Default 50, max 100.
+  int32 page_size = 3;
+  // Optional. Page token.
+  string page_token = 4;
+}
+
+// ListFrictionResponse is the response for
+// [FrictionService.ListFriction].
+message ListFrictionResponse {
+  // Friction points.
+  repeated Friction items = 1;
+  // Next page token.
+  string next_page_token = 2;
+  // Total count.
+  int32 total_size = 3;
+}
+
+// UpdateFrictionRequest is the request for
+// [FrictionService.UpdateFriction].
+message UpdateFrictionRequest {
+  // Required. Resource name.
+  string name = 1;
+  // Optional. Updated description.
+  string description = 2;
+  // Optional. Updated status.
+  FrictionStatus status = 3;
+}
+
+// UpdateFrictionResponse is the response for
+// [FrictionService.UpdateFriction].
+message UpdateFrictionResponse {
+  // The updated friction point.
+  Friction friction = 1;
+}
+
+// SprintSummaryRequest is the request for
+// [FrictionService.SprintSummary].
+message SprintSummaryRequest {
+  // Required. Sprint name (e.g. "sprints/3").
+  string sprint = 1;
+}
+
+// SprintSummaryResponse is the response for
+// [FrictionService.SprintSummary].
+message SprintSummaryResponse {
+  // Sprint name.
+  string sprint = 1;
+  // Total friction points logged.
+  int32 total_count = 2;
+  // Resolved during sprint.
+  int32 resolved_count = 3;
+  // Breakdown by category.
+  map<string, int32> by_category = 4;
+  // Top unresolved friction points.
+  repeated Friction top_unresolved = 5;
+}

@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package intelligence.memory.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/intelligence/memory/v1alpha1;memoryv1alpha1";
+
+// Interaction represents a single communication event stored in memory.
+// Resource name pattern: "interactions/{interaction_id}" (AIP-122).
+message Interaction {
+  // Resource name (e.g. "interactions/a1b2c3d4").
+  string id = 1;
+  // Origin channel (e.g. "whatsapp", "slack").
+  string source = 2;
+  // Identifier of the message sender.
+  string sender_id = 3;
+  // The message content.
+  string content = 4;
+  // Unix timestamp of the original message.
+  int64 timestamp = 5;
+}
+
+// MemoryService manages long-term context and knowledge.
+// It bridges current communication with historical records,
+// enabling agents to recall past interactions.
+service MemoryService {
+  // StoreInteraction records a communication event (AIP-133).
+  rpc StoreInteraction(StoreInteractionRequest) returns (StoreInteractionResponse);
+  // RetrieveContext fetches relevant historical context for a query.
+  rpc RetrieveContext(RetrieveContextRequest) returns (RetrieveContextResponse);
+}
+
+// StoreInteractionRequest is the request message for
+// [MemoryService.StoreInteraction][intelligence.memory.v1alpha1.MemoryService.StoreInteraction].
+message StoreInteractionRequest {
+  // Required. Origin channel (e.g. "whatsapp", "slack").
+  string source = 1;
+  // Required. Identifier of the message sender.
+  string sender_id = 2;
+  // Required. The message content.
+  string content = 3;
+  // Required. Unix timestamp of the original message.
+  int64 timestamp = 4;
+}
+
+// StoreInteractionResponse is the response message for
+// [MemoryService.StoreInteraction][intelligence.memory.v1alpha1.MemoryService.StoreInteraction].
+// Returns the full resource per AIP-133.
+message StoreInteractionResponse {
+  // The stored interaction with server-assigned ID.
+  Interaction interaction = 1;
+}
+
+// RetrieveContextRequest is the request message for
+// [MemoryService.RetrieveContext][intelligence.memory.v1alpha1.MemoryService.RetrieveContext].
+message RetrieveContextRequest {
+  // Required. The user's current question or intent.
+  string query = 1;
+  // Optional. Maximum number of context snippets to return. Default 10.
+  int32 limit = 2;
+}
+
+// RetrieveContextResponse is the response message for
+// [MemoryService.RetrieveContext][intelligence.memory.v1alpha1.MemoryService.RetrieveContext].
+message RetrieveContextResponse {
+  // Relevant historical context snippets.
+  repeated string context_snippets = 1;
+}

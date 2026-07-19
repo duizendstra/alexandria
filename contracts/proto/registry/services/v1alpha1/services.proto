@@ -1,0 +1,33 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Service registry types — describes services in the ecosystem.
+// Go package registry/services implements the catalog and health checks.
+
+syntax = "proto3";
+
+package registry.services.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/registry/services/v1alpha1;servicesv1alpha1";
+
+// Transport describes the protocol a service uses.
+enum Transport {
+  TRANSPORT_UNSPECIFIED = 0;
+  // Connect RPC protocol (HTTP/2 + protobuf).
+  TRANSPORT_CONNECT_RPC = 1;
+  // Model Context Protocol (stdio or SSE).
+  TRANSPORT_MCP = 2;
+}
+
+// Service describes a registered service in the ecosystem.
+message Service {
+  // Unique service identifier (e.g. "kratos-api", "nous-api").
+  string name = 1;
+  // Default port the service listens on.
+  int32 port = 2;
+  // Default bind address (e.g. "127.0.0.1").
+  string bind = 3;
+  // Protocol used by the service.
+  Transport transport = 4;
+  // Human-readable summary.
+  string description = 5;
+}

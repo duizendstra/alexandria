@@ -1,0 +1,39 @@
+// Package alx.email defines the minimal outbound-send email payload for
+// the Postmark integration ("alx" is short for Alexandria).
+//
+// This is intentionally NOT the canonical message model. It covers only
+// what an outbound send needs: one sender, one recipient, subject, and
+// body. The canonical, full-fidelity message model (threading, labels,
+// attachments, provenance) is domain.message.v1.Message — do not grow
+// this type toward it; compose or map instead.
+
+syntax = "proto3";
+
+package alx.email.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/alx/email/v1alpha1;emailv1alpha1";
+
+// Address represents an email address with optional display name.
+message Address {
+  // Email address (addr-spec per RFC 5322, e.g., "jan@example.nl").
+  string email = 1;
+  // Optional display name (e.g., "Jan de Vries").
+  string name = 2;
+}
+
+// Message represents a single outbound email message.
+// Covers the minimum viable email: one sender, one recipient,
+// subject, and HTML body. For multi-recipient, templated, or
+// threaded email, extend with additional message types.
+message Message {
+  // Sender address.
+  Address from = 1;
+  // Recipient address.
+  Address to = 2;
+  // Email subject line.
+  string subject = 3;
+  // Optional. Plain text body (fallback for clients that can't render HTML).
+  string text_body = 4;
+  // Optional. HTML body content. Rendering is the caller's responsibility.
+  string html_body = 5;
+}

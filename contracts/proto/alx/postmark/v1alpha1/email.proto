@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package alx.postmark.v1alpha1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/alx/postmark/v1alpha1;postmarkv1alpha1";
+
+// SendResponse represents Postmark's response after accepting an email.
+// Source: https://postmarkapp.com/developer/api/email-api#send-a-single-email
+message SendResponse {
+  // Recipient email address.
+  string to = 1;
+  // Time when Postmark accepted the message.
+  google.protobuf.Timestamp submitted_at = 2;
+  // Unique message ID assigned by Postmark.
+  string message_id = 3;
+  // Error code (0 = success).
+  int32 error_code = 4;
+  // Status message.
+  string message = 5;
+}

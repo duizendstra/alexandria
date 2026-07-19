@@ -1,0 +1,218 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Timeline events — the workspace awareness feed.
+// A Twitter-like timeline where agents, humans, and platforms
+// publish events. Events are never consumed — they stay as
+// workspace memory. Some events are actionable (queue view).
+//
+// Domain:  Timeline
+// Concern: How do we track what happened across the workspace?
+
+syntax = "proto3";
+
+package timeline.event.v1alpha1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/timeline/event/v1alpha1;eventv1alpha1";
+
+// TimelineService provides the workspace event feed.
+service TimelineService {
+  // Publish records an event on the timeline.
+  rpc Publish(PublishRequest) returns (PublishResponse);
+
+  // Query returns events matching the given filters.
+  rpc Query(QueryRequest) returns (QueryResponse);
+
+  // Stream opens a real-time event stream (server-side streaming).
+  rpc Stream(StreamRequest) returns (stream StreamResponse);
+
+  // Resolve marks an actionable event as resolved.
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
+
+  // Summary returns a digest of recent activity — designed for session start.
+  // "Since your last session: 3 commits, 1 ADR drafted, 2 actions pending."
+  rpc Summary(SummaryRequest) returns (SummaryResponse);
+}
+
+// Well-known event types.
+//
+// Convention: domain.action (dot notation).
+// The type field on Event is a string for extensibility,
+// but these are the canonical types.
+//
+// Code events:
+//   commit.created    — local commit made
+//   commit.pushed     — commits pushed to sync branch
+//   commit.merged     — PR merged to main via rebase
+//
+// Quality events:
+//   quality.passed    — quality gate passed (lint + test)
+//   quality.failed    — quality gate failed
+//   ci.started        — GitHub Action started
+//   ci.passed         — GitHub Action passed
+//   ci.failed         — GitHub Action failed
+//
+// Sync events:
+//   sync.started      — spoke→hub sync initiated
+//   sync.completed    — sync finished successfully
+//   sync.conflict     — rebase conflict detected
+//   sync.failed       — sync failed (push error, CI rejection)
+//
+// Session events:
+//   session.started   — agent/developer began a work session
+//   session.ended     — session ended cleanly
+//   session.summary   — end-of-session summary with key outcomes
+//
+// Artifact events:
+//   artifact.created  — document, analysis, or design artifact created
+//   artifact.updated  — existing artifact updated
+//   artifact.promoted — artifact moved from scratch to Alexandria
+//
+// Decision events:
+//   decision.proposed — ADR or design decision proposed
+//   decision.accepted — decision accepted
+//   decision.superseded — decision superseded by a newer one
+//
+// Collaboration events:
+//   issue.created     — GitHub issue created
+//   issue.closed      — GitHub issue closed
+//   sprint.planned    — sprint planned with stories
+//   sprint.completed  — sprint finished
+//   handover.context  — context shared between agents
+//
+// Prototype events:
+//   prototype.created — scratch prototype started
+//   prototype.validated — prototype proven (ready to promote)
+//   prototype.promoted — prototype promoted to Alexandria
+//   prototype.abandoned — prototype deleted
+//
+// System events:
+//   health.ok         — spoke/service healthy
+//   health.degraded   — spoke/service degraded
+//   health.down       — spoke/service unreachable
+//
+// Tag events:
+//   tag.created       — Go module tagged
+//   tag.pushed        — tag pushed to remote
+
+// Event is a single entry on the workspace timeline.
+message Event {
+  // Unique event identifier.
+  string id = 1;
+  // Point-in-time when this event occurred.
+  google.protobuf.Timestamp timestamp = 2;
+  // Who caused this event (e.g. "@antigravity", "@jasper", "@github").
+  string actor = 3;
+  // Event type using dot notation (e.g. "commit.pushed", "ci.failed").
+  string type = 4;
+  // What was acted on (e.g. "alexandria", "#156", "kratos-api").
+  string target = 5;
+  // Human-readable summary.
+  string message = 6;
+  // Whether this event requires someone to act.
+  bool actionable = 7;
+  // If resolved, the ID of the resolving event.
+  string resolved_by = 8;
+  // Structured references to related entities.
+  Refs refs = 9;
+}
+
+// Refs links an event to related entities (commits, issues, PRs, etc.)
+message Refs {
+  string commit = 1;
+  string issue = 2;
+  string pr = 3;
+  string tag = 4;
+  string spoke = 5;
+  string repo = 6;
+  // File path (for artifacts — relative to workspace root or absolute).
+  string file = 7;
+  // Conversation ID (links to agent session that produced this event).
+  string conversation = 8;
+}
+
+// PublishRequest sends a new event to the timeline.
+message PublishRequest {
+  string actor = 1;
+  string type = 2;
+  string target = 3;
+  string message = 4;
+  bool actionable = 5;
+  Refs refs = 6;
+}
+
+// PublishResponse confirms the event was recorded.
+message PublishResponse {
+  string event_id = 1;
+}
+
+// QueryRequest filters timeline events.
+message QueryRequest {
+  // Filter by actor (e.g. "@antigravity").
+  string actor = 1;
+  // Filter by event type prefix (e.g. "commit" matches "commit.pushed").
+  string type_prefix = 2;
+  // Filter by target.
+  string target = 3;
+  // Only actionable events (queue view).
+  bool actionable_only = 4;
+  // Only unresolved actionable events.
+  bool unresolved_only = 5;
+  // Events after this time.
+  google.protobuf.Timestamp since = 6;
+  // Maximum number of events to return.
+  int32 limit = 7;
+}
+
+// QueryResponse returns matching timeline events.
+message QueryResponse {
+  repeated Event events = 1;
+  int32 total = 2;
+}
+
+// StreamRequest opens a real-time event stream.
+message StreamRequest {
+  // Optional type prefix filter for the stream.
+  string type_prefix = 1;
+  // Optional actor filter.
+  string actor = 2;
+}
+
+// StreamResponse wraps a single event in a stream.
+message StreamResponse {
+  Event event = 1;
+}
+
+// ResolveRequest marks an actionable event as resolved.
+message ResolveRequest {
+  // The event to resolve.
+  string event_id = 1;
+  // The resolving event (e.g. "fix committed").
+  string resolved_by_event_id = 2;
+}
+
+// ResolveResponse confirms the resolution.
+message ResolveResponse {
+  string event_id = 1;
+}
+
+// SummaryRequest asks for a session-start digest.
+message SummaryRequest {
+  // Spoke requesting the summary (to calculate "since last session").
+  string spoke_id = 1;
+  // Override: return summary since this time instead of last session.
+  google.protobuf.Timestamp since = 2;
+}
+
+// SummaryResponse provides a session-start context digest.
+message SummaryResponse {
+  // When this spoke was last seen.
+  google.protobuf.Timestamp last_session = 1;
+  // Counts by event type prefix since last session.
+  map<string, int32> counts = 2;
+  // Unresolved actionable events pending for this spoke.
+  repeated Event pending_actions = 3;
+  // Recent highlights (most important events, curated).
+  repeated Event highlights = 4;
+}
