@@ -41,7 +41,22 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
+    directory: "/go/iac/finops/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/iac/identity/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
     directory: "/go/iac/pulumi/gcpinfra/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/iac/workloads/"
     schedule:
       interval: "weekly"
 
