@@ -3,8 +3,9 @@ package datadiff
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
+
+	"github.com/duizendstra/alexandria/go/platform/gcpenv"
 )
 
 var ErrInvalidTarget = errors.New("expected project.dataset.table")
@@ -26,6 +27,7 @@ func ParseTarget(s string) (Target, error) {
 }
 
 // ParseTargetPair parses left and right table strings into Targets.
+//
 //nolint:gocritic // gocritic unnamedResult clashes with nonamedreturns linter
 func ParseTargetPair(left, right string) (Target, Target, error) {
 	l, err := ParseTarget(left)
@@ -42,13 +44,14 @@ func ParseTargetPair(left, right string) (Target, Target, error) {
 }
 
 // BillingProject returns the explicit project if set, or falls back to
-// GOOGLE_CLOUD_PROJECT env var, or the target's project.
+// the canonical project ID environment variables (via gcpenv), or the
+// target's project.
 func BillingProject(explicit string, fallback Target) string {
 	if explicit != "" {
 		return explicit
 	}
 
-	if p := os.Getenv("GOOGLE_CLOUD_PROJECT"); p != "" {
+	if p := gcpenv.FromEnv(); p != "" {
 		return p
 	}
 

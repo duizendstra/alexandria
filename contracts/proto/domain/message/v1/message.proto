@@ -18,6 +18,7 @@ enum MessageType {
   MESSAGE_TYPE_EMAIL = 1;
   MESSAGE_TYPE_CHAT = 2;
   MESSAGE_TYPE_NOTIFICATION = 3;
+  reserved 4 to 9;
   // 4-9 reserved for future types.
 }
 
@@ -28,6 +29,7 @@ enum DraftStatus {
   DRAFT_STATUS_READY = 2; // Ready to send.
   DRAFT_STATUS_SENT = 3; // Has been sent.
   DRAFT_STATUS_DISCARDED = 4; // Abandoned.
+  reserved 5 to 9;
   // 5-9 reserved.
 }
 
@@ -39,6 +41,7 @@ message Participant {
   // Address (e.g. "jasper@example.com").
   string address = 2;
 
+  reserved 3 to 9;
   // 3-9 reserved for future fields.
 }
 
@@ -86,6 +89,7 @@ message Message {
   // Whether the message has been read.
   bool is_read = 14;
 
+  reserved 15 to 29;
   // 15-29 reserved for future fields (attachments, headers, etc.).
 }
 
@@ -103,5 +107,6 @@ message Draft {
   // When the draft was last modified.
   google.protobuf.Timestamp updated_at = 4;
 
+  reserved 5 to 9;
   // 5-9 reserved for future fields.
 }

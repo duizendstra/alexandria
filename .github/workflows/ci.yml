@@ -66,6 +66,66 @@ jobs:
           version: latest
           working-directory: ${{ matrix.module }}
 
+  mod-hygiene:
+    name: Module hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Reject replace directives and unresolvable pins
+        run: |
+          status=0
+          while IFS= read -r mod; do
+            if grep -qE '^replace ' "$mod"; then
+              echo "::error file=$mod::Committed replace directive found. Use published version pins; local cross-module dev goes through an uncommitted go.work."
+              status=1
+            fi
+            if grep -qE 'github.com/duizendstra/alexandria/[^ ]+ v0\.0\.0$' "$mod"; then
+              echo "::error file=$mod::Pin of non-existent version v0.0.0. Require a published tag."
+              status=1
+            fi
+          done < <(find go/ -name go.mod)
+          exit $status
+
+      - name: Require Dependabot coverage for every module
+        run: |
+          status=0
+          while IFS= read -r dir; do
+            if ! grep -q "directory: \"/$dir/\"" .github/dependabot.yml; then
+              echo "::error file=.github/dependabot.yml::Missing gomod entry for /$dir/"
+              status=1
+            fi
+          done < <(find go/ -name go.mod -exec dirname {} \;)
+          exit $status
+
+  contracts:
+    name: Contracts (buf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Lint
+        working-directory: contracts
+        run: buf lint
+
+      - name: Breaking change check
+        if: github.event_name == 'pull_request'
+        working-directory: contracts
+        run: buf breaking --against '../.git#branch=origin/main,subdir=contracts'
+
+      - name: Generated code drift check
+        working-directory: contracts
+        run: |
+          buf generate
+          git diff --exit-code ../go/contracts \
+            || { echo "::error::go/contracts is stale. Run 'buf generate' in contracts/ and commit the result."; exit 1; }
+
   docs:
     name: Validate docs
     runs-on: ubuntu-latest

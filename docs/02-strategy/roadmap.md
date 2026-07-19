@@ -8,7 +8,7 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-03-04T09:00:00Z"
-updated_at: "2026-07-12T14:30:00Z"
+updated_at: "2026-07-19T12:00:00Z"
 summary: >
   Defines the lifecycle, quality gates, and graduation roadmap for moving
   custom codebase utilities into standard, shared ecosystem capabilities.
@@ -48,7 +48,7 @@ Every shared module, contract, or blueprint progresses through four maturity sta
 
 ### 3. Standard (Stable)
 *   **Definition**: An approved, SRE-hardened, and fully integrated ecosystem capability.
-*   **Quality Standard**: 100% test coverage, zero-allocation hot paths, fully documented with OKF metadata schemas, and automated CI/CD pipeline verification.
+*   **Quality Standard**: High test coverage and zero-allocation hot paths as *target criteria* (see enforcement note below), fully documented with OKF metadata schemas, and automated CI/CD pipeline verification of tests, linting, and module hygiene.
 *   **Location**: Merged into `main` and tagged in the shared repository.
 
 ### 4. Mature (Legacy)
@@ -59,15 +59,15 @@ Every shared module, contract, or blueprint progresses through four maturity sta
 
 ## Graduation Quality Gates
 
-For a capability to graduate from a **Candidate** to a **Standard**, it must pass the following structural validation criteria:
+For a capability to graduate from a **Candidate** to a **Standard**, it must pass the following structural validation criteria. These are **target criteria**: today the Architecture, Resiliency, and Documentation dimensions are checked through code review, and CI enforces tests, `golangci-lint`, and module hygiene. Coverage percentages and allocation benchmarks are **not yet gated in CI** — the repository currently has a single benchmark and no coverage threshold — so the Performance row in particular is verified manually until the planned benchmark gate lands.
 
-| Dimension | Verification Metric | Target Standard |
-|---|---|---|
-| **Architecture** | DDD Isolation | 100% separation of core domain models from third-party transport or database libraries. |
-| **Performance** | Benchmarks | Zero-allocations on hot serialization, formatting, or routing paths. |
-| **Resiliency** | Retries & Timeout | All outbound transport adapters must utilize explicit context timeouts and exponential retry backoffs. |
-| **Reproducibility** | Environment | Flawless local shell generation via Nix package manager. |
-| **Documentation** | OKF Compliance | Documented inside the `docs/` vault with RFC-compliant, queryable YAML frontmatter. |
+| Dimension | Verification Metric | Target Standard | Current Enforcement |
+|---|---|---|---|
+| **Architecture** | DDD Isolation | 100% separation of core domain models from third-party transport or database libraries. | Code review |
+| **Performance** | Benchmarks | Zero-allocations on hot serialization, formatting, or routing paths. | Manual; no CI benchmark gate yet |
+| **Resiliency** | Retries & Timeout | All outbound transport adapters must utilize explicit context timeouts and exponential retry backoffs. | Code review |
+| **Reproducibility** | Environment | Local dev shell generation via the repository Nix flake. | Nix flake (dev toolchain) |
+| **Documentation** | OKF Compliance | Documented inside the `docs/` vault with RFC-compliant, queryable YAML frontmatter. | Review + CI link check |
 
 ---
 

@@ -40,8 +40,14 @@
 // This pattern is built directly into DWDValidator.ValidateAccess.
 //
 // 4. API Resilience: Google API calls can be subject to rate-limiting (HTTP 429) or transient
-// 5xx server errors. The DWDValidator automatically wraps access checks in exponential backoff
-// retries (via github.com/duizendstra/alexandria/go/retry/gcp).
+// 5xx server errors. Every client resolved by ResolveClient routes HTTP traffic through a
+// transport-level retry (github.com/duizendstra/alexandria/go/retry) with exponential backoff,
+// so all API services built from the resolved options inherit a uniform retry policy. Requests
+// with non-rewindable bodies (streaming uploads without GetBody) are sent exactly once. Tune the
+// attempt budget with WithRetryAttempts or opt out with WithoutRetry. The DWDValidator
+// additionally wraps its access check in GCP-aware retries
+// (github.com/duizendstra/alexandria/go/retry/gcp) so it also protects services that were not
+// built through ResolveClient.
 //
 // 5. Environment Fallbacks: If no explicit authentication configuration is supplied to
 // ResolveClient, it dynamically falls back to the service account specified by the
