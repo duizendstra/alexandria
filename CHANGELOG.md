@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **skills/ko-build**: Antigravity skill for setting up ko container builds with CI/CD patterns and troubleshooting
 - **go/dataquality/datadiff**: Deep comparison and data validation tool for schemas, volume, and metric stats with configurable tolerance limits.
 - **go/governance**: Cloud-agnostic governance domain model — tiered plans (Starter/Standard/Enterprise), organizational hierarchy, classification dimensions, scope capabilities, and stack export contract. Pure Go, zero dependencies.
+- **go/iac/pulumi/gcpinfra**: Pulumi building blocks for GCP — folder hierarchies (`folders`) and org-level tag keys (`tagkeys`), both deletion-protected, consuming validated `go/governance` domain input.
 - **go/observability/audit**: Production-proven audit logger with structured file outputs, automatic file-size rotation, and scorecard readers.
 - **go/discovery/privacyfilter**: High-security, context-aware scan and redaction filter that skips sensitive directory patterns and redacts exposed credentials/tokens.
 - **go/discovery/search**: Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic.
