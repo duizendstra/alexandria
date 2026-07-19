@@ -1,0 +1,61 @@
+#!/bin/sh
+# Pre-commit: gofmt check + secret scan.
+#
+# Both checks run against the INDEX (what will actually be committed),
+# not the working tree — staged content and disk may differ.
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+fail=0
+
+for file in $STAGED; do
+  git show ":$file" > "$TMP" 2>/dev/null || continue
+
+  # --- 1. Formatting: staged .go files must be gofmt-clean ---
+  case "$file" in
+    *.go)
+      if command -v gofmt >/dev/null 2>&1; then
+        if [ -n "$(gofmt -l "$TMP" 2>/dev/null)" ]; then
+          printf '❌ Needs formatting (run gofmt -w): %s\n' "$file"
+          fail=1
+        fi
+      fi
+      ;;
+  esac
+
+  # --- 2. Secret scan: block committed credentials ---
+  if grep -qE 'gh[pousr]_[A-Za-z0-9]{36,}' "$TMP"; then
+    printf '🔑 Leaked GitHub token detected in: %s\n' "$file"
+    fail=1
+  fi
+  if grep -qE 'github_pat_[A-Za-z0-9_]{36,}' "$TMP"; then
+    printf '🔑 Leaked GitHub fine-grained PAT detected in: %s\n' "$file"
+    fail=1
+  fi
+  if grep -qE 'AIza[A-Za-z0-9_-]{35}' "$TMP"; then
+    printf '🔑 Leaked GCP API key detected in: %s\n' "$file"
+    fail=1
+  fi
+  if grep -qE 'AKIA[A-Z0-9]{16}' "$TMP"; then
+    printf '🔑 Leaked AWS access key detected in: %s\n' "$file"
+    fail=1
+  fi
+  # -{5} instead of five literal dashes so this script never matches itself.
+  if grep -qE -- '-{5}BEGIN.*PRIVATE KEY' "$TMP"; then
+    printf '🔑 Private key detected in: %s\n' "$file"
+    fail=1
+  fi
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "❌ Commit blocked. Fix the issues above and re-stage."
+  exit 1
+fi
