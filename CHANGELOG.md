@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2026-07-19 — cloudrun explicit CPU limit
+
+Released tags: `go/iac/pulumi/gcpinfra/v0.4.1`.
+
+### Added
+
+- **go/iac/pulumi/gcpinfra v0.4.1**: `cloudrun.ServiceConfig` and
+  `JobConfig` gain an optional `CPU` limit (e.g. `"1000m"`). Cloud Run
+  applies a server-side CPU default when unset, which surfaces in
+  `pulumi preview` as a phantom limit removal on stacks that never
+  declared it; declaring the limit keeps the desired state aligned with
+  the live resource.
+
 ## 2026-07-19 — ingestion/transform IaC primitives
 
 Released tags: `go/iac/pulumi/gcpinfra/v0.4.0`,

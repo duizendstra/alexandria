@@ -23,7 +23,7 @@ type ServiceOutputs struct {
 func ApplyService(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
-	cfg ServiceConfig,
+	cfg ServiceConfig, //nolint:gocritic // hugeParam: by-value keeps the v0.4.x API stable
 	serviceAccountEmail pulumi.StringInput,
 	envs []EnvVar,
 	deps []pulumi.Resource,
@@ -45,6 +45,11 @@ func ApplyService(
 		memLimit = defaultMemory
 	}
 
+	svcLimits := pulumi.StringMap{"memory": pulumi.String(memLimit)}
+	if cfg.CPU != "" {
+		svcLimits["cpu"] = pulumi.String(cfg.CPU)
+	}
+
 	svc, err := cloudrunv2.NewService(ctx, cfg.Name, &cloudrunv2.ServiceArgs{
 		Project:  projectID,
 		Location: pulumi.String(cfg.Region),
@@ -56,9 +61,7 @@ func ApplyService(
 					Image: pulumi.String(cfg.Image),
 					Envs:  svcEnvs,
 					Resources: &cloudrunv2.ServiceTemplateContainerResourcesArgs{
-						Limits: pulumi.StringMap{
-							"memory": pulumi.String(memLimit),
-						},
+						Limits: svcLimits,
 					},
 				},
 			},
@@ -86,7 +89,7 @@ type JobOutputs struct {
 func ApplyJob(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
-	cfg JobConfig,
+	cfg JobConfig, //nolint:gocritic // hugeParam: by-value keeps the v0.4.x API stable
 	serviceAccountEmail pulumi.StringInput,
 	envs []EnvVar,
 	deps []pulumi.Resource,
@@ -108,6 +111,11 @@ func ApplyJob(
 		jobMemLimit = defaultMemory
 	}
 
+	jobLimits := pulumi.StringMap{"memory": pulumi.String(jobMemLimit)}
+	if cfg.CPU != "" {
+		jobLimits["cpu"] = pulumi.String(cfg.CPU)
+	}
+
 	job, err := cloudrunv2.NewJob(ctx, cfg.Name, &cloudrunv2.JobArgs{
 		Project:  projectID,
 		Location: pulumi.String(cfg.Region),
@@ -120,9 +128,7 @@ func ApplyJob(
 						Image: pulumi.String(cfg.Image),
 						Envs:  jobEnvs,
 						Resources: &cloudrunv2.JobTemplateTemplateContainerResourcesArgs{
-							Limits: pulumi.StringMap{
-								"memory": pulumi.String(jobMemLimit),
-							},
+							Limits: jobLimits,
 						},
 					},
 				},
