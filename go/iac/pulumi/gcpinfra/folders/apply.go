@@ -38,15 +38,23 @@ func ParseScope(parent string) (scope.Scope, error) {
 }
 
 // OrgID extracts the numeric org ID from a GCP parent string.
-// Returns empty string if parent is not org-level.
+// Non-org parents pass through unchanged — callers gate on scope first.
 func OrgID(parent string) string {
 	return strings.TrimPrefix(parent, "organizations/")
 }
 
 // Apply creates the folder hierarchy in GCP. Idempotent via Pulumi state.
 // Protected from accidental deletion at both GCP and Pulumi level.
+//
+// Only well-formedness is validated here (parent, root name, child
+// uniqueness). Whether children are required at all is tier policy owned
+// by the plan package — a Starter hierarchy legitimately has none.
 func Apply(ctx *pulumi.Context, cfg hierarchy.Config) (*Outputs, error) {
-	if err := cfg.Validate(); err != nil {
+	if err := cfg.ValidateBase(); err != nil {
+		return nil, fmt.Errorf("folders: %w", err)
+	}
+
+	if err := cfg.ValidateChildren(); err != nil {
 		return nil, fmt.Errorf("folders: %w", err)
 	}
 
