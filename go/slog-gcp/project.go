@@ -6,100 +6,21 @@ package sloggcp
 
 import (
 	"context"
-	"io"
-	"net/http"
-	"os"
-	"strings"
-	"sync"
-	"time"
+
+	"github.com/duizendstra/alexandria/go/platform/gcpenv"
 )
 
-var (
-	//nolint:gochecknoglobals // Package-level mutex to guard metadata cache.
-	metadataMu sync.RWMutex
-	//nolint:gochecknoglobals // Package-level cache for metadata project ID.
-	metadataProjectID string
-	//nolint:gochecknoglobals // Default GCE metadata URL.
-	metadataURL = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
-)
+//nolint:gochecknoglobals // Swappable resolver so tests can fake the metadata server.
+var projectResolver = &gcpenv.Resolver{}
 
-// maxMetadataBodyBytes is the maximum number of bytes to read from the
-// GCE metadata response body.
-const maxMetadataBodyBytes = 1024
-
-// detectProjectID reads the GCP project ID from environment variables,
-// then falls back to the GCE metadata service on managed GCP platforms.
+// detectProjectID resolves the GCP project ID via the shared gcpenv
+// resolver (environment variables first, then the GCE metadata service
+// unless GCP_METADATA_DISABLED=true). It falls back to "unknown-project"
+// so log attribution never emits an empty project segment.
 func detectProjectID() string {
-	// Priority 1: Environment variables (fast, overridable).
-	for _, key := range []string{
-		"GCP_PROJECT_ID",
-		"GOOGLE_CLOUD_PROJECT",
-		"GCP_PROJECT",
-		"PROJECT_ID",
-	} {
-		if id := os.Getenv(key); id != "" {
-			return id
-		}
-	}
-
-	// Bypass metadata server check if explicitly disabled (prevents 500ms block on AWS/local).
-	if strings.EqualFold(os.Getenv("GCP_METADATA_DISABLED"), "true") {
-		return "unknown-project"
-	}
-
-	// Priority 2: GCE metadata service (available on Cloud Run, GKE, etc.).
-	metadataMu.RLock()
-	cached := metadataProjectID
-	metadataMu.RUnlock()
-
-	if cached != "" {
-		return cached
-	}
-
-	metadataMu.Lock()
-	defer metadataMu.Unlock()
-
-	// Double-checked locking.
-	if metadataProjectID != "" {
-		return metadataProjectID
-	}
-
-	metadataProjectID = queryMetadataProjectID()
-	if metadataProjectID != "" {
-		return metadataProjectID
+	if id := projectResolver.ProjectID(context.Background()); id != "" {
+		return id
 	}
 
 	return "unknown-project"
-}
-
-// queryMetadataProjectID queries the GCE metadata service for the project ID.
-// Uses a short timeout to avoid blocking on non-GCP environments.
-func queryMetadataProjectID() string {
-	client := &http.Client{Timeout: 500 * time.Millisecond} //nolint:mnd // Short timeout for non-GCP fallback.
-
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, metadataURL, http.NoBody)
-	if err != nil {
-		return ""
-	}
-
-	req.Header.Set("Metadata-Flavor", "Google")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return ""
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return ""
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxMetadataBodyBytes))
-	if err != nil {
-		return ""
-	}
-
-	return strings.TrimSpace(string(body))
 }
