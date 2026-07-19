@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+// Package skills defines the registry of agent capabilities.
+//
+// Hexagonal: inbound port — consumed by ReasoningService and MCP discovery tools.
+// CODE phase: Distill — skills are distilled patterns ready for reuse.
+// PARA: Resources — capabilities available to the org.
+// Second brain: Skills are the "what can I do?" self-awareness layer.
+package registry.skills.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/registry/skills/v1alpha1;skillsv1alpha1";
+
+// Skill represents a single capability exposed to agents.
+// Resource name pattern: "skills/{skill_id}" (AIP-122).
+message Skill {
+  // Resource name (e.g. "skills/retrieve-memory").
+  string name = 1;
+  // Human-readable display name.
+  string display_name = 2;
+  // What the skill does — used for agent tool selection.
+  string description = 3;
+  // JSON schema fragments describing the skill's input parameters.
+  // Each element is a JSON string representing one parameter's schema.
+  repeated string input_schema = 4;
+}
+
+// SkillsService provides a self-describing registry of all skills
+// available to the intelligence layer.
+//
+// Agents query this service to discover what capabilities are available
+// before planning a response.
+service SkillsService {
+  // ListSkills returns all registered skills (AIP-132).
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+  // GetSkill returns details for a specific skill by name (AIP-131).
+  rpc GetSkill(GetSkillRequest) returns (GetSkillResponse);
+}
+
+// ListSkillsRequest is the request message for
+// [SkillsService.ListSkills][registry.skills.v1alpha1.SkillsService.ListSkills].
+message ListSkillsRequest {
+  // Optional. Maximum number of skills to return. Default 50 (AIP-158).
+  int32 page_size = 1;
+  // Optional. Token for the next page of results.
+  string page_token = 2;
+}
+
+// ListSkillsResponse is the response message for
+// [SkillsService.ListSkills][registry.skills.v1alpha1.SkillsService.ListSkills].
+message ListSkillsResponse {
+  // The list of skills for the current page.
+  repeated Skill skills = 1;
+  // Token for the next page. Empty if no more results.
+  string next_page_token = 2;
+}
+
+// GetSkillRequest is the request message for
+// [SkillsService.GetSkill][registry.skills.v1alpha1.SkillsService.GetSkill].
+message GetSkillRequest {
+  // Required. Resource name of the skill (e.g. "skills/retrieve-memory").
+  string name = 1;
+}
+
+// GetSkillResponse is the response message for
+// [SkillsService.GetSkill][registry.skills.v1alpha1.SkillsService.GetSkill].
+message GetSkillResponse {
+  // The requested skill.
+  Skill skill = 1;
+}
