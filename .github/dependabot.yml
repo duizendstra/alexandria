@@ -51,6 +51,11 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
+    directory: "/go/iac/observability/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
     directory: "/go/iac/pulumi/gcpinfra/"
     schedule:
       interval: "weekly"
