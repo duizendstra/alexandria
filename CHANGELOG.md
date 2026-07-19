@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **go/governance**: Cloud-agnostic governance domain model — tiered plans (Starter/Standard/Enterprise), organizational hierarchy, classification dimensions, scope capabilities, and stack export contract. Pure Go, zero dependencies.
 - **go/iac/pulumi/gcpinfra**: Pulumi building blocks for GCP — folder hierarchies (`folders`) and org-level tag keys (`tagkeys`), both deletion-protected, consuming validated `go/governance` domain input.
 - **go/iac/governance**: Configuration-driven Pulumi governance blueprint — reads stack config, builds a validated tiered plan, deploys via `gcpinfra`, and exports the downstream contract.
+- **blueprints/githooks**: Golden git hooks for Go repos — Conventional Commits validation (git-generated messages pass through), index-based gofmt + credential scan on commit, and a fail-closed vet/lint/test/build gate on push.
 - **go/observability/audit**: Production-proven audit logger with structured file outputs, automatic file-size rotation, and scorecard readers.
 - **go/discovery/privacyfilter**: High-security, context-aware scan and redaction filter that skips sensitive directory patterns and redacts exposed credentials/tokens.
 - **go/discovery/search**: Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic.
