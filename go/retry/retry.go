@@ -78,6 +78,13 @@ func Backoff(attempt int) time.Duration {
 // [Backoff]. It returns immediately if ctx is canceled or if fn returns
 // an error marked as permanent via [Permanent] or by implementing [PermanentError].
 //
+// Terminal semantics: when all attempts are exhausted, Do returns the last
+// error from fn unchanged — a non-nil result always means failure, so no
+// extra sentinel is needed. The [Transport] counterpart likewise returns a
+// non-nil error on exhaustion, but wraps [ErrRetriesExceeded] (optionally
+// alongside the final retryable response), because an HTTP response with a
+// retryable status would otherwise be indistinguishable from success.
+//
 //	err := retry.Do(ctx, 3, func() error {
 //	    return client.Ping()
 //	})

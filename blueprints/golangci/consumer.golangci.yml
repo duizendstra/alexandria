@@ -1,11 +1,15 @@
 version: "2"
 
-# Alexandria Library Lint Standard
+# Consumer lint profile — for application and composition-root repos
+# (Pulumi stacks, services, CLIs) that consume library modules.
 #
-# Instance of blueprints/golangci/library.golangci.yml — same quality
-# bar as the consumer profile (blueprints/golangci/consumer.golangci.yml),
-# with adapted dependency rules and complexity limits for a library
-# codebase. Differences from the consumer profile are marked # LIBRARY:
+# Same quality bar as library.golangci.yml, with two differences:
+# dependencies are restricted to stdlib + vetted library modules only
+# (application logic belongs in libraries, not composition roots), and
+# complexity limits are tighter (a composition root that needs a big
+# function is hiding a library).
+#
+# Copy to the repo root as .golangci.yml and adjust the marked section.
 
 run:
   timeout: 10m
@@ -108,7 +112,6 @@ linters:
     - exptostd
 
     # ── 9. Quality ──
-    # LIBRARY: godox allowed — libraries may have TODO for tracked work.
     - lll
 
     # ── 10. Meta ──
@@ -121,21 +124,21 @@ linters:
     - mirror
 
   settings:
-    # LIBRARY: relaxed limits — library functions are richer than composition roots.
+    # Tight limits — composition roots stay thin by construction.
     funlen:
-      lines: 120
-      statements: 60
+      lines: 80
+      statements: 40
     cyclop:
-      max-complexity: 15
+      max-complexity: 10
       package-average: 0.0
     nestif:
-      min-complexity: 5
+      min-complexity: 4
     maintidx:
-      under: 15
+      under: 20
     nakedret:
       max-func-lines: 0
     lll:
-      line-length: 160
+      line-length: 120
 
     revive:
       rules:
@@ -149,45 +152,15 @@ linters:
     depguard:
       rules:
         main:
-          # LIBRARY: Alexandria can import vetted externals.
-          # Consumer config restricts to stdlib + Alexandria only.
+          # ADJUST: stdlib + your vetted library modules only. If a
+          # composition root needs another external dependency, the
+          # code that uses it belongs in a library module instead.
           list-mode: strict
           files:
             - "$all"
-            - "!$test"
           allow:
-            # ── Stdlib ──
             - $gostd
-
-            # ── Internal ──
-            - github.com/duizendstra/alexandria
-
-            # ── Vetted externals — every addition is a deliberate,
-            # recorded decision (see blueprints/golangci/README.md) ──
-            - connectrpc.com/connect
-            - google.golang.org
-            - cloud.google.com/go
-            - golang.org/x
-            - gopkg.in/yaml.v3
-            - github.com/spf13/cobra
-            - github.com/spf13/pflag
-            - github.com/spf13/viper
-            - github.com/google/uuid
-            - github.com/google/go-github
-            - github.com/google/go-cmp
-            - github.com/bradleyfalzon/ghinstallation/v2
-            - github.com/golang-jwt/jwt/v4
-            - github.com/modelcontextprotocol/go-sdk
-            - go.mau.fi/whatsmeow
-            - go.mau.fi/libsignal
-            - go.mau.fi/util
-            - go.opentelemetry.io
-            - github.com/pulumi/pulumi/sdk/v3
-            - github.com/pulumi/pulumi-gcp/sdk/v9
-            - github.com/pulumi/pulumi-random/sdk/v4
-            - github.com/cespare/xxhash/v2
-            - github.com/mdp/qrterminal/v3
-            - modernc.org/sqlite
+            - github.com/duizendstra/alexandria/go
 
     ireturn:
       allow:
@@ -196,7 +169,6 @@ linters:
         - empty
         - stdlib
         - generic
-        - "github.com/pulumi/pulumi/sdk/v3/go/pulumi.Resource"
 
     gocritic:
       enabled-tags:
