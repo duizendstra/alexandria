@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **go/iac/pulumi/gcpinfra**: Six new building blocks — billing budgets with threshold alerts (`budgets`), BigQuery datasets (`datasets`), org-level log sinks (`logsinks`), Cloud Build v2 Git connections with repo links (`connections`), Artifact Registry repositories with IAM grants (`registries`), and tag-push Cloud Build triggers (`triggers`).
 - **go/iac/workloads**: Configuration-driven Pulumi workloads blueprint — one or more projects per environment, each serving one or more concerns with per-concern exports, placement resolved from a governance stack reference, and an optional deploy-access grant for a delivery trigger SA.
 - **go/iac/identity**: Configuration-driven Pulumi identity blueprint — dedicated project with Secret Manager secrets (pluggable `SecretResolver`, default `pass`), service accounts, consumer/impersonator IAM, and placement resolved from a governance stack reference.
 - **go/iac/pulumi/gcpinfra**: Four new building blocks — GCP projects with API enablement (`projects`), Secret Manager secrets (`secrets`), service accounts (`serviceaccounts`), and project/SA-level IAM member bindings (`iambindings`).
