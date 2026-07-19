@@ -19,7 +19,7 @@ const (
 
 func TestNewStarter(t *testing.T) {
 	t.Run("valid folder scope", func(t *testing.T) {
-		p, err := plan.NewStarter(scope.Container, folderParent, planRoot)
+		p, err := plan.NewStarter(scope.Container, folderParent, planRoot, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -29,15 +29,33 @@ func TestNewStarter(t *testing.T) {
 		}
 	})
 
+	t.Run("valid org scope", func(t *testing.T) {
+		p, err := plan.NewStarter(scope.Organization, orgParent, planRoot, "123")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if p.OrgID != "123" {
+			t.Errorf("OrgID = %q, want %q", p.OrgID, "123")
+		}
+	})
+
 	t.Run("org scope requires orgID", func(t *testing.T) {
-		_, err := plan.NewStarter(scope.Organization, orgParent, planRoot)
+		_, err := plan.NewStarter(scope.Organization, orgParent, planRoot, "")
 		if err == nil {
-			t.Fatal("expected error: org scope requires OrgID but Starter cannot provide it")
+			t.Fatal("expected error: org scope requires OrgID")
+		}
+	})
+
+	t.Run("folder scope forbids orgID", func(t *testing.T) {
+		_, err := plan.NewStarter(scope.Container, folderParent, planRoot, "123")
+		if err == nil {
+			t.Fatal("expected error: Container scope must not carry an OrgID")
 		}
 	})
 
 	t.Run("missing parent", func(t *testing.T) {
-		_, err := plan.NewStarter(scope.Container, "", planRoot)
+		_, err := plan.NewStarter(scope.Container, "", planRoot, "")
 		if err == nil {
 			t.Fatal("expected error for missing parent")
 		}
@@ -46,7 +64,7 @@ func TestNewStarter(t *testing.T) {
 
 func TestNewStandard(t *testing.T) {
 	t.Run("valid with environments", func(t *testing.T) {
-		p, err := plan.NewStandard(scope.Container, folderParent, planRoot, []string{envDev, envProd})
+		p, err := plan.NewStandard(scope.Container, folderParent, planRoot, []string{envDev, envProd}, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -60,15 +78,33 @@ func TestNewStandard(t *testing.T) {
 		}
 	})
 
+	t.Run("valid org scope", func(t *testing.T) {
+		p, err := plan.NewStandard(scope.Organization, orgParent, planRoot, []string{envDev, envProd}, "123")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if p.OrgID != "123" {
+			t.Errorf("OrgID = %q, want %q", p.OrgID, "123")
+		}
+	})
+
+	t.Run("org scope requires orgID", func(t *testing.T) {
+		_, err := plan.NewStandard(scope.Organization, orgParent, planRoot, []string{envDev, envProd}, "")
+		if err == nil {
+			t.Fatal("expected error: org scope requires OrgID")
+		}
+	})
+
 	t.Run("no environments", func(t *testing.T) {
-		_, err := plan.NewStandard(scope.Container, folderParent, planRoot, nil)
+		_, err := plan.NewStandard(scope.Container, folderParent, planRoot, nil, "")
 		if err == nil {
 			t.Fatal("expected error for no environments")
 		}
 	})
 
 	t.Run("duplicate environments", func(t *testing.T) {
-		_, err := plan.NewStandard(scope.Container, folderParent, planRoot, []string{envDev, envDev})
+		_, err := plan.NewStandard(scope.Container, folderParent, planRoot, []string{envDev, envDev}, "")
 		if err == nil {
 			t.Fatal("expected error for duplicate environments")
 		}
