@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **go/platform/apierr** (pending `v0.1.0`): `RetryableStatus(int)` and
+  `RetryableGRPCCode(uint32)` — the ecosystem's single source of truth for
+  transient-failure classification (HTTP 408/429/5xx; gRPC
+  DEADLINE_EXCEEDED/RESOURCE_EXHAUSTED/ABORTED/INTERNAL/UNAVAILABLE).
+  `FromGRPCCode` now maps ABORTED → `ErrConflict` (the gRPC analogue of
+  HTTP 409) instead of `ErrUnexpectedStatus`.
+- **godoc examples**: verified `Example*` functions for
+  `dataquality/datadiff` (9 examples — previously 0 for 84 exported
+  symbols), `platform/async`, `platform/cache`, `platform/gcpenv`,
+  `platform/web`, and `slog-gcp/otelgcp` (full trace-bridge wiring).
 - **testing**: closed the zero-test gaps — `observability/audit/file`
   (rotation, rename-failure self-healing, concurrent logging under `-race`,
   scorecard parsing), the full `iac/*` tree (`folders.ParseScope`/`OrgID`
@@ -30,6 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `.github/coverage-baselines.json` — coverage below the recorded baseline
   fails the build; per-module percentages land in the job summary
   (`go/contracts` exempt as generated code).
+
+- **go/retry/gcp** (pending `v0.1.0`): retryable-error classification now
+  delegates to `apierr.RetryableStatus`/`RetryableGRPCCode` instead of
+  maintaining a second copy of the transient tables (which had already
+  drifted: apierr lacked ABORTED). Behavior delta: HTTP 408 responses from
+  Google APIs and OAuth token endpoints are now retried. GCP-specific
+  extensions (403 quota reasons, RFC 6749 OAuth codes) remain local.
+  Requires `apierr v0.1.0` — tag apierr before retry/gcp.
+- **go/slog-gcp**: duplicated managed-platform detection extracted into a
+  single `runningOnGCP()` helper (no behavior change).
+- **dependencies**: aligned across modules — `grpc v1.82.1`,
+  `otel/trace v1.44.0`, `genproto/rpc 20260706` in `go/google` and
+  `go/iac/pulumi/gcpinfra` (`go/iac/governance` picks the aligned set up
+  via `go mod tidy` after the pending tags land).
 
 ### Fixed
 
