@@ -39,6 +39,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.0.1 | Project-agnostic HTTP server, client, and response utilities |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.1.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.2.0 | Pulumi adapter packages for Google Cloud infrastructure |
+| [iac/finops](go/iac/finops/) | `github.com/duizendstra/alexandria/go/iac/finops` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning a FinOps project (billing dataset, org budget with alerts) |
 | [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning GCP governance |
 | [iac/identity](go/iac/identity/) | `github.com/duizendstra/alexandria/go/iac/identity` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning an identity project (secrets, SAs, IAM) |
 | [iac/workloads](go/iac/workloads/) | `github.com/duizendstra/alexandria/go/iac/workloads` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning multi-project workload environments with per-concern exports |
