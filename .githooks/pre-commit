@@ -1,67 +1,61 @@
-#!/usr/bin/env bash
-# .githooks/pre-commit — Scans staged files for leaked secrets.
+#!/bin/sh
+# Pre-commit: gofmt check + secret scan.
 #
-# Blocks commits containing:
-#   - GitHub PATs (ghp_)
-#   - GitHub OAuth tokens (gho_)
-#   - GCP API keys (AIza)
-#   - AWS access keys (AKIA)
-#   - Private keys (-----BEGIN ... PRIVATE KEY)
+# Both checks run against the INDEX (what will actually be committed),
+# not the working tree — staged content and disk may differ.
+set -e
 
-set -euo pipefail
-
-staged_files=$(git diff --cached --name-only --diff-filter=ACM)
-
-if [ -z "$staged_files" ]; then
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$STAGED" ]; then
   exit 0
 fi
 
-found=0
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
 
-while IFS= read -r file; do
-  # Skip binary files
-  if ! git diff --cached --diff-filter=ACM -p -- "$file" | head -1 | grep -q "^diff"; then
-    continue
+fail=0
+
+for file in $STAGED; do
+  git show ":$file" > "$TMP" 2>/dev/null || continue
+
+  # --- 1. Formatting: staged .go files must be gofmt-clean ---
+  case "$file" in
+    *.go)
+      if command -v gofmt >/dev/null 2>&1; then
+        if [ -n "$(gofmt -l "$TMP" 2>/dev/null)" ]; then
+          printf '❌ Needs formatting (run gofmt -w): %s\n' "$file"
+          fail=1
+        fi
+      fi
+      ;;
+  esac
+
+  # --- 2. Secret scan: block committed credentials ---
+  if grep -qE 'gh[pousr]_[A-Za-z0-9]{36,}' "$TMP"; then
+    printf '🔑 Leaked GitHub token detected in: %s\n' "$file"
+    fail=1
   fi
-
-  staged_content=$(git show ":$file" 2>/dev/null) || continue
-
-  # GitHub Personal Access Tokens
-  if echo "$staged_content" | grep -qE 'ghp_[A-Za-z0-9]{36,}'; then
-    echo "🔑  Leaked GitHub PAT (ghp_) detected in: $file"
-    found=1
+  if grep -qE 'github_pat_[A-Za-z0-9_]{36,}' "$TMP"; then
+    printf '🔑 Leaked GitHub fine-grained PAT detected in: %s\n' "$file"
+    fail=1
   fi
-
-  # GitHub OAuth tokens
-  if echo "$staged_content" | grep -qE 'gho_[A-Za-z0-9]{36,}'; then
-    echo "🔑  Leaked GitHub OAuth token (gho_) detected in: $file"
-    found=1
+  if grep -qE 'AIza[A-Za-z0-9_-]{35}' "$TMP"; then
+    printf '🔑 Leaked GCP API key detected in: %s\n' "$file"
+    fail=1
   fi
-
-  # GCP API keys
-  if echo "$staged_content" | grep -qE 'AIza[A-Za-z0-9_\\-]{35}'; then
-    echo "🔑  Leaked GCP API key (AIza) detected in: $file"
-    found=1
+  if grep -qE 'AKIA[A-Z0-9]{16}' "$TMP"; then
+    printf '🔑 Leaked AWS access key detected in: %s\n' "$file"
+    fail=1
   fi
-
-  # AWS access keys
-  if echo "$staged_content" | grep -qE 'AKIA[A-Z0-9]{16}'; then
-    echo "🔑  Leaked AWS access key (AKIA) detected in: $file"
-    found=1
+  # -{5} instead of five literal dashes so this script never matches itself.
+  if grep -qE -- '-{5}BEGIN.*PRIVATE KEY' "$TMP"; then
+    printf '🔑 Private key detected in: %s\n' "$file"
+    fail=1
   fi
+done
 
-  # Private keys
-  if echo "$staged_content" | grep -qE '-----BEGIN.*PRIVATE KEY'; then
-    echo "🔑  Private key detected in: $file"
-    found=1
-  fi
-
-done <<< "$staged_files"
-
-if [ "$found" -ne 0 ]; then
+if [ "$fail" -ne 0 ]; then
   echo ""
-  echo "❌  Commit blocked: secret(s) detected in staged files."
-  echo "    Remove the sensitive content and try again."
-  echo ""
+  echo "❌ Commit blocked. Fix the issues above and re-stage."
   exit 1
 fi
