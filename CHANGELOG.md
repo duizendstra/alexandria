@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2026-07-19 — maturity & graduation wave
+
+Released tags: `go/platform/apierr/v0.1.0`, `go/retry/v0.1.0`,
+`go/retry/gcp/v0.1.0`, `go/platform/gcpenv/v0.1.0`,
+`go/discovery/search/v0.1.0`, `go/governance/v0.2.0`,
+`go/iac/pulumi/gcpinfra/v0.3.1`, `go/iac/governance/v0.1.1`.
+Graduations per ADR-0001: each v0.1.0 module has its API validated by at
+least one real consumer.
+
 ### Changed
 
-- **go/governance** (breaking, pending `v0.2.0`): `plan.NewStarter` and
+- **go/governance v0.2.0** (breaking): `plan.NewStarter` and
   `plan.NewStandard` now take an `orgID` parameter, mirroring
   `NewEnterprise`. Previously they could never satisfy `validateScope` at
   Organization scope (no way to supply the required OrgID), so starter and
@@ -33,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `target_uuid`/`rel_type` form. `05-security/index.md` now links the root
   `SECURITY.md` and marks unwritten policies as planned instead of
   advertising them.
-- **go/platform/apierr** (pending `v0.1.0`): `RetryableStatus(int)` and
+- **go/platform/apierr**: `RetryableStatus(int)` and
   `RetryableGRPCCode(uint32)` — the ecosystem's single source of truth for
   transient-failure classification (HTTP 408/429/5xx; gRPC
   DEADLINE_EXCEEDED/RESOURCE_EXHAUSTED/ABORTED/INTERNAL/UNAVAILABLE).
@@ -55,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `.github/coverage-baselines.json` — coverage below the recorded baseline
   fails the build; per-module percentages land in the job summary
   (`go/contracts` exempt as generated code).
-- **go/retry/gcp** (pending `v0.1.0`): retryable-error classification now
+- **go/retry/gcp**: retryable-error classification now
   delegates to `apierr.RetryableStatus`/`RetryableGRPCCode` instead of
   maintaining a second copy of the transient tables (which had already
   drifted: apierr lacked ABORTED). Behavior delta: HTTP 408 responses from
@@ -66,8 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   single `runningOnGCP()` helper (no behavior change).
 - **dependencies**: aligned across modules — `grpc v1.82.1`,
   `otel/trace v1.44.0`, `genproto/rpc 20260706` in `go/google` and
-  `go/iac/pulumi/gcpinfra` (`go/iac/governance` picks the aligned set up
-  via `go mod tidy` after the pending tags land).
+  `go/iac/pulumi/gcpinfra` (`go/iac/governance` picked the aligned set
+  up via `go mod tidy` once the tags landed).
 
 ### Fixed
 
@@ -75,16 +84,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   malformed log line. The `json.Decoder` stream loop could not resync after
   a syntax error, so a single torn write (crash mid-append) spun the reader
   forever; it now reads per-line and skips malformed lines as documented.
-- **go/iac/pulumi/gcpinfra** (pending `v0.1.1`): `folders.Apply` validated
+- **go/iac/pulumi/gcpinfra**: `folders.Apply` validated
   tier policy it does not own — `hierarchy.Config.Validate()` requires ≥1
   child, while `plan.validateStarter` forbids children, so every starter
   deployment failed. The adapter now checks well-formedness only (parent,
   root name, child uniqueness).
-- **go/iac/governance** (pending `v0.1.1`): starter and standard tiers now
+- **go/iac/governance**: starter and standard tiers now
   deploy at Organization scope (and starter at folder scope); the two
-  known-limitation pinning tests flipped to assert success. Pins bumped to
-  `go/governance v0.2.0` and `gcpinfra v0.1.1` — tag those two modules
-  before this one, as the module only builds against published pins.
+  known-limitation pinning tests flipped to assert success. Pins
+  resolve against the published `governance v0.2.0` and `gcpinfra v0.3.1`.
 
 - **.githooks**: replaced the live hooks with the golden `blueprints/githooks`
   set — `commit-msg` now accepts the `!` breaking-change marker (the previous
