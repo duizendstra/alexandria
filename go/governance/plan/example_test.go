@@ -8,7 +8,7 @@ import (
 )
 
 func ExampleNewStandard() {
-	p, err := plan.NewStandard(scope.Container, "folders/987", "example", []string{"dev", "prod"})
+	p, err := plan.NewStandard(scope.Container, "folders/987", "example", []string{"dev", "prod"}, "")
 	if err != nil {
 		fmt.Println(err)
 		return

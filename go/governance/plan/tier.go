@@ -63,7 +63,11 @@ func ParseTier(s string) (Tier, error) {
 
 // NewStarter builds a minimal governance plan.
 // Single root folder, no environment separation.
-func NewStarter(s scope.Scope, parent, rootName string) (*Plan, error) {
+//
+// orgID is the organization identifier exported to downstream bounded
+// contexts. It is required at Organization scope and must be empty at
+// Container scope.
+func NewStarter(s scope.Scope, parent, rootName, orgID string) (*Plan, error) {
 	p := &Plan{
 		Tier:  Starter,
 		Scope: s,
@@ -71,6 +75,7 @@ func NewStarter(s scope.Scope, parent, rootName string) (*Plan, error) {
 			Parent:   parent,
 			RootName: rootName,
 		},
+		OrgID: orgID,
 	}
 
 	if err := p.Validate(); err != nil {
@@ -82,7 +87,11 @@ func NewStarter(s scope.Scope, parent, rootName string) (*Plan, error) {
 
 // NewStandard builds a governance plan with environment separation.
 // Requires at least one environment (child folder).
-func NewStandard(s scope.Scope, parent, rootName string, environments []string) (*Plan, error) {
+//
+// orgID is the organization identifier exported to downstream bounded
+// contexts. It is required at Organization scope and must be empty at
+// Container scope.
+func NewStandard(s scope.Scope, parent, rootName string, environments []string, orgID string) (*Plan, error) {
 	p := &Plan{
 		Tier:  Standard,
 		Scope: s,
@@ -91,6 +100,7 @@ func NewStandard(s scope.Scope, parent, rootName string, environments []string) 
 			RootName: rootName,
 			Children: environments,
 		},
+		OrgID: orgID,
 	}
 
 	if err := p.Validate(); err != nil {
