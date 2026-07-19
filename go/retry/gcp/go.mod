@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/duizendstra/alexandria/go/platform/apierr v0.1.0
-	github.com/duizendstra/alexandria/go/retry v0.0.4
+	github.com/duizendstra/alexandria/go/retry v0.1.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.289.0
 	google.golang.org/grpc v1.82.1
