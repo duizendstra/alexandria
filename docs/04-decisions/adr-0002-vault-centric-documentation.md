@@ -8,7 +8,7 @@ status: "accepted"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-03-03T09:00:00Z"
-updated_at: "2026-07-12T14:30:00Z"
+updated_at: "2026-07-19T12:00:00Z"
 summary: >
   Establishes a unified, OKF-compliant documentation vault to organize
   architectural, governance, and operational knowledge.
@@ -45,12 +45,12 @@ We establish a unified, structured **Documentation Vault** directly within our s
     *   `07-playbooks/` — Step-by-step developer tutorials (onboarding).
     *   `08-reference/` — Ubiquitous Language glossaries, dictionary models, and API references.
 2.  **Standard Metadata Schema** — Every document must declare a RFC-compliant YAML frontmatter header defining standard metadata fields: `uuid` (RFC 4122 v4), `title`, `domain` (bounded context), `type` (Diátaxis quadrant), `status`, `maturity`, `owner`, `created_at`, `updated_at`, `summary` (dense text digest to optimize semantic vector-retrieval), `audience`, `tags`, and `relations`.
-3.  **Automated Schema Linters** — Integrate a custom documentation validator into our CLI toolchain to audit the docs directory during CI/CD to prevent drift, catch duplicate UUIDs, and block broken relations.
+3.  **Automated Schema Linters** *(planned, not yet built)* — Integrate a custom documentation validator into our CLI toolchain to audit the docs directory during CI/CD to prevent drift, catch duplicate UUIDs, and block broken relations. Today CI runs a relative-link check only; frontmatter/UUID/relations validation does not exist yet.
 
 ## Consequences
 
 ### Easier
-*   **Drift Prevention** — Stale docs, dead links, or invalid headers will instantly fail the build, forcing documentation to remain a first-class citizen alongside code.
+*   **Drift Prevention** — Dead relative links already fail the build; once the schema linter lands, stale docs and invalid headers will too, forcing documentation to remain a first-class citizen alongside code.
 *   **Predictable Discovery** — Human developers and AI context-retrieval systems can traverse and read authoritative knowledge from a single, highly structured, and queryable graph.
 
 ### Harder
