@@ -5,6 +5,34 @@
 # being pushed — push from a clean tree for a faithful gate.
 set -e
 
+# Git feeds one "<local ref> <local sha> <remote ref> <remote sha>" line
+# per ref on stdin. A deletion push has an all-zero local sha — if the
+# push only deletes refs there is nothing to validate. An empty stdin
+# (manual invocation) still runs the gate.
+refs=0
+updates=0
+while read -r _ local_sha _ _; do
+  refs=$((refs + 1))
+  case "$local_sha" in
+    *[!0]*) updates=$((updates + 1)) ;;
+  esac
+done
+if [ "$refs" -gt 0 ] && [ "$updates" -eq 0 ]; then
+  echo "Push only deletes refs — skipping quality gate."
+  exit 0
+fi
+
+# Block if any submodule is dirty or out of sync with the recorded
+# commit. A no-op in repos without submodules.
+if [ -f "$(git rev-parse --show-toplevel)/.gitmodules" ]; then
+  dirty=$(git submodule status --recursive | grep -E '^[+U-]' || true)
+  if [ -n "$dirty" ]; then
+    echo "❌ Dirty submodules detected — commit/push submodules first:"
+    echo "$dirty"
+    exit 1
+  fi
+fi
+
 # Match CI: resolve modules standalone, ignoring any parent go.work.
 GOWORK=off
 export GOWORK
@@ -27,5 +55,12 @@ go test ./...
 
 echo "  → go build"
 go build ./...
+
+echo "  → govulncheck"
+if command -v govulncheck >/dev/null 2>&1; then
+  govulncheck ./...
+else
+  echo "  ⚠ govulncheck not installed — skipping vulnerability scan"
+fi
 
 echo "✅ Quality gate passed"
