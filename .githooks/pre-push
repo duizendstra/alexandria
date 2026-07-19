@@ -1,0 +1,40 @@
+#!/bin/sh
+# Pre-push quality gate: vet, lint, test, and build every Go module.
+#
+# Multi-module variant of blueprints/githooks/pre-push — Alexandria has no
+# root go.mod, so the gate iterates every module under go/, mirroring the
+# CI detect-modules matrix.
+#
+# Note: this validates the current working tree, not the exact commits
+# being pushed — push from a clean tree for a faithful gate.
+set -e
+
+# Match CI: resolve modules standalone, ignoring any parent go.work.
+GOWORK=off
+export GOWORK
+
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "❌ golangci-lint not found — the quality gate fails closed."
+  echo "   Install it (the Nix devshell provides it) or push from a full shell."
+  exit 1
+fi
+
+root=$(git rev-parse --show-toplevel)
+
+for modfile in $(cd "$root" && find go -name go.mod | sort); do
+  mod=$(dirname "$modfile")
+  echo "Running quality gate for $mod..."
+  (
+    cd "$root/$mod"
+    echo "  → go vet"
+    go vet ./...
+    echo "  → golangci-lint"
+    golangci-lint run ./...
+    echo "  → go test"
+    go test ./...
+    echo "  → go build"
+    go build ./...
+  )
+done
+
+echo "✅ Quality gate passed"
