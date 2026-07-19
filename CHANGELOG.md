@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **go/governance**: Cloud-agnostic governance domain model — tiered plans (Starter/Standard/Enterprise), organizational hierarchy, classification dimensions, scope capabilities, and stack export contract. Pure Go, zero dependencies.
 - **go/iac/pulumi/gcpinfra**: Pulumi building blocks for GCP — folder hierarchies (`folders`) and org-level tag keys (`tagkeys`), both deletion-protected, consuming validated `go/governance` domain input.
 - **go/iac/governance**: Configuration-driven Pulumi governance blueprint — reads stack config, builds a validated tiered plan, deploys via `gcpinfra`, and exports the downstream contract.
+- **blueprints/githooks**: Golden git hooks for Go repos — Conventional Commits validation (git-generated messages pass through), index-based gofmt + credential scan on commit, and a fail-closed vet/lint/test/build gate on push.
+- **blueprints/golangci**: Golden golangci-lint profiles — one quality bar in two dependency postures: `library` (curated external allowlist, relaxed complexity) and `consumer` (stdlib + library modules only, tight complexity).
 - **go/observability/audit**: Production-proven audit logger with structured file outputs, automatic file-size rotation, and scorecard readers.
 - **go/discovery/privacyfilter**: High-security, context-aware scan and redaction filter that skips sensitive directory patterns and redacts exposed credentials/tokens.
 - **go/discovery/search**: Core interfaces and data structures for building resilient document search, indexing, scoring, and text extraction logic.
@@ -29,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **.golangci.yml**: removed dead rules — exclusions for seven nonexistent paths, a deny entry for an unused package, and references to files that don't exist; the config is now an instance of `blueprints/golangci/library.golangci.yml`. No behavior change for existing modules.
 - **slog-gcp** refactoring and feature additions:
   - Added `WithProjectID`, `WithEventIDEnabled`, `WithTraceResolver`, and `WithLabels` setup options.
   - Added `WithTraceContext` public helper for context propagation in async workers.
@@ -43,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
     `google` and `retry/gcp` pinned stale `retry` versions).
   - Added `mod-hygiene` CI job: rejects committed `replace` directives, `v0.0.0`
     pins, and modules missing Dependabot coverage.
+  - **contracts**: converted prose "reserved" range comments to real protobuf
+    `reserved` statements (18 ranges across the domain protos) so tag reuse is
+    rejected at the wire level; added `contracts` CI job running `buf lint`,
+    `buf breaking` against main, and a generated-code drift check.
   - Added unit tests for `go/slog-gcp/otelgcp` span context extraction.
   - Expanded Dependabot configuration to cover all Go modules + actions.
   - Fixed dead code in `platform/async`, doc comment placement in `platform/apierr`, and doc example in `retry`.

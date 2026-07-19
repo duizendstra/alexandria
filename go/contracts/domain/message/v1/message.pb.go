@@ -35,7 +35,7 @@ const (
 	MessageType_MESSAGE_TYPE_UNSPECIFIED  MessageType = 0
 	MessageType_MESSAGE_TYPE_EMAIL        MessageType = 1
 	MessageType_MESSAGE_TYPE_CHAT         MessageType = 2
-	MessageType_MESSAGE_TYPE_NOTIFICATION MessageType = 3 // 4-9 reserved for future types.
+	MessageType_MESSAGE_TYPE_NOTIFICATION MessageType = 3
 )
 
 // Enum value maps for MessageType.
@@ -432,10 +432,11 @@ var File_domain_message_v1_message_proto protoreflect.FileDescriptor
 
 const file_domain_message_v1_message_proto_rawDesc = "" +
 	"\n" +
-	"\x1fdomain/message/v1/message.proto\x12\x11domain.message.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\";\n" +
+	"\x1fdomain/message/v1/message.proto\x12\x11domain.message.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"A\n" +
 	"\vParticipant\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
-	"\aaddress\x18\x02 \x01(\tR\aaddress\"\xbb\x04\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddressJ\x04\b\x03\x10\n" +
+	"\"\xc1\x04\n" +
 	"\aMessage\x12=\n" +
 	"\vexternal_id\x18\x01 \x01(\v2\x1c.domain.common.v1.ExternalIdR\n" +
 	"externalId\x12\x1b\n" +
@@ -453,25 +454,26 @@ const file_domain_message_v1_message_proto_rawDesc = "" +
 	"\vreceived_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"receivedAt\x12\x18\n" +
 	"\asnippet\x18\r \x01(\tR\asnippet\x12\x17\n" +
-	"\ais_read\x18\x0e \x01(\bR\x06isRead\"\xef\x01\n" +
+	"\ais_read\x18\x0e \x01(\bR\x06isReadJ\x04\b\x0f\x10\x1e\"\xf5\x01\n" +
 	"\x05Draft\x12=\n" +
 	"\vexternal_id\x18\x01 \x01(\v2\x1c.domain.common.v1.ExternalIdR\n" +
 	"externalId\x124\n" +
 	"\amessage\x18\x02 \x01(\v2\x1a.domain.message.v1.MessageR\amessage\x126\n" +
 	"\x06status\x18\x03 \x01(\x0e2\x1e.domain.message.v1.DraftStatusR\x06status\x129\n" +
 	"\n" +
-	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt*y\n" +
+	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x05\x10\n" +
+	"*\x7f\n" +
 	"\vMessageType\x12\x1c\n" +
 	"\x18MESSAGE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MESSAGE_TYPE_EMAIL\x10\x01\x12\x15\n" +
 	"\x11MESSAGE_TYPE_CHAT\x10\x02\x12\x1d\n" +
-	"\x19MESSAGE_TYPE_NOTIFICATION\x10\x03*\x92\x01\n" +
+	"\x19MESSAGE_TYPE_NOTIFICATION\x10\x03\"\x04\b\x04\x10\t*\x98\x01\n" +
 	"\vDraftStatus\x12\x1c\n" +
 	"\x18DRAFT_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16DRAFT_STATUS_COMPOSING\x10\x01\x12\x16\n" +
 	"\x12DRAFT_STATUS_READY\x10\x02\x12\x15\n" +
 	"\x11DRAFT_STATUS_SENT\x10\x03\x12\x1a\n" +
-	"\x16DRAFT_STATUS_DISCARDED\x10\x04BLZJgithub.com/duizendstra/alexandria/go/contracts/domain/message/v1;messagev1b\x06proto3"
+	"\x16DRAFT_STATUS_DISCARDED\x10\x04\"\x04\b\x05\x10\tBLZJgithub.com/duizendstra/alexandria/go/contracts/domain/message/v1;messagev1b\x06proto3"
 
 var (
 	file_domain_message_v1_message_proto_rawDescOnce sync.Once
