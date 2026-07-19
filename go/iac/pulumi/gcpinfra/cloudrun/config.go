@@ -38,6 +38,10 @@ type ServiceConfig struct {
 	Image string
 	// Memory is the memory limit for the container (e.g. "512Mi").
 	Memory string
+	// CPU is the CPU limit for the container (e.g. "1000m").
+	// Cloud Run applies a server-side default when unset; declaring it
+	// explicitly keeps the desired state aligned with the live resource.
+	CPU string
 }
 
 // Validate checks that the service configuration is complete.
@@ -67,6 +71,10 @@ type JobConfig struct {
 	MaxRetries int
 	// Memory is the memory limit for the container (e.g. "512Mi").
 	Memory string
+	// CPU is the CPU limit for the container (e.g. "1000m").
+	// Cloud Run applies a server-side default when unset; declaring it
+	// explicitly keeps the desired state aligned with the live resource.
+	CPU string
 }
 
 // Validate checks that the job configuration is complete.
