@@ -3,7 +3,7 @@ module github.com/duizendstra/alexandria/go/google
 go 1.26
 
 require (
-	cloud.google.com/go/auth v0.21.0
+	cloud.google.com/go/auth v0.22.0
 	github.com/duizendstra/alexandria/go/retry v0.0.3
 	github.com/duizendstra/alexandria/go/retry/gcp v0.0.3
 	golang.org/x/oauth2 v0.36.0
