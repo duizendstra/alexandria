@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/duizendstra/alexandria/go/retry"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -93,7 +94,6 @@ func WithRetry(ctx context.Context, operation func() error, opts ...Option) erro
 // Classify determines whether an error should be retried.
 // It returns a permanent error (wrapped via retry.Permanent) for permanent failures, or the original error to allow retrying.
 //
-//nolint:cyclop // Classify is a flat, switch-like classification dispatcher where higher complexity is expected and highly readable.
 func Classify(ctx context.Context, err error, attempt int) error {
 	if err == nil {
 		return nil
@@ -120,7 +120,15 @@ func Classify(ctx context.Context, err error, attempt int) error {
 		return classifyGRPCError(s, attempt)
 	}
 
-	// 4. Typed Network Check.
+	// 4. Structured OAuth2 token endpoint check (RFC 6749). Preferred over
+	// the string heuristics below because it keys on the status code and
+	// error code the endpoint actually returned, surviving SDK rewordings.
+	var oauthErr *oauth2.RetrieveError
+	if errors.As(err, &oauthErr) {
+		return classifyOAuthRetrieveError(err, oauthErr, attempt)
+	}
+
+	// 5. Typed Network Check.
 	var netErr net.Error
 	if errors.As(err, &netErr) {
 		logger().Warn("Transient network error, will retry",
@@ -130,7 +138,7 @@ func Classify(ctx context.Context, err error, attempt int) error {
 		return err
 	}
 
-	// 5. Explicitly retry unexpected network disconnections (UnexpectedEOF).
+	// 6. Explicitly retry unexpected network disconnections (UnexpectedEOF).
 	if errors.Is(err, io.EOF) {
 		logger().Warn("Transient end-of-file error, will retry",
 			slog.Int("attempt", attempt),
@@ -146,8 +154,78 @@ func Classify(ctx context.Context, err error, attempt int) error {
 		return err
 	}
 
-	// 6. Cold-path: string matching fallback. Ensures transient network errors
-	// wrapped inside oauth2 token fetches are not incorrectly flagged permanent.
+	// 7. Everything typed has been ruled out: fall back to string heuristics.
+	return classifyByErrorString(err, attempt)
+}
+
+// classifyOAuthRetrieveError classifies a structured *oauth2.RetrieveError
+// from a token endpoint using its HTTP status and RFC 6749 error code
+// instead of error-message text.
+func classifyOAuthRetrieveError(err error, rErr *oauth2.RetrieveError, attempt int) error {
+	statusCode := 0
+	if rErr.Response != nil {
+		statusCode = rErr.Response.StatusCode
+	}
+
+	// An explicit RFC 6749 error code names an authorization or client
+	// configuration problem (e.g. DWD misconfiguration) no retry can fix.
+	if isPermanentOAuthErrorCode(rErr.ErrorCode) {
+		logger().Error("Permanent OAuth2 token endpoint error, not retrying",
+			slog.Int("attempt", attempt),
+			slog.Int("http_code", statusCode),
+			slog.String("oauth_error_code", rErr.ErrorCode),
+			slog.String("error", err.Error()))
+
+		//nolint:wrapcheck // retry.Permanent wraps errors internally to mark them as permanent for the retry runner.
+		return retry.Permanent(err)
+	}
+
+	// Server-side failures and throttling at the token endpoint are transient.
+	if statusCode == http.StatusTooManyRequests || statusCode >= 500 {
+		logger().Warn("Transient OAuth2 token endpoint error, will retry",
+			slog.Int("attempt", attempt),
+			slog.Int("http_code", statusCode),
+			slog.String("oauth_error_code", rErr.ErrorCode),
+			slog.String("error", err.Error()))
+
+		return err
+	}
+
+	// Remaining 4xx (or unknown) responses reject the request itself.
+	logger().Error("Permanent OAuth2 token endpoint error, not retrying",
+		slog.Int("attempt", attempt),
+		slog.Int("http_code", statusCode),
+		slog.String("oauth_error_code", rErr.ErrorCode),
+		slog.String("error", err.Error()))
+
+	//nolint:wrapcheck // retry.Permanent wraps errors internally to mark them as permanent for the retry runner.
+	return retry.Permanent(err)
+}
+
+// isPermanentOAuthErrorCode reports whether code is an RFC 6749 §5.2 token
+// endpoint error code that indicates a permanent authorization or client
+// configuration failure.
+func isPermanentOAuthErrorCode(code string) bool {
+	switch code {
+	case "invalid_request",
+		"invalid_client",
+		"invalid_grant",
+		"unauthorized_client",
+		"unsupported_grant_type",
+		"invalid_scope":
+		return true
+	default:
+		return false
+	}
+}
+
+// classifyByErrorString is the last-resort cold path: substring matching on
+// error text, pinned to strings observed in the Google SDKs (impersonation
+// helpers and oauth2 token fetches that flatten their cause into a message).
+// It only runs after every structured check in Classify has failed to match,
+// because upstream wording changes can silently flip these heuristics —
+// prefer adding a typed check over extending this list.
+func classifyByErrorString(err error, attempt int) error {
 	errStr := err.Error()
 	if strings.Contains(errStr, "impersonate:") ||
 		strings.Contains(errStr, "unauthorized_client") ||
@@ -233,9 +311,9 @@ func classifyAPIError(apiErr *googleapi.Error, attempt int) error {
 func classifyGRPCError(s *status.Status, attempt int) error {
 	switch s.Code() {
 	case codes.ResourceExhausted, // HTTP 429.
-		codes.Unavailable,     // Connection drops.
-		codes.Internal,        // Remote exceptions.
-		codes.Aborted,         // Concurrent transaction interruptions.
+		codes.Unavailable,      // Connection drops.
+		codes.Internal,         // Remote exceptions.
+		codes.Aborted,          // Concurrent transaction interruptions.
 		codes.DeadlineExceeded: // Request Timeout.
 		logger().Warn("Transient gRPC error, will retry",
 			slog.Int("attempt", attempt),
