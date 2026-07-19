@@ -37,6 +37,11 @@ func (s *Service) RawService() *drive.Service {
 }
 
 // New creates a new Service instance using the provided client options.
+//
+// New is the single Drive service construction path in this module: the
+// convenience factory client.NewDriveService delegates here after resolving
+// authentication options. Combine with auth.ResolveClient to obtain
+// clientOpts that route every call through a retrying HTTP transport.
 func New(ctx context.Context, cfg Config, clientOpts ...option.ClientOption) (*Service, error) {
 	log := cfg.Logger
 	if log == nil {

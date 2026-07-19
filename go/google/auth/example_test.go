@@ -128,8 +128,9 @@ func ExampleDWDValidator_ValidateAccess() {
 	validator := auth.NewDWDValidator(srv)
 
 	// 4. Assert that we can access root metadata (e.g., verifying delegation is active).
-	// This performs a Files.Get("root") call wrapped in exponential backoff.
-	err = validator.ValidateAccess(ctx, "ceo@my-company.com")
+	// This performs a Files.Get("root") call wrapped in exponential backoff, using the
+	// delegated subject the service credentials were built with (ceo@my-company.com).
+	err = validator.ValidateAccess(ctx)
 	if err != nil {
 		fmt.Printf("DWD validation failed: %v\n", err)
 		return

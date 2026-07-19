@@ -2,14 +2,23 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
 )
 
 const notAnEmail = "not-an-email"
@@ -138,15 +147,31 @@ func TestResolveClient_Resolution(t *testing.T) {
 		}
 	})
 
-	// 8. No authentication mode falls back to ADC.
-	t.Run("No Authentication Mode falls back to ADC", func(t *testing.T) {
+	// 8. No authentication mode falls back to ADC. With retry disabled the
+	// resolution is deferred to the API service constructor (empty options).
+	t.Run("No Authentication Mode falls back to deferred ADC without retry", func(t *testing.T) {
 		t.Setenv("GOOGLE_IMPERSONATE_SERVICE_ACCOUNT", "")
-		opts, err := ResolveClient(ctx, nil)
+		opts, err := ResolveClient(ctx, nil, WithoutRetry())
 		if err != nil {
 			t.Errorf("expected no error, got: %v", err)
 		}
 		if len(opts) != 0 {
 			t.Errorf("expected empty ClientOptions for ADC fallback, got: %d", len(opts))
+		}
+	})
+
+	// 9. With retry enabled (the default), the ADC fallback resolves eagerly
+	// into a single retrying HTTP client option.
+	t.Run("No Authentication Mode builds retrying ADC client", func(t *testing.T) {
+		t.Setenv("GOOGLE_IMPERSONATE_SERVICE_ACCOUNT", "")
+		t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", writeFakeServiceAccountKey(t))
+
+		opts, err := ResolveClient(ctx, []string{"https://www.googleapis.com/auth/drive.metadata.readonly"})
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+		if len(opts) != 1 {
+			t.Errorf("expected a single retrying HTTP client option for ADC fallback, got: %d", len(opts))
 		}
 	})
 }
@@ -226,7 +251,7 @@ func TestDWDValidator_ValidateAccess_NilService(t *testing.T) {
 
 	t.Run("nil validator", func(t *testing.T) {
 		var v *DWDValidator
-		err := v.ValidateAccess(ctx, "user@example.com")
+		err := v.ValidateAccess(ctx)
 		if err == nil {
 			t.Fatal("expected error for nil validator, got nil")
 		}
@@ -237,12 +262,147 @@ func TestDWDValidator_ValidateAccess_NilService(t *testing.T) {
 
 	t.Run("nil service in validator", func(t *testing.T) {
 		v := NewDWDValidator(nil)
-		err := v.ValidateAccess(ctx, "user@example.com")
+		err := v.ValidateAccess(ctx)
 		if err == nil {
 			t.Fatal("expected error for nil service, got nil")
 		}
 		if !strings.Contains(err.Error(), "validator or service is nil") {
 			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+// writeFakeServiceAccountKey writes a syntactically valid service account key
+// file (with a freshly generated RSA key) and returns its path. Credential
+// detection parses the file without any network calls.
+func writeFakeServiceAccountKey(t *testing.T) string {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate RSA key: %v", err)
+	}
+
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		t.Fatalf("marshal private key: %v", err)
+	}
+
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+
+	sa := map[string]string{
+		"type":           "service_account",
+		"project_id":     "test-project",
+		"private_key_id": "fake-key-id",
+		"private_key":    string(pemBytes),
+		"client_email":   "fake@test-project.iam.gserviceaccount.com",
+		"client_id":      "1234567890",
+		"token_uri":      "https://oauth2.googleapis.com/token",
+	}
+
+	data, err := json.Marshal(sa)
+	if err != nil {
+		t.Fatalf("marshal service account JSON: %v", err)
+	}
+
+	path := filepath.Join(t.TempDir(), "sa.json")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("write service account file: %v", err)
+	}
+
+	return path
+}
+
+// flakyDriveServer returns an httptest server that answers Drive-style
+// files.get requests, failing with failStatus for the first failures requests
+// and succeeding afterwards. The returned counter tracks total requests.
+func flakyDriveServer(t *testing.T, failures, failStatus int) (*httptest.Server, *atomic.Int64) {
+	t.Helper()
+
+	calls := new(atomic.Int64)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) <= int64(failures) {
+			http.Error(w, `{"error":{"code":429,"message":"rate limited"}}`, failStatus)
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"root"}`))
+	}))
+	t.Cleanup(ts.Close)
+
+	return ts, calls
+}
+
+// resolveDriveService builds a Drive service against the test server using the
+// options produced by ResolveClient.
+func resolveDriveService(t *testing.T, ctx context.Context, endpoint string, opts ...Option) *drive.Service {
+	t.Helper()
+
+	clientOpts, err := ResolveClient(ctx, nil, opts...)
+	if err != nil {
+		t.Fatalf("ResolveClient: %v", err)
+	}
+
+	srv, err := drive.NewService(ctx, append(clientOpts, option.WithEndpoint(endpoint))...)
+	if err != nil {
+		t.Fatalf("drive.NewService: %v", err)
+	}
+
+	return srv
+}
+
+func TestResolveClient_TransportRetry(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("retries transient failures and succeeds", func(t *testing.T) {
+		ts, calls := flakyDriveServer(t, 2, http.StatusTooManyRequests)
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}))
+
+		file, err := srv.Files.Get("root").Fields("id").Context(ctx).Do()
+		if err != nil {
+			t.Fatalf("expected retried call to succeed, got: %v", err)
+		}
+		if file.Id != "root" {
+			t.Errorf("expected file ID root, got %q", file.Id)
+		}
+		if calls.Load() != 3 {
+			t.Errorf("expected 3 attempts (2 failures + 1 success), got %d", calls.Load())
+		}
+	})
+
+	t.Run("WithoutRetry performs a single attempt", func(t *testing.T) {
+		ts, calls := flakyDriveServer(t, 1, http.StatusInternalServerError)
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}), WithoutRetry())
+
+		if _, err := srv.Files.Get("root").Fields("id").Context(ctx).Do(); err == nil {
+			t.Fatal("expected error without retry, got nil")
+		}
+		if calls.Load() != 1 {
+			t.Errorf("expected exactly 1 attempt, got %d", calls.Load())
+		}
+	})
+
+	t.Run("WithRetryAttempts caps total attempts", func(t *testing.T) {
+		ts, calls := flakyDriveServer(t, 1000, http.StatusServiceUnavailable)
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}), WithRetryAttempts(2))
+
+		if _, err := srv.Files.Get("root").Fields("id").Context(ctx).Do(); err == nil {
+			t.Fatal("expected error after exhausting retries, got nil")
+		}
+		if calls.Load() != 2 {
+			t.Errorf("expected exactly 2 attempts, got %d", calls.Load())
+		}
+	})
+
+	t.Run("does not mutate the injected client", func(t *testing.T) {
+		client := &http.Client{}
+		if _, err := ResolveClient(ctx, nil, WithHTTPClient(client)); err != nil {
+			t.Fatalf("ResolveClient: %v", err)
+		}
+		if client.Transport != nil {
+			t.Error("expected the caller-owned client to remain untouched")
 		}
 	})
 }

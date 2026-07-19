@@ -9,6 +9,7 @@
 - **Service Account Impersonation**: Direct, secure SA-to-SA credentials configuration.
 - **Interactive Consent Support**: Desktop-oriented consent flow with customizable token caching policies.
 - **HTTP Transport Customization**: Injects custom HTTP clients to control connection limits, timeouts, and mocks.
+- **Uniform Transient-Failure Retry**: Every client resolved by `auth.ResolveClient` routes HTTP traffic through a retrying transport (429/5xx with exponential backoff), so pagination crawls, downloads, and buffered uploads survive transient errors. Tune with `auth.WithRetryAttempts`, opt out with `auth.WithoutRetry`.
 
 ## Installation
 
@@ -73,9 +74,11 @@ func main() {
 		log.Fatalf("Failed to initialize client: %v", err)
 	}
 
-	// Create validator to verify access before handling requests
+	// Create validator to verify access before handling requests.
+	// It validates the delegated subject the service credentials were
+	// built with (user@my-domain.com above).
 	validator := auth.NewDWDValidator(driveService)
-	if err := validator.ValidateAccess(ctx, "user@my-domain.com"); err != nil {
+	if err := validator.ValidateAccess(ctx); err != nil {
 		log.Fatalf("DWD access check failed: %v", err)
 	}
 
