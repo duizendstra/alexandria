@@ -36,7 +36,7 @@ const (
 	ContactPointType_CONTACT_POINT_TYPE_EMAIL       ContactPointType = 1
 	ContactPointType_CONTACT_POINT_TYPE_PHONE       ContactPointType = 2
 	ContactPointType_CONTACT_POINT_TYPE_URL         ContactPointType = 3
-	ContactPointType_CONTACT_POINT_TYPE_FAX         ContactPointType = 4 // 5-9 reserved for future types (e.g. SOCIAL, MESSAGING).
+	ContactPointType_CONTACT_POINT_TYPE_FAX         ContactPointType = 4
 )
 
 // Enum value maps for ContactPointType.
@@ -325,7 +325,7 @@ var File_domain_contact_v1_contact_proto protoreflect.FileDescriptor
 
 const file_domain_contact_v1_contact_proto_rawDesc = "" +
 	"\n" +
-	"\x1fdomain/contact/v1/contact.proto\x12\x11domain.contact.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x03\n" +
+	"\x1fdomain/contact/v1/contact.proto\x12\x11domain.contact.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x91\x03\n" +
 	"\fContactPoint\x127\n" +
 	"\x04type\x18\x01 \x01(\x0e2#.domain.contact.v1.ContactPointTypeR\x04type\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x123\n" +
@@ -335,7 +335,7 @@ const file_domain_contact_v1_contact_proto_rawDesc = "" +
 	"\n" +
 	"valid_from\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x125\n" +
 	"\bvalid_to\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo\x12\x14\n" +
-	"\x05label\x18\b \x01(\tR\x05label\"\xaf\x03\n" +
+	"\x05label\x18\b \x01(\tR\x05labelJ\x04\b\t\x10\x14\"\xb5\x03\n" +
 	"\rPostalAddress\x12\x16\n" +
 	"\x06street\x18\x01 \x01(\tR\x06street\x12\x12\n" +
 	"\x04city\x18\x02 \x01(\tR\x04city\x12\x16\n" +
@@ -349,13 +349,13 @@ const file_domain_contact_v1_contact_proto_rawDesc = "" +
 	"\n" +
 	"valid_from\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x125\n" +
 	"\bvalid_to\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo*\xaa\x01\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\avalidToJ\x04\b\v\x10\x14*\xb0\x01\n" +
 	"\x10ContactPointType\x12\"\n" +
 	"\x1eCONTACT_POINT_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18CONTACT_POINT_TYPE_EMAIL\x10\x01\x12\x1c\n" +
 	"\x18CONTACT_POINT_TYPE_PHONE\x10\x02\x12\x1a\n" +
 	"\x16CONTACT_POINT_TYPE_URL\x10\x03\x12\x1a\n" +
-	"\x16CONTACT_POINT_TYPE_FAX\x10\x04BLZJgithub.com/duizendstra/alexandria/go/contracts/domain/contact/v1;contactv1b\x06proto3"
+	"\x16CONTACT_POINT_TYPE_FAX\x10\x04\"\x04\b\x05\x10\tBLZJgithub.com/duizendstra/alexandria/go/contracts/domain/contact/v1;contactv1b\x06proto3"
 
 var (
 	file_domain_contact_v1_contact_proto_rawDescOnce sync.Once
