@@ -25,7 +25,7 @@ func TestApplyServiceCreates(t *testing.T) {
 			Name:   "api",
 			Region: regionTest,
 			Image:  "gcr.io/example/api:latest",
-			CPU:    "1000m",
+			CPU:    testCPU,
 		}, pulumi.String("sa@example.iam.gserviceaccount.com"), []cloudrun.EnvVar{
 			{Name: "EXAMPLE", Value: pulumi.String("value")},
 		}, nil)
@@ -66,7 +66,7 @@ func TestApplyJobCreates(t *testing.T) {
 			Image:      "gcr.io/example/worker:latest",
 			MaxRetries: 1,
 			Memory:     "1Gi",
-			CPU:        "1000m",
+			CPU:        testCPU,
 		}, pulumi.String("sa@example.iam.gserviceaccount.com"), []cloudrun.EnvVar{
 			{Name: "EXAMPLE", Value: pulumi.String("value")},
 		}, nil)
