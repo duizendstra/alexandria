@@ -3,7 +3,7 @@ module github.com/duizendstra/alexandria/go/iac/identity
 go 1.26
 
 require (
-	github.com/duizendstra/alexandria/go/governance v0.1.0
+	github.com/duizendstra/alexandria/go/governance v0.2.0
 	github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra v0.3.1
 	github.com/pulumi/pulumi/sdk/v3 v3.253.0
 )
