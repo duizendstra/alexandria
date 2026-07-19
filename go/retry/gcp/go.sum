@@ -1,5 +1,5 @@
-github.com/duizendstra/alexandria/go/retry v0.0.1 h1:NtF7LH6g5yvFUSzxtiA5an26s/CCKSH3HfMUBD/pxJU=
-github.com/duizendstra/alexandria/go/retry v0.0.1/go.mod h1:h53W1EEE1Bj3IsN6jaqW5nEcLKDdEUOJYHEKU2LfDmM=
+github.com/duizendstra/alexandria/go/retry v0.0.3 h1:cmaXnWHhx2nf5NeIITG406fd8btUvB6kEsVLHsXpCuA=
+github.com/duizendstra/alexandria/go/retry v0.0.3/go.mod h1:h53W1EEE1Bj3IsN6jaqW5nEcLKDdEUOJYHEKU2LfDmM=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 golang.org/x/net v0.26.0 h1:soB7SVo0PWrY4vPW/+ay0jKDNScG2X9wFeYlXIvJsOQ=
