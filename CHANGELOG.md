@@ -18,7 +18,7 @@ least one real consumer.
 
 ### Changed
 
-- **go/governance** (breaking, pending `v0.2.0`): `plan.NewStarter` and
+- **go/governance v0.2.0** (breaking): `plan.NewStarter` and
   `plan.NewStandard` now take an `orgID` parameter, mirroring
   `NewEnterprise`. Previously they could never satisfy `validateScope` at
   Organization scope (no way to supply the required OrgID), so starter and
@@ -75,8 +75,8 @@ least one real consumer.
   single `runningOnGCP()` helper (no behavior change).
 - **dependencies**: aligned across modules — `grpc v1.82.1`,
   `otel/trace v1.44.0`, `genproto/rpc 20260706` in `go/google` and
-  `go/iac/pulumi/gcpinfra` (`go/iac/governance` picks the aligned set up
-  via `go mod tidy` after the pending tags land).
+  `go/iac/pulumi/gcpinfra` (`go/iac/governance` picked the aligned set
+  up via `go mod tidy` once the tags landed).
 
 ### Fixed
 
