@@ -42,6 +42,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [iac/finops](go/iac/finops/) | `github.com/duizendstra/alexandria/go/iac/finops` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning a FinOps project (billing dataset, org budget with alerts) |
 | [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning GCP governance |
 | [iac/identity](go/iac/identity/) | `github.com/duizendstra/alexandria/go/iac/identity` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning an identity project (secrets, SAs, IAM) |
+| [iac/observability](go/iac/observability/) | `github.com/duizendstra/alexandria/go/iac/observability` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning an observability project (log dataset, org audit-log sink) |
 | [iac/workloads](go/iac/workloads/) | `github.com/duizendstra/alexandria/go/iac/workloads` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning multi-project workload environments with per-concern exports |
 
 Version numbers signal maturity: `v0.0.x` modules are experimental; `v0.1.x`
