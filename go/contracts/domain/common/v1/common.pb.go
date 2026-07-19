@@ -196,22 +196,23 @@ var File_domain_common_v1_common_proto protoreflect.FileDescriptor
 
 const file_domain_common_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x1ddomain/common/v1/common.proto\x12\x10domain.common.v1\"4\n" +
+	"\x1ddomain/common/v1/common.proto\x12\x10domain.common.v1\":\n" +
 	"\n" +
 	"ExternalId\x12\x16\n" +
 	"\x06system\x18\x01 \x01(\tR\x06system\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id*i\n" +
+	"\x02id\x18\x02 \x01(\tR\x02idJ\x04\b\x03\x10\n" +
+	"*o\n" +
 	"\tLifecycle\x12\x19\n" +
 	"\x15LIFECYCLE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10LIFECYCLE_ACTIVE\x10\x01\x12\x14\n" +
 	"\x10LIFECYCLE_LEGACY\x10\x02\x12\x15\n" +
-	"\x11LIFECYCLE_INVALID\x10\x03*u\n" +
+	"\x11LIFECYCLE_INVALID\x10\x03\"\x04\b\x04\x10\t*{\n" +
 	"\aPurpose\x12\x17\n" +
 	"\x13PURPOSE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10PURPOSE_PERSONAL\x10\x01\x12\x10\n" +
 	"\fPURPOSE_WORK\x10\x02\x12\x13\n" +
 	"\x0fPURPOSE_BILLING\x10\x03\x12\x14\n" +
-	"\x10PURPOSE_SHIPPING\x10\x04BJZHgithub.com/duizendstra/alexandria/go/contracts/domain/common/v1;commonv1b\x06proto3"
+	"\x10PURPOSE_SHIPPING\x10\x04\"\x04\b\x05\x10\tBJZHgithub.com/duizendstra/alexandria/go/contracts/domain/common/v1;commonv1b\x06proto3"
 
 var (
 	file_domain_common_v1_common_proto_rawDescOnce sync.Once
