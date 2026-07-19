@@ -264,7 +264,7 @@ func TestSubmitAfterCloseFailsTask(t *testing.T) {
 	id := r.Submit("late", func(_ context.Context) (any, error) {
 		t.Error("task function must not run after Close")
 
-		return nil, nil
+		return nil, nil //nolint:nilnil // Test callback intentionally yields no result.
 	})
 
 	task := waitForStatus(t, r, id, async.StatusFailed)
@@ -303,7 +303,7 @@ func TestGoroutinesBoundedUnderLoad(t *testing.T) {
 				case <-ctx.Done():
 				}
 
-				return nil, nil
+				return nil, nil //nolint:nilnil // Test callback intentionally yields no result.
 			})
 		}
 	}()
