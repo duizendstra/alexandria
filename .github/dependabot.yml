@@ -1,17 +1,27 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/go/slog-gcp/"
+    directory: "/go/contracts/"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
-    directory: "/go/slog-gcp/otelgcp/"
+    directory: "/go/dataquality/datadiff/"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
-    directory: "/go/retry/gcp/"
+    directory: "/go/discovery/privacyfilter/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/discovery/search/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/discovery/search/searchtest/"
     schedule:
       interval: "weekly"
 
@@ -21,7 +31,62 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "gomod"
-    directory: "/go/contracts/"
+    directory: "/go/governance/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/iac/governance/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/iac/pulumi/gcpinfra/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/observability/audit/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/platform/apierr/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/platform/async/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/platform/cache/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/platform/web/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/retry/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/retry/gcp/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/slog-gcp/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/slog-gcp/otelgcp/"
     schedule:
       interval: "weekly"
 
