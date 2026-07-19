@@ -204,7 +204,7 @@ var File_domain_role_v1_role_proto protoreflect.FileDescriptor
 
 const file_domain_role_v1_role_proto_rawDesc = "" +
 	"\n" +
-	"\x19domain/role/v1/role.proto\x12\x0edomain.role.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfc\x02\n" +
+	"\x19domain/role/v1/role.proto\x12\x0edomain.role.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x82\x03\n" +
 	"\x04Role\x12,\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x18.domain.role.v1.RoleTypeR\x04type\x129\n" +
 	"\tlifecycle\x18\x02 \x01(\x0e2\x1b.domain.common.v1.LifecycleR\tlifecycle\x124\n" +
@@ -214,7 +214,7 @@ const file_domain_role_v1_role_proto_rawDesc = "" +
 	"\bvalid_to\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\x12+\n" +
 	"\x11organization_name\x18\a \x01(\tR\x10organizationName\x12 \n" +
-	"\vdescription\x18\b \x01(\tR\vdescription*\xb2\x01\n" +
+	"\vdescription\x18\b \x01(\tR\vdescriptionJ\x04\b\t\x10\x0f*\xb8\x01\n" +
 	"\bRoleType\x12\x19\n" +
 	"\x15ROLE_TYPE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ROLE_TYPE_CONTACT\x10\x01\x12\x16\n" +
@@ -222,7 +222,7 @@ const file_domain_role_v1_role_proto_rawDesc = "" +
 	"\x12ROLE_TYPE_SUPPLIER\x10\x03\x12\x16\n" +
 	"\x12ROLE_TYPE_CUSTOMER\x10\x04\x12\x14\n" +
 	"\x10ROLE_TYPE_DEBTOR\x10\x05\x12\x16\n" +
-	"\x12ROLE_TYPE_CREDITOR\x10\x06BFZDgithub.com/duizendstra/alexandria/go/contracts/domain/role/v1;rolev1b\x06proto3"
+	"\x12ROLE_TYPE_CREDITOR\x10\x06\"\x04\b\a\x10\x13BFZDgithub.com/duizendstra/alexandria/go/contracts/domain/role/v1;rolev1b\x06proto3"
 
 var (
 	file_domain_role_v1_role_proto_rawDescOnce sync.Once

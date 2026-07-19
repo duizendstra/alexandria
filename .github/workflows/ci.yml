@@ -98,6 +98,34 @@ jobs:
           done < <(find go/ -name go.mod -exec dirname {} \;)
           exit $status
 
+  contracts:
+    name: Contracts (buf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Lint
+        working-directory: contracts
+        run: buf lint
+
+      - name: Breaking change check
+        if: github.event_name == 'pull_request'
+        working-directory: contracts
+        run: buf breaking --against '../.git#branch=origin/main,subdir=contracts'
+
+      - name: Generated code drift check
+        working-directory: contracts
+        run: |
+          buf generate
+          git diff --exit-code ../go/contracts \
+            || { echo "::error::go/contracts is stale. Run 'buf generate' in contracts/ and commit the result."; exit 1; }
+
   docs:
     name: Validate docs
     runs-on: ubuntu-latest

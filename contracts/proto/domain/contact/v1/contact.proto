@@ -19,6 +19,7 @@ enum ContactPointType {
   CONTACT_POINT_TYPE_PHONE = 2;
   CONTACT_POINT_TYPE_URL = 3;
   CONTACT_POINT_TYPE_FAX = 4;
+  reserved 5 to 9;
   // 5-9 reserved for future types (e.g. SOCIAL, MESSAGING).
 }
 
@@ -49,6 +50,7 @@ message ContactPoint {
   // Human-readable label from the source (e.g. "Mobile", "Main").
   string label = 8;
 
+  reserved 9 to 19;
   // 9-19 reserved for future fields.
 }
 
@@ -84,5 +86,6 @@ message PostalAddress {
   // When this address stopped being valid. Unset = still valid.
   google.protobuf.Timestamp valid_to = 10;
 
+  reserved 11 to 19;
   // 11-19 reserved for future fields (e.g. formatted_address, geo coordinates).
 }

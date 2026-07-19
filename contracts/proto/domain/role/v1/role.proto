@@ -21,6 +21,7 @@ enum RoleType {
   ROLE_TYPE_CUSTOMER = 4; // Purchases goods or services.
   ROLE_TYPE_DEBTOR = 5; // Owes money (accounts receivable).
   ROLE_TYPE_CREDITOR = 6; // Is owed money (accounts payable).
+  reserved 7 to 19;
   // 7-19 reserved for future roles.
 }
 
@@ -51,5 +52,6 @@ message Role {
   // Free-text description of responsibilities or context.
   string description = 8;
 
+  reserved 9 to 14;
   // 9-14 reserved for future fields (e.g. department, location, notes).
 }

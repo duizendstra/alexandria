@@ -28,6 +28,7 @@ message Person {
   string family_name = 2; // Last name / surname.
   string middle_name = 3; // Middle name(s).
   string prefix = 4; // Title prefix (e.g. "Mr.", "Dr.").
+  reserved 5 to 19;
   // 5-19 reserved for future person fields (e.g. suffix, nickname,
   // date_of_birth, gender, photo_url).
 }
@@ -36,6 +37,7 @@ message Person {
 message Organization {
   string name = 1; // Legal or display name.
   string trade_name = 2; // Trade name / DBA if different from legal name.
+  reserved 3 to 19;
   // 3-19 reserved for future org fields (e.g. registration_number,
   // vat_number, industry, website, logo_url).
 }
@@ -61,6 +63,7 @@ message Party {
     Person person = 4;
     Organization organization = 5;
   }
+  reserved 6 to 9;
   // 6-9 reserved for future top-level fields.
 
   // Contact points (email, phone, URL, etc.).
@@ -81,6 +84,7 @@ message Party {
   // Future: user-defined group labels (e.g. "Wedding guests", "Book club").
   // repeated domain.group.v1.Group groups = 15;
 
+  reserved 16 to 19;
   // 16-19 reserved for future repeated fields.
 
   // When this party record was created in Alexandria.
@@ -95,5 +99,6 @@ message Party {
   // Summary / about section — free-text bio.
   string bio = 23;
 
+  reserved 24 to 29;
   // 24-29 reserved for future metadata fields.
 }

@@ -16,6 +16,7 @@ enum Lifecycle {
   LIFECYCLE_ACTIVE = 1; // Currently valid and in use.
   LIFECYCLE_LEGACY = 2; // Superseded but historically accurate.
   LIFECYCLE_INVALID = 3; // Known to be incorrect (e.g. bounced email).
+  reserved 4 to 9;
   // 4-9 reserved for future lifecycle states.
 }
 
@@ -26,6 +27,7 @@ enum Purpose {
   PURPOSE_WORK = 2; // Professional use (office address, work email).
   PURPOSE_BILLING = 3; // Billing and invoicing.
   PURPOSE_SHIPPING = 4; // Physical delivery.
+  reserved 5 to 9;
   // 5-9 reserved for future purposes.
 }
 
@@ -38,5 +40,6 @@ message ExternalId {
   // The record identifier within that system (e.g. "people/c1234567890").
   string id = 2;
 
+  reserved 3 to 9;
   // 3-9 reserved for future fields (e.g. system_version, last_sync_at).
 }
