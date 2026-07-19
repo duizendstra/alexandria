@@ -37,10 +37,12 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/async](go/platform/async/) | `github.com/duizendstra/alexandria/go/platform/async` | v0.1.0 | In-memory async task runner with lifecycle states |
 | [platform/cache](go/platform/cache/) | `github.com/duizendstra/alexandria/go/platform/cache` | v0.0.1 | Generic, concurrent-safe in-memory TTL cache |
 | [platform/gcpenv](go/platform/gcpenv/) | `github.com/duizendstra/alexandria/go/platform/gcpenv` | v0.1.0 | Canonical GCP project ID resolution (env vars + metadata service) |
+| [platform/passstore](go/platform/passstore/) | `github.com/duizendstra/alexandria/go/platform/passstore` | v0.1.0 | Deploy-time secret retrieval from the local pass store |
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.0.2 | Project-agnostic HTTP server, client, and response utilities |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.2.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
-| [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.3.1 | Pulumi adapter packages for Google Cloud infrastructure |
-| [iac/delivery](go/iac/delivery/) | `github.com/duizendstra/alexandria/go/iac/delivery` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning a CI/CD project (registry, Git connection, build triggers, consumer grants) |
+| [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.4.0 | Pulumi adapter packages for Google Cloud infrastructure |
+| [iac/pulumi/stackref](go/iac/pulumi/stackref/) | `github.com/duizendstra/alexandria/go/iac/pulumi/stackref` | v0.1.0 | Typed readers for Pulumi stack reference outputs |
+| [iac/delivery](go/iac/delivery/) | `github.com/duizendstra/alexandria/go/iac/delivery` | v0.1.1 | Configuration-driven Pulumi blueprint provisioning a CI/CD project (registry, Git connection, build triggers, consumer grants) |
 | [iac/finops](go/iac/finops/) | `github.com/duizendstra/alexandria/go/iac/finops` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning a FinOps project (billing dataset, org budget with alerts) |
 | [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.1 | Configuration-driven Pulumi blueprint provisioning GCP governance |
 | [iac/identity](go/iac/identity/) | `github.com/duizendstra/alexandria/go/iac/identity` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning an identity project (secrets, SAs, IAM) |
