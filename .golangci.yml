@@ -163,31 +163,16 @@ linters:
             - github.com/duizendstra/alexandria
 
             # ── Vetted externals — every addition is a deliberate,
-            # recorded decision (see blueprints/golangci/README.md) ──
-            - connectrpc.com/connect
-            - google.golang.org
+            # recorded decision (see blueprints/golangci/README.md).
+            # Every entry must be imported by at least one go/ module.
             - cloud.google.com/go
             - golang.org/x
-            - gopkg.in/yaml.v3
-            - github.com/spf13/cobra
-            - github.com/spf13/pflag
-            - github.com/spf13/viper
-            - github.com/google/uuid
-            - github.com/google/go-github
-            - github.com/google/go-cmp
-            - github.com/bradleyfalzon/ghinstallation/v2
-            - github.com/golang-jwt/jwt/v4
-            - github.com/modelcontextprotocol/go-sdk
-            - go.mau.fi/whatsmeow
-            - go.mau.fi/libsignal
-            - go.mau.fi/util
+            - google.golang.org
             - go.opentelemetry.io
             - github.com/pulumi/pulumi/sdk/v3
             - github.com/pulumi/pulumi-gcp/sdk/v9
-            - github.com/pulumi/pulumi-random/sdk/v4
-            - github.com/cespare/xxhash/v2
-            - github.com/mdp/qrterminal/v3
-            - modernc.org/sqlite
+            # ConnectRPC runtime — imported by the generated code in go/contracts.
+            - connectrpc.com/connect
 
     ireturn:
       allow:

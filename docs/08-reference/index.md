@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: OKF specification and external API references.
+uuid: f83b91ac-d6e1-488d-a4e5-86e7e8d4174c
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "reference" ]
+relations: []
 ---
 
 # 08 — Reference
@@ -32,4 +37,4 @@ This folder contains look-up material — specifications, API references, and st
 | Asset | Description |
 |---|---|
 | [`skills/`](../../skills/README.md) | Antigravity AI skills shareable across workspaces (dialectical-review, diffract-review, ko-build, release-review); consumer repos inherit them via `skills.json`. |
-| [`blueprints/`](../../blueprints/README.md) | Project scaffolding templates for bootstrapping new repositories (currently the `service/` Go Cloud Run blueprint with its golden ko build config). |
+| [`blueprints/`](../../blueprints/README.md) | Golden configuration templates: the `service/` Go Cloud Run ko build config, the `githooks/` Conventional Commits + quality-gate hook set, and the `golangci/` library/consumer lint profiles. |

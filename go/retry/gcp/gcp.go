@@ -11,10 +11,10 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/duizendstra/alexandria/go/platform/apierr"
 	"github.com/duizendstra/alexandria/go/retry"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -181,7 +181,7 @@ func classifyOAuthRetrieveError(err error, rErr *oauth2.RetrieveError, attempt i
 	}
 
 	// Server-side failures and throttling at the token endpoint are transient.
-	if statusCode == http.StatusTooManyRequests || statusCode >= 500 {
+	if apierr.RetryableStatus(statusCode) {
 		logger().Warn("Transient OAuth2 token endpoint error, will retry",
 			slog.Int("attempt", attempt),
 			slog.Int("http_code", statusCode),
@@ -266,11 +266,14 @@ func classifyByErrorString(err error, attempt int) error {
 }
 
 // classifyAPIError determines whether a googleapi.Error is retryable.
+// HTTP retryability (408/429/5xx) is delegated to apierr.RetryableStatus —
+// the ecosystem's single classification table — with one GCP-specific
+// extension: 403 responses whose reason is quota/rate-limiting.
 func classifyAPIError(apiErr *googleapi.Error, attempt int) error {
 	isRetryable := false
 	var logMsg string
 
-	if apiErr.Code == http.StatusTooManyRequests || apiErr.Code >= 500 {
+	if apierr.RetryableStatus(apiErr.Code) {
 		isRetryable = true
 		logMsg = "Retryable API error, will retry"
 	} else if apiErr.Code == http.StatusForbidden {
@@ -305,16 +308,12 @@ func classifyAPIError(apiErr *googleapi.Error, attempt int) error {
 	return retry.Permanent(apiErr)
 }
 
-// classifyGRPCError maps modern cloud client gRPC status codes to retryability profiles.
-//
-//nolint:exhaustive // Only subset of standard retryable codes are explicitly switched on, default handles non-retryable codes.
+// classifyGRPCError maps modern cloud client gRPC status codes to
+// retryability profiles. The transient set (DEADLINE_EXCEEDED,
+// RESOURCE_EXHAUSTED, ABORTED, INTERNAL, UNAVAILABLE) is delegated to
+// apierr.RetryableGRPCCode — the ecosystem's single classification table.
 func classifyGRPCError(s *status.Status, attempt int) error {
-	switch s.Code() {
-	case codes.ResourceExhausted, // HTTP 429.
-		codes.Unavailable,      // Connection drops.
-		codes.Internal,         // Remote exceptions.
-		codes.Aborted,          // Concurrent transaction interruptions.
-		codes.DeadlineExceeded: // Request Timeout.
+	if apierr.RetryableGRPCCode(uint32(s.Code())) {
 		logger().Warn("Transient gRPC error, will retry",
 			slog.Int("attempt", attempt),
 			slog.String("grpc_code", s.Code().String()),
@@ -322,14 +321,13 @@ func classifyGRPCError(s *status.Status, attempt int) error {
 
 		//nolint:wrapcheck // Returning raw error from status evaluates properly at domain layer.
 		return s.Err()
-
-	default:
-		logger().Error("Permanent gRPC error, not retrying",
-			slog.Int("attempt", attempt),
-			slog.String("grpc_code", s.Code().String()),
-			slog.String("error", s.Message()))
-
-		//nolint:wrapcheck // retry.Permanent wraps errors internally to mark them as permanent for the retry runner.
-		return retry.Permanent(s.Err())
 	}
+
+	logger().Error("Permanent gRPC error, not retrying",
+		slog.Int("attempt", attempt),
+		slog.String("grpc_code", s.Code().String()),
+		slog.String("error", s.Message()))
+
+	//nolint:wrapcheck // retry.Permanent wraps errors internally to mark them as permanent for the retry runner.
+	return retry.Permanent(s.Err())
 }

@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: All shared Go modules, contracts, documentation, and tooling live in a single repository with independent versioning.
+uuid: 599a1bf7-9a16-4369-8574-4126261e7578
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "adr", "monorepo", "versioning" ]
+relations: []
 ---
 
 # ADR-0001: Use a Multi-Module Monorepo

@@ -262,3 +262,67 @@ func TestFromGRPCCode(t *testing.T) {
 		}
 	}
 }
+
+func TestRetryableStatus(t *testing.T) {
+	t.Parallel()
+
+	retryable := []int{408, 429, 500, 502, 503, 599}
+	for _, code := range retryable {
+		if !apierr.RetryableStatus(code) {
+			t.Errorf("RetryableStatus(%d) = false, want true", code)
+		}
+	}
+
+	permanent := []int{200, 204, 301, 400, 401, 403, 404, 409, 410, 422, 499}
+	for _, code := range permanent {
+		if apierr.RetryableStatus(code) {
+			t.Errorf("RetryableStatus(%d) = true, want false", code)
+		}
+	}
+}
+
+// TestRetryableStatus_AgreesWithSentinelPath pins the documented equivalence:
+// RetryableStatus(code) == IsRetryable(FromStatus(code)) for every HTTP code.
+func TestRetryableStatus_AgreesWithSentinelPath(t *testing.T) {
+	t.Parallel()
+
+	for code := 100; code < 600; code++ {
+		want := apierr.IsRetryable(apierr.FromStatus(code))
+		if got := apierr.RetryableStatus(code); got != want {
+			t.Errorf("RetryableStatus(%d) = %v, but IsRetryable(FromStatus(%d)) = %v", code, got, code, want)
+		}
+	}
+}
+
+func TestRetryableGRPCCode(t *testing.T) {
+	t.Parallel()
+
+	// DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, ABORTED, INTERNAL, UNAVAILABLE.
+	retryable := []uint32{4, 8, 10, 13, 14}
+	for _, code := range retryable {
+		if !apierr.RetryableGRPCCode(code) {
+			t.Errorf("RetryableGRPCCode(%d) = false, want true", code)
+		}
+	}
+
+	// OK, CANCELLED, UNKNOWN, INVALID_ARGUMENT, NOT_FOUND, ALREADY_EXISTS,
+	// PERMISSION_DENIED, FAILED_PRECONDITION, OUT_OF_RANGE, UNIMPLEMENTED,
+	// DATA_LOSS, UNAUTHENTICATED.
+	permanent := []uint32{0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 15, 16}
+	for _, code := range permanent {
+		if apierr.RetryableGRPCCode(code) {
+			t.Errorf("RetryableGRPCCode(%d) = true, want false", code)
+		}
+	}
+}
+
+// TestFromGRPCCode_Aborted pins the ABORTED → ErrConflict mapping (the gRPC
+// analogue of HTTP 409), which is deliberately non-retryable as a sentinel
+// while RetryableGRPCCode(10) is true — see the RetryableGRPCCode docs.
+func TestFromGRPCCode_Aborted(t *testing.T) {
+	t.Parallel()
+
+	if err := apierr.FromGRPCCode(10); !errors.Is(err, apierr.ErrConflict) {
+		t.Fatalf("FromGRPCCode(10) = %v, want ErrConflict", err)
+	}
+}

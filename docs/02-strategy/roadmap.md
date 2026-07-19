@@ -67,7 +67,7 @@ For a capability to graduate from a **Candidate** to a **Standard**, it must pas
 | **Performance** | Benchmarks | Zero-allocations on hot serialization, formatting, or routing paths. | Manual; no CI benchmark gate yet |
 | **Resiliency** | Retries & Timeout | All outbound transport adapters must utilize explicit context timeouts and exponential retry backoffs. | Code review |
 | **Reproducibility** | Environment | Local dev shell generation via the repository Nix flake. | Nix flake (dev toolchain) |
-| **Documentation** | OKF Compliance | Documented inside the `docs/` vault with RFC-compliant, queryable YAML frontmatter. | Review + CI link check |
+| **Documentation** | OKF Compliance | Documented inside the `docs/` vault with RFC-compliant, queryable YAML frontmatter. | Review + CI link check + OKF integrity lint (`scripts/okf-lint.py`) |
 
 ---
 

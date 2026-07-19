@@ -19,6 +19,7 @@
             golangci-lint
             buf
             jq
+            just
           ];
 
           shellHook = ''

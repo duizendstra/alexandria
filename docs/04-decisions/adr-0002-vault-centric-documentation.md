@@ -45,12 +45,12 @@ We establish a unified, structured **Documentation Vault** directly within our s
     *   `07-playbooks/` — Step-by-step developer tutorials (onboarding).
     *   `08-reference/` — Ubiquitous Language glossaries, dictionary models, and API references.
 2.  **Standard Metadata Schema** — Every document must declare a RFC-compliant YAML frontmatter header defining standard metadata fields: `uuid` (RFC 4122 v4), `title`, `domain` (bounded context), `type` (Diátaxis quadrant), `status`, `maturity`, `owner`, `created_at`, `updated_at`, `summary` (dense text digest to optimize semantic vector-retrieval), `audience`, `tags`, and `relations`.
-3.  **Automated Schema Linters** *(planned, not yet built)* — Integrate a custom documentation validator into our CLI toolchain to audit the docs directory during CI/CD to prevent drift, catch duplicate UUIDs, and block broken relations. Today CI runs a relative-link check only; frontmatter/UUID/relations validation does not exist yet.
+3.  **Automated Schema Linters** — `scripts/okf-lint.py` audits the vault in the CI `docs` job: it validates the full frontmatter schema (required fields, enum values, ISO 8601 timestamps, domain↔folder agreement), rejects malformed or duplicate UUIDs, and blocks relations whose `target_uuid` does not resolve. The relative-link check runs alongside it.
 
 ## Consequences
 
 ### Easier
-*   **Drift Prevention** — Dead relative links already fail the build; once the schema linter lands, stale docs and invalid headers will too, forcing documentation to remain a first-class citizen alongside code.
+*   **Drift Prevention** — Dead relative links, invalid frontmatter, duplicate UUIDs, and dangling relations all fail the build, forcing documentation to remain a first-class citizen alongside code.
 *   **Predictable Discovery** — Human developers and AI context-retrieval systems can traverse and read authoritative knowledge from a single, highly structured, and queryable graph.
 
 ### Harder

@@ -2,6 +2,8 @@
 package file
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -166,7 +168,9 @@ func (w *FileWriter) rotateLocked() error {
 const maxTopResources = 5
 
 // ReadScorecard reads the audit log at path and returns a summary.
-// Uses stream decoding with json.Decoder to handle arbitrarily long lines without buffer errors.
+// Reads line by line (JSONL) so a single malformed line — e.g. a torn write
+// from a crash mid-append — is skipped without affecting later entries.
+// bufio.Reader grows as needed, so arbitrarily long lines are handled.
 func ReadScorecard(path string) (audit.Scorecard, error) {
 	f, err := os.Open(path) //nolint:gosec // path is trusted (from config)
 	if err != nil {
@@ -180,17 +184,24 @@ func ReadScorecard(path string) (audit.Scorecard, error) {
 	}
 	resources := make(map[string]int)
 
-	dec := json.NewDecoder(f)
-	for dec.More() {
-		var e audit.Entry
-		if err := dec.Decode(&e); err != nil {
-			continue // skip malformed entries.
+	r := bufio.NewReader(f)
+
+	for {
+		line, readErr := r.ReadBytes('\n')
+
+		if len(bytes.TrimSpace(line)) > 0 {
+			var e audit.Entry
+			if err := json.Unmarshal(line, &e); err == nil {
+				sc.Total++
+				sc.ByActor[e.Actor]++
+				sc.ByAction[e.Action]++
+				resources[e.Resource]++
+			} // else: skip malformed line.
 		}
 
-		sc.Total++
-		sc.ByActor[e.Actor]++
-		sc.ByAction[e.Action]++
-		resources[e.Resource]++
+		if readErr != nil {
+			break // io.EOF or a real read error; either way the log ends here.
+		}
 	}
 
 	sc.TopResources = topN(resources, maxTopResources)

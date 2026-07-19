@@ -15,7 +15,8 @@ summary: >
 audience: [public]
 tags: [ "go", "documentation", "dx", "agent-resilience" ]
 relations:
-  - { type: "extends", target: "ee14bc6c-1349-411a-8bb4-f58c70a84e20" } # DDD Boundaries
+  - target_uuid: "ee14bc6c-1349-411a-8bb4-f58c70a84e20" # DDD Boundaries
+    rel_type: "extends"
 ---
 
 # Writing Self-Documenting, Zero-Rot Go Packages
