@@ -10,8 +10,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/duizendstra/alexandria/go/retry v0.0.3 h1:cmaXnWHhx2nf5NeIITG406fd8btUvB6kEsVLHsXpCuA=
 github.com/duizendstra/alexandria/go/retry v0.0.3/go.mod h1:h53W1EEE1Bj3IsN6jaqW5nEcLKDdEUOJYHEKU2LfDmM=
-github.com/duizendstra/alexandria/go/retry/gcp v0.0.3 h1:g7mqhxLICtIuOtVFMagu5UJu02JJ7/QcS5k0JYOOYfs=
-github.com/duizendstra/alexandria/go/retry/gcp v0.0.3/go.mod h1:XxG+q4hruAAiGU2Jf0OZwdF2a+q8r7l9raalJB9Lk00=
+github.com/duizendstra/alexandria/go/retry/gcp v0.0.4 h1:GGT1iGdGslgyPeYKq7/gM+VUq6ZEsbRe6t0/2jlD7gM=
+github.com/duizendstra/alexandria/go/retry/gcp v0.0.4/go.mod h1:JetjhEq1is7JKCLstamVhC5RbV2Mhy1seqGZSkES5to=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
