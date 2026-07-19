@@ -4,19 +4,34 @@ API contracts, Protocol Buffer definitions, and schema specifications representi
 
 ## Status
 
-Protocol Buffer definitions are active across multiple domains:
-- **Collaboration**: board, friction, pulls, ideas, issues
+Protocol Buffer definitions are active across multiple domains (34 packages):
+- **Alx**: email, postmark
+- **Analytics**: billing
 - **Capture**: etchings
-- **Intelligence**: memory, reasoning
-- **Development**: tools, hooks, sync
-- **Workspace**: spoke, governance
+- **Collaboration**: board, friction, ideas, issues, pulls
+- **Common**: privacy
+- **Deployment**: status
+- **Development**: hooks, sync, tools
+- **Domain/Model**: common, contact, message, party, role
 - **Foundation**: errors
+- **Intelligence**: memory, reasoning
+- **Messaging**: notifications
 - **Observability**: audit
 - **Operations**: result
-- **Registry**: repos, artifacts, brain, skills, documents, services
-- **Domain/Model**: contact, role, party, message, common
-- **Messaging**: notifications
-- **Analytics**: billing
+- **Registry**: artifacts, brain, documents, repos, services, skills
+- **Timeline**: event
+- **Workspace**: governance, spoke
+
+## Versioning
+
+Package versions signal API stability:
+
+- **`v1`** — proven contracts with a real consumer; breaking changes are
+  rejected by `buf breaking` in CI. Today this is the five `domain/*`
+  packages (`common`, `contact`, `message`, `party`, `role`).
+- **`v1alpha1`** — everything else: the shape is published but not yet
+  validated by a consumer, and may change. Packages are promoted to `v1`
+  deliberately, one at a time, once a consumer proves the shape.
 
 ## Generation
 

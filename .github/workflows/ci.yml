@@ -98,6 +98,28 @@ jobs:
           done < <(find go/ -name go.mod -exec dirname {} \;)
           exit $status
 
+      - name: Require README module-index coverage for every module
+        run: |
+          status=0
+          while IFS= read -r dir; do
+            if ! grep -q "\`github.com/duizendstra/alexandria/$dir\`" README.md; then
+              echo "::error file=README.md::Module $dir is missing from the README module index table."
+              status=1
+            fi
+          done < <(find go/ -name go.mod -exec dirname {} \;)
+          exit $status
+
+      - name: Require live githooks to match the golden blueprints
+        run: |
+          status=0
+          for hook in commit-msg pre-commit; do
+            if ! diff -u "blueprints/githooks/$hook" ".githooks/$hook"; then
+              echo "::error file=.githooks/$hook::Live hook has drifted from blueprints/githooks/$hook. Update both together (pre-push is a documented multi-module adaptation and is exempt)."
+              status=1
+            fi
+          done
+          exit $status
+
   contracts:
     name: Contracts (buf)
     runs-on: ubuntu-latest
