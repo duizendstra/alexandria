@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## 2026-07-19 — cloudrun explicit CPU limit
 
-Released tags: `go/iac/pulumi/gcpinfra/v0.4.1`.
+Released tags: `go/iac/pulumi/gcpinfra/v0.4.2`.
+
+> **Note:** `go/iac/pulumi/gcpinfra/v0.4.1` was mis-cut before this
+> change merged (it is content-identical to v0.4.0 plus unrelated
+> githooks work) and had already been cached by the Go module proxy, so
+> it stays published but must not be pinned — use v0.4.2.
 
 ### Added
 
