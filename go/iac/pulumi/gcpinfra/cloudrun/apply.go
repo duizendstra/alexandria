@@ -10,6 +10,15 @@ import (
 // defaultMemory is the container memory limit when none is configured.
 const defaultMemory = "512Mi"
 
+// Resource-limit map keys and IgnoreChanges paths shared by the
+// service, job, and sidecar-service appliers.
+const (
+	limitMemory         = "memory"
+	limitCPU            = "cpu"
+	ignoreClient        = "client"
+	ignoreClientVersion = "clientVersion"
+)
+
 // ServiceOutputs holds references to the created Cloud Run service.
 type ServiceOutputs struct {
 	Name pulumi.StringOutput
@@ -23,7 +32,7 @@ type ServiceOutputs struct {
 func ApplyService(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
-	cfg ServiceConfig,
+	cfg ServiceConfig, //nolint:gocritic // hugeParam: by-value keeps the v0.4.x API stable
 	serviceAccountEmail pulumi.StringInput,
 	envs []EnvVar,
 	deps []pulumi.Resource,
@@ -45,6 +54,11 @@ func ApplyService(
 		memLimit = defaultMemory
 	}
 
+	svcLimits := pulumi.StringMap{limitMemory: pulumi.String(memLimit)}
+	if cfg.CPU != "" {
+		svcLimits[limitCPU] = pulumi.String(cfg.CPU)
+	}
+
 	svc, err := cloudrunv2.NewService(ctx, cfg.Name, &cloudrunv2.ServiceArgs{
 		Project:  projectID,
 		Location: pulumi.String(cfg.Region),
@@ -56,15 +70,13 @@ func ApplyService(
 					Image: pulumi.String(cfg.Image),
 					Envs:  svcEnvs,
 					Resources: &cloudrunv2.ServiceTemplateContainerResourcesArgs{
-						Limits: pulumi.StringMap{
-							"memory": pulumi.String(memLimit),
-						},
+						Limits: svcLimits,
 					},
 				},
 			},
 		},
 	}, pulumi.DependsOn(deps),
-		pulumi.IgnoreChanges([]string{"client", "clientVersion", "template.containers[0].image"}))
+		pulumi.IgnoreChanges([]string{ignoreClient, ignoreClientVersion, "template.containers[0].image"}))
 	if err != nil {
 		return nil, fmt.Errorf("create cloud run service %s: %w", cfg.Name, err)
 	}
@@ -86,7 +98,7 @@ type JobOutputs struct {
 func ApplyJob(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
-	cfg JobConfig,
+	cfg JobConfig, //nolint:gocritic // hugeParam: by-value keeps the v0.4.x API stable
 	serviceAccountEmail pulumi.StringInput,
 	envs []EnvVar,
 	deps []pulumi.Resource,
@@ -108,6 +120,11 @@ func ApplyJob(
 		jobMemLimit = defaultMemory
 	}
 
+	jobLimits := pulumi.StringMap{limitMemory: pulumi.String(jobMemLimit)}
+	if cfg.CPU != "" {
+		jobLimits[limitCPU] = pulumi.String(cfg.CPU)
+	}
+
 	job, err := cloudrunv2.NewJob(ctx, cfg.Name, &cloudrunv2.JobArgs{
 		Project:  projectID,
 		Location: pulumi.String(cfg.Region),
@@ -120,9 +137,7 @@ func ApplyJob(
 						Image: pulumi.String(cfg.Image),
 						Envs:  jobEnvs,
 						Resources: &cloudrunv2.JobTemplateTemplateContainerResourcesArgs{
-							Limits: pulumi.StringMap{
-								"memory": pulumi.String(jobMemLimit),
-							},
+							Limits: jobLimits,
 						},
 					},
 				},
@@ -130,7 +145,7 @@ func ApplyJob(
 			},
 		},
 	}, pulumi.DependsOn(deps),
-		pulumi.IgnoreChanges([]string{"client", "clientVersion", "template.template.containers[0].image"}))
+		pulumi.IgnoreChanges([]string{ignoreClient, ignoreClientVersion, "template.template.containers[0].image"}))
 	if err != nil {
 		return nil, fmt.Errorf("create cloud run job %s: %w", cfg.Name, err)
 	}
