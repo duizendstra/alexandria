@@ -32,4 +32,4 @@ This folder contains look-up material — specifications, API references, and st
 | Asset | Description |
 |---|---|
 | [`skills/`](../../skills/README.md) | Antigravity AI skills shareable across workspaces (dialectical-review, diffract-review, ko-build, release-review); consumer repos inherit them via `skills.json`. |
-| [`blueprints/`](../../blueprints/README.md) | Project scaffolding templates for bootstrapping new repositories (currently the `service/` Go Cloud Run blueprint with its golden ko build config). |
+| [`blueprints/`](../../blueprints/README.md) | Golden configuration templates: the `service/` Go Cloud Run ko build config, the `githooks/` Conventional Commits + quality-gate hook set, and the `golangci/` library/consumer lint profiles. |
