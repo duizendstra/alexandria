@@ -1,17 +1,39 @@
 package async_test
 
 import (
+	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/duizendstra/alexandria/go/platform/async"
 )
 
+// waitForStatus polls until the task reaches the wanted status or the timeout expires.
+func waitForStatus(t *testing.T, r *async.Runner, id string, want async.Status) *async.Task {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+
+	for time.Now().Before(deadline) {
+		if task := r.Get(id); task != nil && task.Status == want {
+			return task
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Fatalf("task %s did not reach status %s in time", id, want)
+
+	return nil
+}
+
 func TestSubmitAndGet(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
-	id := r.Submit("quality", func() (any, error) {
+	id := r.Submit("quality", func(_ context.Context) (any, error) {
 		return "all passed", nil
 	})
 
@@ -19,25 +41,7 @@ func TestSubmitAndGet(t *testing.T) {
 		t.Fatal("expected non-empty task ID")
 	}
 
-	// Wait for completion.
-	var task *async.Task
-
-	for range 50 {
-		task = r.Get(id)
-		if task != nil && task.Status == async.StatusDone {
-			break
-		}
-
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	if task == nil {
-		t.Fatal("task not found")
-	}
-
-	if task.Status != async.StatusDone {
-		t.Errorf("expected StatusDone, got %s", task.Status)
-	}
+	task := waitForStatus(t, r, id, async.StatusDone)
 
 	if task.Result.Data != "all passed" {
 		t.Errorf("expected result 'all passed', got %v", task.Result.Data)
@@ -54,29 +58,13 @@ func TestSubmitAndGet(t *testing.T) {
 
 func TestSubmitFailedTask(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
-	id := r.Submit("build", func() (any, error) {
+	id := r.Submit("build", func(_ context.Context) (any, error) {
 		return nil, errors.New("lint failed")
 	})
 
-	var task *async.Task
-
-	for range 50 {
-		task = r.Get(id)
-		if task != nil && task.Status == async.StatusFailed {
-			break
-		}
-
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	if task == nil {
-		t.Fatal("task not found")
-	}
-
-	if task.Status != async.StatusFailed {
-		t.Errorf("expected StatusFailed, got %s", task.Status)
-	}
+	task := waitForStatus(t, r, id, async.StatusFailed)
 
 	if task.Result.Error != "lint failed" {
 		t.Errorf("expected error 'lint failed', got %s", task.Result.Error)
@@ -85,6 +73,7 @@ func TestSubmitFailedTask(t *testing.T) {
 
 func TestGetUnknownTask(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
 	if task := r.Get("nonexistent"); task != nil {
 		t.Errorf("expected nil for unknown task, got %+v", task)
@@ -93,12 +82,13 @@ func TestGetUnknownTask(t *testing.T) {
 
 func TestList(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
-	r.Submit("quality", func() (any, error) { return "", nil })
-	r.Submit("build", func() (any, error) { return "", nil })
+	id1 := r.Submit("quality", func(_ context.Context) (any, error) { return "", nil })
+	id2 := r.Submit("build", func(_ context.Context) (any, error) { return "", nil })
 
-	// Wait for both to complete.
-	time.Sleep(50 * time.Millisecond)
+	waitForStatus(t, r, id1, async.StatusDone)
+	waitForStatus(t, r, id2, async.StatusDone)
 
 	tasks := r.List()
 	if len(tasks) != 2 {
@@ -108,11 +98,11 @@ func TestList(t *testing.T) {
 
 func TestPrune(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
-	r.Submit("old", func() (any, error) { return "", nil })
+	id := r.Submit("old", func(_ context.Context) (any, error) { return "", nil })
 
-	// Wait for completion.
-	time.Sleep(50 * time.Millisecond)
+	waitForStatus(t, r, id, async.StatusDone)
 
 	// Prune with zero age — should remove all completed tasks.
 	removed := r.Prune(0)
@@ -127,10 +117,11 @@ func TestPrune(t *testing.T) {
 
 func TestGetReturnsCopy(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
-	id := r.Submit("test", func() (any, error) { return "ok", nil })
+	id := r.Submit("test", func(_ context.Context) (any, error) { return "ok", nil })
 
-	time.Sleep(50 * time.Millisecond)
+	waitForStatus(t, r, id, async.StatusDone)
 
 	t1 := r.Get(id)
 	t2 := r.Get(id)
@@ -142,65 +133,245 @@ func TestGetReturnsCopy(t *testing.T) {
 
 func TestTaskPanicRecovery(t *testing.T) {
 	r := async.NewRunner()
+	defer func() { _ = r.Close() }()
 
-	id := r.Submit("panic-test", func() (any, error) {
+	id := r.Submit("panic-test", func(_ context.Context) (any, error) {
 		panic("boom!")
 	})
 
-	time.Sleep(50 * time.Millisecond)
-
-	task := r.Get(id)
-	if task == nil {
-		t.Fatal("expected task to exist")
-	}
-
-	if task.Status != async.StatusFailed {
-		t.Errorf("expected StatusFailed, got %s", task.Status)
-	}
+	task := waitForStatus(t, r, id, async.StatusFailed)
 
 	if task.Result.Error != "panic: boom!" {
 		t.Errorf("expected error message 'panic: boom!', got %q", task.Result.Error)
 	}
 }
 
-func TestConcurrencyLimit(t *testing.T) {
+func TestConcurrencyLimitAppliesBackpressure(t *testing.T) {
 	// Setup with limit of 1.
-	r := async.NewRunnerWithLimit(1)
+	r := async.NewRunner(async.WithLimit(1))
+	defer func() { _ = r.Close() }()
 
 	started := make(chan struct{})
 	block := make(chan struct{})
 
 	// Task 1: blocks until we release it.
-	r.Submit("blocker", func() (any, error) {
+	r.Submit("blocker", func(_ context.Context) (any, error) {
 		close(started)
 		<-block
+
 		return "done1", nil
 	})
 
 	<-started
 
-	// Task 2: submitted but should not run because limit of 1 is held by blocker.
-	id2 := r.Submit("queued", func() (any, error) {
-		return "done2", nil
-	})
+	// Task 2: Submit must block (backpressure) while the blocker holds the
+	// only concurrency slot, instead of spawning a parked goroutine.
+	submitted := make(chan string)
 
-	time.Sleep(20 * time.Millisecond)
+	go func() {
+		submitted <- r.Submit("queued", func(_ context.Context) (any, error) {
+			return "done2", nil
+		})
+	}()
 
-	t2 := r.Get(id2)
-	if t2 == nil {
-		t.Fatal("expected task 2 to exist")
+	select {
+	case <-submitted:
+		t.Fatal("Submit should block while the concurrency limit is saturated")
+	case <-time.After(50 * time.Millisecond):
+		// Expected: Submit is blocked.
 	}
-	if t2.Status != async.StatusPending {
-		t.Errorf("expected Task 2 to be StatusPending, got %s", t2.Status)
-	}
 
-	// Release Task 1.
+	// Release Task 1; Task 2 should now be admitted and complete.
 	close(block)
 
-	time.Sleep(50 * time.Millisecond)
+	var id2 string
+	select {
+	case id2 = <-submitted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Submit did not unblock after slot was released")
+	}
 
-	t2 = r.Get(id2)
-	if t2.Status != async.StatusDone {
-		t.Errorf("expected Task 2 to complete, got %s", t2.Status)
+	t2 := waitForStatus(t, r, id2, async.StatusDone)
+	if t2.Result.Data != "done2" {
+		t.Errorf("expected 'done2', got %v", t2.Result.Data)
+	}
+}
+
+// TestCloseCancelsTaskContexts verifies that the runner's Close cancels the
+// context handed to running tasks.
+func TestCloseCancelsTaskContexts(t *testing.T) {
+	r := async.NewRunner()
+
+	started := make(chan struct{})
+
+	id := r.Submit("cancellable", func(ctx context.Context) (any, error) {
+		close(started)
+		<-ctx.Done()
+
+		return nil, ctx.Err()
+	})
+
+	<-started
+
+	if err := r.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	task := waitForStatus(t, r, id, async.StatusFailed)
+
+	if task.Result.Error != context.Canceled.Error() {
+		t.Errorf("expected error %q, got %q", context.Canceled.Error(), task.Result.Error)
+	}
+}
+
+// TestBaseContextCancellationPropagates verifies that cancelling the base
+// context supplied via WithBaseContext cancels per-task contexts.
+func TestBaseContextCancellationPropagates(t *testing.T) {
+	baseCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	r := async.NewRunner(async.WithBaseContext(baseCtx))
+	defer func() { _ = r.Close() }()
+
+	started := make(chan struct{})
+
+	id := r.Submit("cancellable", func(ctx context.Context) (any, error) {
+		close(started)
+		<-ctx.Done()
+
+		return nil, ctx.Err()
+	})
+
+	<-started
+	cancel()
+
+	task := waitForStatus(t, r, id, async.StatusFailed)
+
+	if task.Result.Error != context.Canceled.Error() {
+		t.Errorf("expected error %q, got %q", context.Canceled.Error(), task.Result.Error)
+	}
+}
+
+// TestSubmitAfterCloseFailsTask verifies that submitting to a closed runner
+// records the task as failed instead of running it.
+func TestSubmitAfterCloseFailsTask(t *testing.T) {
+	r := async.NewRunner()
+
+	if err := r.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	id := r.Submit("late", func(_ context.Context) (any, error) {
+		t.Error("task function must not run after Close")
+
+		return nil, nil
+	})
+
+	task := waitForStatus(t, r, id, async.StatusFailed)
+
+	if task.Result.Error == "" {
+		t.Error("expected a non-empty error for task submitted after Close")
+	}
+}
+
+// TestGoroutinesBoundedUnderLoad is the regression test for unbounded
+// goroutine growth: previously each Submit spawned a goroutine that parked on
+// the semaphore, so N pending tasks meant N goroutines. Now the slot is
+// acquired in Submit, bounding spawned goroutines to the concurrency limit.
+func TestGoroutinesBoundedUnderLoad(t *testing.T) {
+	const (
+		limit     = 4
+		submitted = 50
+		tolerance = 6
+	)
+
+	r := async.NewRunner(async.WithLimit(limit))
+	defer func() { _ = r.Close() }()
+
+	gate := make(chan struct{})
+	baseline := runtime.NumGoroutine()
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for range submitted {
+			r.Submit("slow", func(ctx context.Context) (any, error) {
+				select {
+				case <-gate:
+				case <-ctx.Done():
+				}
+
+				return nil, nil
+			})
+		}
+	}()
+
+	// Give the submitter time to saturate the limit.
+	time.Sleep(100 * time.Millisecond)
+
+	// One submitter goroutine + at most `limit` task goroutines may be live.
+	if n := runtime.NumGoroutine(); n > baseline+limit+tolerance {
+		t.Errorf("goroutine count not bounded: baseline %d, limit %d, got %d", baseline, limit, n)
+	}
+
+	close(gate)
+	<-done
+
+	// All tasks must still complete.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		tasks := r.List()
+
+		doneCount := 0
+		for _, task := range tasks {
+			if task.Status == async.StatusDone {
+				doneCount++
+			}
+		}
+
+		if doneCount == submitted {
+			return
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Fatalf("not all tasks completed: %d done", len(r.List()))
+}
+
+// TestJanitorPrunesCompletedTasks verifies that the optional background
+// janitor removes completed tasks without manual Prune calls.
+func TestJanitorPrunesCompletedTasks(t *testing.T) {
+	r := async.NewRunner(async.WithJanitor(10*time.Millisecond, 0))
+	defer func() { _ = r.Close() }()
+
+	id := r.Submit("quick", func(_ context.Context) (any, error) { return "ok", nil })
+
+	waitForStatus(t, r, id, async.StatusDone)
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if r.Get(id) == nil {
+			return
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Fatal("janitor did not prune the completed task in time")
+}
+
+// TestCloseIsIdempotent verifies Close can be called multiple times safely.
+func TestCloseIsIdempotent(t *testing.T) {
+	r := async.NewRunner(async.WithJanitor(10*time.Millisecond, time.Minute))
+
+	if err := r.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+
+	if err := r.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
 	}
 }
