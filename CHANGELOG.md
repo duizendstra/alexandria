@@ -124,10 +124,15 @@ Released tags: `go/retry/v0.0.4`, `go/retry/gcp/v0.0.4`, `go/slog-gcp/v0.0.3`,
 `go/platform/apierr/v0.0.3`, `go/platform/async/v0.1.0`,
 `go/platform/web/v0.0.2`, `go/platform/gcpenv/v0.0.1`, `go/governance/v0.1.0`,
 `go/iac/pulumi/gcpinfra/v0.1.0`–`v0.3.0`, `go/iac/governance/v0.1.0`,
-`go/iac/identity/v0.1.0`, `go/iac/workloads/v0.1.0`, `go/iac/finops/v0.1.0`.
+`go/iac/identity/v0.1.0`, `go/iac/workloads/v0.1.0`, `go/iac/finops/v0.1.0`,
+`go/iac/observability/v0.1.0`.
 
 ### Added
 
+- **go/iac/observability v0.1.0**: configuration-driven Pulumi observability
+  blueprint — dedicated project with a BigQuery log-analytics dataset and an
+  org-level audit-log sink routed into it (writer identity exported for
+  downstream grants), placement resolved from a governance stack reference.
 - **go/iac/finops v0.1.0**: configuration-driven Pulumi FinOps blueprint —
   dedicated project with a BigQuery billing-export dataset and an org-scoped
   budget (threshold alerts, email notification channels), placement resolved
