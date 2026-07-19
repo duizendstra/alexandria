@@ -4,7 +4,8 @@ go 1.26
 
 require (
 	cloud.google.com/go/auth v0.21.0
-	github.com/duizendstra/alexandria/go/retry/gcp v0.0.1
+	github.com/duizendstra/alexandria/go/retry v0.0.3
+	github.com/duizendstra/alexandria/go/retry/gcp v0.0.3
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.288.0
 )
@@ -13,7 +14,6 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/duizendstra/alexandria/go/retry v0.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

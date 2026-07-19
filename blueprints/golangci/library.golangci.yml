@@ -1,0 +1,243 @@
+version: "2"
+
+# Library lint profile — for reusable Go library repositories.
+#
+# Same quality bar as consumer.golangci.yml, with two adaptations for
+# library codebases: a curated external-dependency allowlist (libraries
+# may import vetted externals; consumers may not) and relaxed
+# complexity limits (library functions are richer than composition
+# roots).
+#
+# Copy to the repo root as .golangci.yml and adjust the two marked
+# sections. Keep the rest intact — every deviation should be a
+# deliberate, explainable decision.
+
+run:
+  timeout: 10m
+  concurrency: 4
+  modules-download-mode: readonly
+
+output:
+  sort-order:
+    - file
+    - linter
+
+linters:
+  enable:
+    # ── 1. Core Safety & Bugs ──
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - bodyclose
+    - noctx
+    - nilerr
+    - errorlint
+    - fatcontext
+    - reassign
+    - nilnesserr
+    - contextcheck
+    - forcetypeassert
+    - nilnil
+    - wastedassign
+    - copyloopvar
+    - durationcheck
+    - makezero
+    - asasalint
+    - containedctx
+    - canonicalheader
+    - errchkjson
+    - exhaustive
+
+    # ── 2. Style & Idioms ──
+    - revive
+    - gocritic
+    - goconst
+    - unconvert
+    - misspell
+    - usestdlibvars
+    - dupl
+    - predeclared
+    - godot
+    - whitespace
+    - nakedret
+    - nonamedreturns
+    - nlreturn
+    - dupword
+    - errname
+    - dogsled
+    - unparam
+    - grouper
+    - funcorder
+    - recvcheck
+    - godoclint
+    - prealloc
+    - decorder
+    - musttag
+
+    # ── 3. Complexity ──
+    - cyclop
+    - funlen
+    - nestif
+    - maintidx
+
+    # ── 4. Architecture ──
+    - gosec
+    - depguard
+    - ireturn
+    - gomoddirectives
+    - gochecknoglobals
+    - gochecknoinits
+
+    # ── 5. Security ──
+    - asciicheck
+    - bidichk
+    - gocheckcompilerdirectives
+    - nosprintfhostport
+
+    # ── 6. Structured Logging ──
+    - sloglint
+    - loggercheck
+
+    # ── 7. Testing ──
+    - testifylint
+    - usetesting
+    - thelper
+
+    # ── 8. Modernization ──
+    - intrange
+    - modernize
+    - protogetter
+    - perfsprint
+    - exptostd
+
+    # ── 9. Quality ──
+    - lll
+
+    # ── 10. Meta ──
+    - nolintlint
+    - forbidigo
+    - mnd
+    - wrapcheck
+    - goprintffuncname
+    - err113
+    - mirror
+
+  settings:
+    # Relaxed limits for library code (consumer profile is tighter).
+    funlen:
+      lines: 120
+      statements: 60
+    cyclop:
+      max-complexity: 15
+      package-average: 0.0
+    nestif:
+      min-complexity: 5
+    maintidx:
+      under: 15
+    nakedret:
+      max-func-lines: 0
+    lll:
+      line-length: 160
+
+    revive:
+      rules:
+        - name: package-comments
+        - name: error-naming
+        - name: error-strings
+        - name: error-return
+        - name: var-naming
+        - name: receiver-naming
+
+    depguard:
+      rules:
+        main:
+          # ADJUST: the external allowlist is the library's dependency
+          # policy. Start minimal; every addition is a deliberate
+          # decision — record why in the adding commit.
+          list-mode: strict
+          files:
+            - "$all"
+            - "!$test"
+          allow:
+            # ── Stdlib ──
+            - $gostd
+            # ── This repository ──
+            - github.com/duizendstra/alexandria
+            # ── Vetted externals (starter set — extend deliberately) ──
+            - cloud.google.com/go
+            - golang.org/x
+            - google.golang.org
+            - go.opentelemetry.io
+            - github.com/pulumi/pulumi/sdk/v3
+            - github.com/pulumi/pulumi-gcp/sdk/v9
+
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - generic
+        # ADJUST: add framework interface types your code must return.
+        - "github.com/pulumi/pulumi/sdk/v3/go/pulumi.Resource"
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+
+    sloglint:
+      attr-only: true
+      key-naming-case: snake
+
+    testifylint:
+      enable-all: true
+
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+
+    gomoddirectives:
+      replace-local: false
+
+    godot:
+      scope: all
+
+    forbidigo:
+      forbid:
+        - pattern: "^log\\.(Print|Fatal|Panic).*$"
+          msg: "use log/slog for structured logging"
+
+  exclusions:
+    rules:
+      # Tests — relaxed for readability and test patterns.
+      - path: .*_test\.go
+        linters:
+          - depguard
+          - gochecknoglobals
+          - gosec
+          - errcheck
+          - testpackage
+          - nonamedreturns
+          - nilerr
+          - paralleltest
+          - wrapcheck
+          - err113
+          - nlreturn
+          - ireturn
+          - funlen
+          - cyclop
+          - maintidx
+          - containedctx
+
+      # context.Err() is idiomatically returned unwrapped.
+      - linters: [wrapcheck]
+        source: "return ctx\\.Err\\(\\)"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

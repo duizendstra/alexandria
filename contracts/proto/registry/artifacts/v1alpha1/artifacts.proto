@@ -1,0 +1,90 @@
+// Copyright 2026 Duizendstra. All rights reserved.
+//
+// Artifact registry types for the Alexandria catalog.
+// Go package registry/artifacts implements the file-based catalog.
+
+syntax = "proto3";
+
+package registry.artifacts.v1alpha1;
+
+option go_package = "github.com/duizendstra/alexandria/go/contracts/registry/artifacts/v1alpha1;artifactsv1alpha1";
+
+// ArtifactType classifies what kind of asset an artifact is.
+enum ArtifactType {
+  // Default value.
+  ARTIFACT_TYPE_UNSPECIFIED = 0;
+  // A reusable code or design pattern.
+  ARTIFACT_TYPE_PATTERN = 1;
+  // Documentation.
+  ARTIFACT_TYPE_DOCS = 2;
+  // A protobuf contract.
+  ARTIFACT_TYPE_PROTO = 3;
+  // A deployment asset.
+  ARTIFACT_TYPE_DEPLOY = 4;
+  // A workflow definition.
+  ARTIFACT_TYPE_WORKFLOW = 5;
+}
+
+// Maturity is the lifecycle stage of an artifact.
+enum Maturity {
+  // Default value.
+  MATURITY_UNSPECIFIED = 0;
+  // Work in progress — not yet ready for consumers.
+  MATURITY_DRAFT = 1;
+  // Proven and safe to consume.
+  MATURITY_STABLE = 2;
+  // Scheduled for removal — do not adopt.
+  MATURITY_DEPRECATED = 3;
+}
+
+// Artifact represents a single entry in the Alexandria catalog.
+message Artifact {
+  // Unique name of the artifact.
+  string name = 1;
+  // Type classification.
+  ArtifactType type = 2;
+  // Path relative to the Alexandria root.
+  string path = 3;
+  // Maturity level.
+  Maturity maturity = 4;
+  // Provenance — where this artifact was ascended from (e.g. "example/sync.go").
+  repeated string ascended_from = 5;
+  // Projects that consume this artifact.
+  repeated string consumers = 6;
+  // Human-readable description.
+  string description = 7;
+}
+
+// Catalog is the root structure of catalog.yml.
+message Catalog {
+  // All registered artifacts.
+  repeated Artifact artifacts = 1;
+}
+
+// AscendOptions configures an ascend operation (promoting a file to Alexandria).
+message AscendOptions {
+  // Path to the source file in the customer project.
+  string source_path = 1;
+  // Path to the Alexandria root directory.
+  string alexandria_root = 2;
+  // Destination path relative to Alexandria root.
+  string dest_path = 3;
+  // Artifact name for the catalog entry.
+  string name = 4;
+  // Artifact type for the catalog entry.
+  ArtifactType type = 5;
+  // Human-readable description.
+  string description = 6;
+  // Name of the originating project.
+  string project_name = 7;
+}
+
+// AscendResult describes the outcome of an ascend operation.
+message AscendResult {
+  // Absolute path of the source file.
+  string source = 1;
+  // Absolute path of the destination file.
+  string dest = 2;
+  // The catalog entry that was created.
+  Artifact artifact = 3;
+}

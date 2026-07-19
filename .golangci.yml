@@ -2,9 +2,10 @@ version: "2"
 
 # Alexandria Library Lint Standard
 #
-# Same quality bar as the consumer gold standard (.golangci-consumer.yml),
-# with adapted dependency rules and complexity limits for a library codebase.
-# Differences from consumer config are marked with # LIBRARY:
+# Instance of blueprints/golangci/library.golangci.yml — same quality
+# bar as the consumer profile (blueprints/golangci/consumer.golangci.yml),
+# with adapted dependency rules and complexity limits for a library
+# codebase. Differences from the consumer profile are marked # LIBRARY:
 
 run:
   timeout: 10m
@@ -161,7 +162,8 @@ linters:
             # ── Internal ──
             - github.com/duizendstra/alexandria
 
-            # ── Vetted externals (see architecture/depguard-vetting.md) ──
+            # ── Vetted externals — every addition is a deliberate,
+            # recorded decision (see blueprints/golangci/README.md) ──
             - connectrpc.com/connect
             - google.golang.org
             - cloud.google.com/go
@@ -186,9 +188,6 @@ linters:
             - github.com/cespare/xxhash/v2
             - github.com/mdp/qrterminal/v3
             - modernc.org/sqlite
-          deny:
-            - pkg: github.com/OWNER/flow-sdk
-              desc: "flow-sdk is deprecated (ADR-002). Migrate to Alexandria."
 
     ireturn:
       allow:
@@ -218,10 +217,7 @@ linters:
       require-specific: true
 
     gomoddirectives:
-      replace-local: true
-      replace-allow-list:
-        - github.com/duizendstra/alexandria/go/slog-gcp
-        - github.com/duizendstra/alexandria/go/discovery/search
+      replace-local: false
 
     godot:
       scope: all
@@ -232,44 +228,7 @@ linters:
           msg: "use log/slog for structured logging"
 
   exclusions:
-    paths:
-      - gen/
-      - staging/
-
     rules:
-      # CLI packages — Cobra patterns need globals, inits, and relaxed style.
-      - path: go/cli/.*
-        linters:
-          - gochecknoglobals
-          - gochecknoinits
-          - forbidigo
-          - wrapcheck
-          - err113
-          - nlreturn
-          - gosec
-          - revive
-
-      # Console — globals are the API surface.
-      - path: go/console/.*
-        linters:
-          - gochecknoglobals
-
-      # Cloud/GCP — Pulumi orchestrators, trusted subprocess calls.
-      - path: go/cloud/.*
-        linters:
-          - gosec
-          - ireturn
-
-      # Registry — trusted file I/O with internal paths.
-      - path: go/registry/.*
-        linters:
-          - gosec
-
-      # identity/api — 'api' is the canonical short name.
-      - path: go/identity/identity/api/.*
-        linters:
-          - revive
-
       # Tests — relaxed for readability and test patterns.
       - path: .*_test\.go
         linters:
