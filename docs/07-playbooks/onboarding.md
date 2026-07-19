@@ -8,10 +8,10 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-03-04T09:00:00Z"
-updated_at: "2026-07-12T14:30:00Z"
+updated_at: "2026-07-19T12:00:00Z"
 summary: >
   Step-by-step developer learning playbook for Alexandria, achieving a 60-second
-  local development setup using Nix, nix-direnv, and Colima.
+  local development setup using Nix flakes and nix-direnv.
 audience: [public]
 tags: [ "onboarding", "playbook", "nix" ]
 relations:
@@ -28,7 +28,7 @@ This playbook guides you through our **60-second declarative onboarding protocol
 
 ## 🛠️ Workstation Prerequisites
 
-We treat our local engineering workstations with identical rigor to our production systems. Our development toolchains are entirely declarative and isolated. **Do not install Go, Protobuf, Buf, GCloud, or Taskfiles manually.**
+We treat our local engineering workstations with identical rigor to our production systems. Our development toolchains are entirely declarative and isolated. **Do not install Go, Buf, or linters manually.**
 
 1.  **Identity Access** — Confirm you have been added to the appropriate identity access groups and hold active GitHub read permissions.
 2.  **Nix Package Manager** — We use Nix to manage identical hermetic environments across macOS and Linux:
@@ -51,7 +51,7 @@ Open your terminal and execute these three commands:
 
 ### Step 1: Clone the Ecosystem Repository
 ```bash
-git clone git@github.com:OWNER/alexandria.git
+git clone https://github.com/duizendstra/alexandria.git
 cd alexandria
 ```
 
