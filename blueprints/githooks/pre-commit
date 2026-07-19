@@ -5,17 +5,15 @@
 # not the working tree — staged content and disk may differ.
 set -e
 
-STAGED=$(git diff --cached --name-only --diff-filter=ACM)
-if [ -z "$STAGED" ]; then
-  exit 0
-fi
-
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
 
 fail=0
 
-for file in $STAGED; do
+# -z keeps filenames with spaces intact (and disables git's path
+# quoting); newlines in filenames remain unsupported.
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
   git show ":$file" > "$TMP" 2>/dev/null || continue
 
   # --- 1. Formatting: staged .go files must be gofmt-clean ---
@@ -52,7 +50,9 @@ for file in $STAGED; do
     printf '🔑 Private key detected in: %s\n' "$file"
     fail=1
   fi
-done
+done <<EOF
+$(git diff --cached --name-only -z --diff-filter=ACM | tr '\0' '\n')
+EOF
 
 if [ "$fail" -ne 0 ]; then
   echo ""
