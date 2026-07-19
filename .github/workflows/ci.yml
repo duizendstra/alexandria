@@ -66,6 +66,38 @@ jobs:
           version: latest
           working-directory: ${{ matrix.module }}
 
+  mod-hygiene:
+    name: Module hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Reject replace directives and unresolvable pins
+        run: |
+          status=0
+          while IFS= read -r mod; do
+            if grep -qE '^replace ' "$mod"; then
+              echo "::error file=$mod::Committed replace directive found. Use published version pins; local cross-module dev goes through an uncommitted go.work."
+              status=1
+            fi
+            if grep -qE 'github.com/duizendstra/alexandria/[^ ]+ v0\.0\.0$' "$mod"; then
+              echo "::error file=$mod::Pin of non-existent version v0.0.0. Require a published tag."
+              status=1
+            fi
+          done < <(find go/ -name go.mod)
+          exit $status
+
+      - name: Require Dependabot coverage for every module
+        run: |
+          status=0
+          while IFS= read -r dir; do
+            if ! grep -q "directory: \"/$dir/\"" .github/dependabot.yml; then
+              echo "::error file=.github/dependabot.yml::Missing gomod entry for /$dir/"
+              status=1
+            fi
+          done < <(find go/ -name go.mod -exec dirname {} \;)
+          exit $status
+
   docs:
     name: Validate docs
     runs-on: ubuntu-latest
