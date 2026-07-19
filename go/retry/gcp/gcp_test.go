@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/retry"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -276,3 +278,137 @@ func TestClassify_gRPCStatus(t *testing.T) {
 	}
 }
 
+func newRetrieveError(statusCode int, httpStatus, errorCode string) *oauth2.RetrieveError {
+	return &oauth2.RetrieveError{
+		Response: &http.Response{
+			StatusCode: statusCode,
+			Status:     httpStatus,
+		},
+		Body:      []byte(`{"error":"` + errorCode + `"}`),
+		ErrorCode: errorCode,
+	}
+}
+
+func TestClassify_OAuthRetrieveError(t *testing.T) {
+	tests := []struct {
+		name          string
+		err           error
+		wantPermanent bool
+	}{
+		{
+			name:          "invalid_grant is permanent",
+			err:           newRetrieveError(http.StatusBadRequest, "400 Bad Request", "invalid_grant"),
+			wantPermanent: true,
+		},
+		{
+			name:          "unauthorized_client is permanent",
+			err:           newRetrieveError(http.StatusUnauthorized, "401 Unauthorized", "unauthorized_client"),
+			wantPermanent: true,
+		},
+		{
+			name:          "invalid_scope is permanent",
+			err:           newRetrieveError(http.StatusBadRequest, "400 Bad Request", "invalid_scope"),
+			wantPermanent: true,
+		},
+		{
+			name: "invalid_grant wrapped one level",
+			err: fmt.Errorf("impersonate: token fetch failed: %w",
+				newRetrieveError(http.StatusBadRequest, "400 Bad Request", "invalid_grant")),
+			wantPermanent: true,
+		},
+		{
+			name: "invalid_grant wrapped at depth",
+			err: fmt.Errorf("drive export: %w",
+				fmt.Errorf("impersonate: %w",
+					fmt.Errorf("oauth2: cannot fetch token: %w",
+						newRetrieveError(http.StatusBadRequest, "400 Bad Request", "invalid_grant")))),
+			wantPermanent: true,
+		},
+		{
+			name:          "token endpoint 503 is transient",
+			err:           newRetrieveError(http.StatusServiceUnavailable, "503 Service Unavailable", ""),
+			wantPermanent: false,
+		},
+		{
+			name:          "token endpoint 429 is transient",
+			err:           newRetrieveError(http.StatusTooManyRequests, "429 Too Many Requests", ""),
+			wantPermanent: false,
+		},
+		{
+			name: "wrapped 500 with non-RFC error code is transient",
+			err: fmt.Errorf("oauth2: cannot fetch token: %w",
+				newRetrieveError(http.StatusInternalServerError, "500 Internal Server Error", "server_error")),
+			wantPermanent: false,
+		},
+		{
+			name:          "401 without error code is permanent",
+			err:           newRetrieveError(http.StatusUnauthorized, "401 Unauthorized", ""),
+			wantPermanent: true,
+		},
+		{
+			name:          "403 without error code is permanent",
+			err:           newRetrieveError(http.StatusForbidden, "403 Forbidden", ""),
+			wantPermanent: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Classify(context.Background(), tt.err, 1)
+			if got == nil {
+				t.Fatal("expected non-nil classified error, got nil")
+			}
+			if retry.IsPermanent(got) != tt.wantPermanent {
+				t.Errorf("Classify() permanent = %v, want %v (err: %v)",
+					retry.IsPermanent(got), tt.wantPermanent, got)
+			}
+
+			var rErr *oauth2.RetrieveError
+			if !errors.As(got, &rErr) {
+				t.Errorf("expected classified error to preserve *oauth2.RetrieveError, got %v", got)
+			}
+		})
+	}
+}
+
+func TestWithRetry_TransientOAuthRetrieveError(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+
+	err := WithRetry(ctx, func() error {
+		calls++
+		if calls < 3 {
+			return fmt.Errorf("oauth2: cannot fetch token: %w",
+				newRetrieveError(http.StatusServiceUnavailable, "503 Service Unavailable", ""))
+		}
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 3 {
+		t.Errorf("expected 3 calls, got %d", calls)
+	}
+}
+
+func TestWithRetry_PermanentOAuthRetrieveError(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	rErr := newRetrieveError(http.StatusBadRequest, "400 Bad Request", "invalid_grant")
+
+	err := WithRetry(ctx, func() error {
+		calls++
+		return fmt.Errorf("impersonate: %w", rErr)
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, rErr) {
+		t.Errorf("expected original RetrieveError preserved, got %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("expected fail-fast on invalid_grant after 1 call, got %d", calls)
+	}
+}
