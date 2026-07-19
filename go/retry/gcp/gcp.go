@@ -94,7 +94,6 @@ func WithRetry(ctx context.Context, operation func() error, opts ...Option) erro
 // Classify determines whether an error should be retried.
 // It returns a permanent error (wrapped via retry.Permanent) for permanent failures, or the original error to allow retrying.
 //
-//nolint:cyclop // Classify is a flat, switch-like classification dispatcher where higher complexity is expected and highly readable.
 func Classify(ctx context.Context, err error, attempt int) error {
 	if err == nil {
 		return nil

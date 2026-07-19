@@ -52,7 +52,7 @@ type Runner struct {
 	mu     sync.RWMutex
 	tasks  map[string]*Task
 	sem    chan struct{}
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // Runner owns the base context for task lifecycle; stored deliberately.
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
@@ -64,7 +64,7 @@ type Option func(*runnerOptions)
 
 type runnerOptions struct {
 	limit           int
-	baseCtx         context.Context
+	baseCtx         context.Context //nolint:containedctx // Carried from option to Runner constructor only.
 	janitorInterval time.Duration
 	janitorMaxAge   time.Duration
 }

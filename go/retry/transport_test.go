@@ -249,7 +249,7 @@ func TestTransport_ExhaustedRetriesErrorSurfacesThroughClient(t *testing.T) {
 		t.Fatalf("failed to create request: %v", err)
 	}
 
-	resp, err := client.Do(req) //nolint:bodyclose // net/http discards the response when the transport errors.
+	resp, err := client.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()
 		t.Fatal("expected error from client after exhausting retries, got nil")
@@ -373,32 +373,40 @@ func TestRetryDelay(t *testing.T) {
 		if retryAfter != "" {
 			header.Set("Retry-After", retryAfter)
 		}
-		return &http.Response{StatusCode: code, Header: header}
+		return &http.Response{StatusCode: code, Header: header, Body: http.NoBody}
 	}
 
 	t.Run("retry-after capped at max backoff", func(t *testing.T) {
-		delay := retryDelay(0, respWithHeader(http.StatusTooManyRequests, "3600"))
+		resp := respWithHeader(http.StatusTooManyRequests, "3600")
+		defer func() { _ = resp.Body.Close() }()
+		delay := retryDelay(0, resp)
 		if delay != maxBackoff {
 			t.Errorf("expected Retry-After 3600s capped at %v, got %v", maxBackoff, delay)
 		}
 	})
 
 	t.Run("retry-after honored on 503", func(t *testing.T) {
-		delay := retryDelay(0, respWithHeader(http.StatusServiceUnavailable, "2"))
+		resp := respWithHeader(http.StatusServiceUnavailable, "2")
+		defer func() { _ = resp.Body.Close() }()
+		delay := retryDelay(0, resp)
 		if delay != 2*time.Second {
 			t.Errorf("expected 2s from Retry-After, got %v", delay)
 		}
 	})
 
 	t.Run("retry-after ignored on other statuses", func(t *testing.T) {
-		delay := retryDelay(0, respWithHeader(http.StatusInternalServerError, "3600"))
+		resp := respWithHeader(http.StatusInternalServerError, "3600")
+		defer func() { _ = resp.Body.Close() }()
+		delay := retryDelay(0, resp)
 		if delay > time.Second {
 			t.Errorf("expected exponential backoff for 500, got %v", delay)
 		}
 	})
 
 	t.Run("malformed retry-after falls back to backoff", func(t *testing.T) {
-		delay := retryDelay(0, respWithHeader(http.StatusTooManyRequests, "whenever"))
+		resp := respWithHeader(http.StatusTooManyRequests, "whenever")
+		defer func() { _ = resp.Body.Close() }()
+		delay := retryDelay(0, resp)
 		if delay > time.Second {
 			t.Errorf("expected exponential backoff fallback, got %v", delay)
 		}
