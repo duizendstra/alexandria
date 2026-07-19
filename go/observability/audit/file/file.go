@@ -80,10 +80,11 @@ func NewFileWriter(path string, opts ...Option) (*FileWriter, error) {
 	return w, nil
 }
 
-// Log appends an audit entry. The timestamp is set automatically.
+// Log appends an audit entry. The writer owns the timestamp: entry.Time is
+// stamped with the writer's clock, overwriting any caller-supplied value.
 // If the log exceeds the maximum size, it is rotated before writing.
 func (w *FileWriter) Log(_ context.Context, entry audit.Entry) error {
-	entry.Time = w.clock().Format(time.RFC3339)
+	entry.Time = w.clock()
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
