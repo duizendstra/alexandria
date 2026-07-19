@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
     `google` and `retry/gcp` pinned stale `retry` versions).
   - Added `mod-hygiene` CI job: rejects committed `replace` directives, `v0.0.0`
     pins, and modules missing Dependabot coverage.
+  - **contracts**: converted prose "reserved" range comments to real protobuf
+    `reserved` statements (18 ranges across the domain protos) so tag reuse is
+    rejected at the wire level; added `contracts` CI job running `buf lint`,
+    `buf breaking` against main, and a generated-code drift check.
   - Added unit tests for `go/slog-gcp/otelgcp` span context extraction.
   - Expanded Dependabot configuration to cover all Go modules + actions.
   - Fixed dead code in `platform/async`, doc comment placement in `platform/apierr`, and doc example in `retry`.

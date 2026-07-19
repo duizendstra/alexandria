@@ -396,7 +396,7 @@ var File_domain_party_v1_party_proto protoreflect.FileDescriptor
 
 const file_domain_party_v1_party_proto_rawDesc = "" +
 	"\n" +
-	"\x1bdomain/party/v1/party.proto\x12\x0fdomain.party.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fdomain/contact/v1/contact.proto\x1a\x19domain/role/v1/role.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
+	"\x1bdomain/party/v1/party.proto\x12\x0fdomain.party.v1\x1a\x1ddomain/common/v1/common.proto\x1a\x1fdomain/contact/v1/contact.proto\x1a\x19domain/role/v1/role.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x87\x01\n" +
 	"\x06Person\x12\x1d\n" +
 	"\n" +
 	"given_name\x18\x01 \x01(\tR\tgivenName\x12\x1f\n" +
@@ -404,11 +404,11 @@ const file_domain_party_v1_party_proto_rawDesc = "" +
 	"familyName\x12\x1f\n" +
 	"\vmiddle_name\x18\x03 \x01(\tR\n" +
 	"middleName\x12\x16\n" +
-	"\x06prefix\x18\x04 \x01(\tR\x06prefix\"A\n" +
+	"\x06prefix\x18\x04 \x01(\tR\x06prefixJ\x04\b\x05\x10\x14\"G\n" +
 	"\fOrganization\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"trade_name\x18\x02 \x01(\tR\ttradeName\"\x86\x05\n" +
+	"trade_name\x18\x02 \x01(\tR\ttradeNameJ\x04\b\x03\x10\x14\"\x98\x05\n" +
 	"\x05Party\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12.\n" +
@@ -426,7 +426,8 @@ const file_domain_party_v1_party_proto_rawDesc = "" +
 	"updated_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1a\n" +
 	"\bheadline\x18\x16 \x01(\tR\bheadline\x12\x10\n" +
 	"\x03bio\x18\x17 \x01(\tR\x03bioB\t\n" +
-	"\adetails*[\n" +
+	"\adetailsJ\x04\b\x06\x10\n" +
+	"J\x04\b\x10\x10\x14J\x04\b\x18\x10\x1e*[\n" +
 	"\tPartyType\x12\x1a\n" +
 	"\x16PARTY_TYPE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11PARTY_TYPE_PERSON\x10\x01\x12\x1b\n" +
