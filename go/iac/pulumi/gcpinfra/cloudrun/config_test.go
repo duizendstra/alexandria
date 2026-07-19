@@ -7,7 +7,10 @@ import (
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/cloudrun"
 )
 
-const regionTest = "europe-west4"
+const (
+	regionTest = "europe-west4"
+	testCPU    = "1000m"
+)
 
 func TestServiceValidateValid(t *testing.T) {
 	c := cloudrun.ServiceConfig{Name: "api", Region: regionTest, Image: "gcr.io/example/api:latest"}
