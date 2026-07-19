@@ -7,9 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2026-07-19 — ingestion/transform IaC primitives
+
+Released tags: `go/iac/pulumi/gcpinfra/v0.4.0`,
+`go/iac/pulumi/stackref/v0.1.0`, `go/platform/passstore/v0.1.0`.
+
 ### Added
 
-- **go/iac/delivery** (pending `v0.1.1`): the Compute default SA is granted `secretmanager.secretAccessor` on the GitHub OAuth token secret once the connection is configured — Cloud Build v2 triggers run as that SA and read the authorizer credential.
+- **go/iac/pulumi/gcpinfra v0.4.0**: five new building-block packages —
+  `cloudrun` (v2 services and jobs with image changes ignored for CI/CD
+  deploys, invoker grants), `scheduler` (HTTP-target jobs with OAuth
+  authentication), `firestore` (databases and seeded documents with field
+  changes ignored after creation), `tables` (native BigQuery tables with
+  optional DAY partitioning, and external tables such as Google Sheets),
+  and `dataform` (repositories with Git remotes, release/workflow
+  configs, P4SA enablement). All follow the established adapter shape:
+  sentinel validation errors, `Apply*` entry points, config-validation
+  tests.
+- **go/iac/pulumi/stackref v0.1.0**: typed readers for Pulumi stack
+  reference outputs (`RequireString`), for composition roots that chain
+  stacks together.
+- **go/platform/passstore v0.1.0**: deploy-time secret retrieval from
+  the local pass store (`Show` / `MustShow`) for operator-workstation
+  tools such as Pulumi programs.
+
+## 2026-07-19 — delivery secret-accessor grant
+
+Released tags: `go/iac/delivery/v0.1.1`.
+
+### Added
+
+- **go/iac/delivery v0.1.1**: the Compute default SA is granted `secretmanager.secretAccessor` on the GitHub OAuth token secret once the connection is configured — Cloud Build v2 triggers run as that SA and read the authorizer credential.
 
 ## 2026-07-19 — maturity & graduation wave
 

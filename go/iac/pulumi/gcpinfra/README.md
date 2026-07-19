@@ -20,6 +20,11 @@ resources.
 | `connections` | Cloud Build v2 connections to Git hosting providers, with repo links | `connections.Config` / `RepoLink` |
 | `registries` | Artifact Registry repositories with reader/writer IAM grants | `registries.Config` |
 | `triggers` | Cloud Build triggers firing on tag pushes | `triggers.Config` |
+| `cloudrun` | Cloud Run v2 services and jobs (image changes ignored — deploys via CI/CD), invoker grants | `cloudrun.ServiceConfig` / `JobConfig` |
+| `scheduler` | Cloud Scheduler jobs with HTTP targets and OAuth authentication | `scheduler.Config` |
+| `firestore` | Firestore databases and seeded documents (field changes ignored after creation) | `firestore.DatabaseConfig` / `DocumentConfig` |
+| `tables` | BigQuery tables, native (schema, optional DAY partitioning) and external (e.g. Google Sheets) | `tables.Config` / `ExternalConfig` |
+| `dataform` | Dataform repositories with Git remotes, release and workflow configs, P4SA enablement | `dataform.RepositoryConfig` / `ReleaseConfig` / `WorkflowConfig` |
 
 More building blocks (networking, …) will be added as they are
 generalized.
@@ -49,3 +54,9 @@ outputs, err := folders.Apply(ctx, hierarchy.Config{
 - `secrets`, `serviceaccounts`, and `iambindings` create unprotected
   resources — they are cheap to recreate and their sources of truth live
   outside the stack (secret values with the caller, IAM in config).
+- `cloudrun` ignores container image changes and `firestore` ignores
+  document field changes after creation — both are managed outside the
+  stack at runtime (CI/CD deploys, application config writes).
+- `tables` and `firestore` databases expose explicit deletion-protection
+  knobs (`DeletionProtection` / `DeleteProtection`) — set them per
+  environment.
