@@ -36,6 +36,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/async](go/platform/async/) | `github.com/duizendstra/alexandria/go/platform/async` | v0.0.1 |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.1.0 |
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.1.0 |
+| [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.0 |
 
 
 ## Documentation
