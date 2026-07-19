@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   child, while `plan.validateStarter` forbids children, so every starter
   deployment failed. The adapter now checks well-formedness only (parent,
   root name, child uniqueness).
+- **go/iac/governance** (pending `v0.1.1`): starter and standard tiers now
+  deploy at Organization scope (and starter at folder scope); the two
+  known-limitation pinning tests flipped to assert success. Pins bumped to
+  `go/governance v0.2.0` and `gcpinfra v0.1.1` — tag those two modules
+  before this one, as the module only builds against published pins.
 
 - **.githooks**: replaced the live hooks with the golden `blueprints/githooks`
   set — `commit-msg` now accepts the `!` breaking-change marker (the previous
