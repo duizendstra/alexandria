@@ -14,8 +14,14 @@ resources.
 | `secrets` | Secret Manager secrets seeded with caller-supplied values | `secrets.Secret` |
 | `serviceaccounts` | Service accounts in a project | `serviceaccounts.Account` |
 | `iambindings` | Project-level and service-account-level IAM member bindings | `iambindings.Binding` / `DynamicBinding` / `SAIamBinding` |
+| `budgets` | Billing budgets with threshold alerts and email notification channels | `budgets.Config` |
+| `datasets` | BigQuery datasets | `datasets.Config` |
+| `logsinks` | Org-level log sinks to BigQuery | `logsinks.Config` |
+| `connections` | Cloud Build v2 connections to Git hosting providers, with repo links | `connections.Config` / `RepoLink` |
+| `registries` | Artifact Registry repositories with reader/writer IAM grants | `registries.Config` |
+| `triggers` | Cloud Build triggers firing on tag pushes | `triggers.Config` |
 
-More building blocks (datasets, networking, …) will be added as they are
+More building blocks (networking, …) will be added as they are
 generalized.
 
 ## Usage
