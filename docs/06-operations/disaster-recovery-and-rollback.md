@@ -8,7 +8,7 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-07-12T14:40:00Z"
-updated_at: "2026-07-12T14:40:00Z"
+updated_at: "2026-07-19T12:00:00Z"
 summary: >
   Step-by-step operational instructions for hot-fixing, rolling back faulty
   releases, retracting Go modules, and recovering from pipeline incidents.
@@ -110,14 +110,17 @@ If a backward-incompatible Protobuf change must be pushed (e.g., during active p
     ```
 3.  Commit, push, and plan to remove the ignore-override before stable `v1` tagging.
 
-### 2. SRE Benchmark Regressions
-If micro-benchmarks fail due to intentional hot-path additions:
+### 2. SRE Benchmark Regressions (applies once the planned benchmark gate exists)
+There is no benchmark job in CI today (see the [CI/CD pipelines guide](declarative-ci-cd-pipelines.md)). Once one lands, if micro-benchmarks fail due to intentional hot-path additions:
 1.  Audit memory profiles using `go test -bench -cpuprofile -memprofile`.
 2.  If the allocation increase is unavoidable and approved by SRE, update the benchmark assertion boundaries in the target test suite or pipeline configuration.
 
 ---
 
-## Scenario D: Third-Party Vendor API Failover
+## Scenario D (design, not yet implemented): Third-Party Vendor API Failover
+
+> [!NOTE]
+> No Postmark (or any email vendor) client, adapter, or service exists in this repository today — only a proto contract. This scenario documents the intended failover pattern for when an email adapter is built.
 
 When integrations with key vendors (e.g., Postmark email API) suffer a major outage:
 
