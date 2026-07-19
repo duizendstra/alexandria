@@ -3,7 +3,7 @@ module github.com/duizendstra/alexandria/go/platform/web
 go 1.26
 
 require (
-	github.com/duizendstra/alexandria/go/platform/apierr v0.0.0
+	github.com/duizendstra/alexandria/go/platform/apierr v0.0.3
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -12,5 +12,3 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/duizendstra/alexandria/go/platform/apierr => ../apierr
