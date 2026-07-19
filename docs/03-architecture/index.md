@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: Package design patterns, module boundaries, decorator patterns, and handler chains used across Alexandria modules.
+uuid: 9af21e0d-99a7-4fae-97f9-53f3b8a5f746
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "architecture" ]
+relations: []
 ---
 
 # 03 — Architecture

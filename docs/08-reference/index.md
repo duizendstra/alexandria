@@ -8,6 +8,11 @@ maturity: standard
 audience: [public]
 owner: "@duizendstra"
 summary: OKF specification and external API references.
+uuid: f83b91ac-d6e1-488d-a4e5-86e7e8d4174c
+created_at: "2026-06-28T11:41:03Z"
+updated_at: "2026-07-19T12:00:00Z"
+tags: [ "index", "reference" ]
+relations: []
 ---
 
 # 08 — Reference
