@@ -1,8 +1,8 @@
 // Copyright 2026 Duizendstra. All rights reserved.
 //
 // Party: the canonical entity representing a person or organization.
-// Alexandria is the source of truth. Vendor systems (Google Contacts,
-// ERP, Scheduler) are usage layers that sync with this model.
+// Alexandria is the source of truth. Vendor systems (contact books, ERPs,
+// schedulers) are usage layers that sync with this model.
 
 syntax = "proto3";
 
@@ -69,7 +69,7 @@ message Party {
   // Physical addresses.
   repeated domain.contact.v1.PostalAddress addresses = 11;
 
-  // Links to source systems (Google Contacts, ERP, Scheduler, etc.).
+  // Links to source systems (contact books, ERPs, schedulers, etc.).
   repeated domain.common.v1.ExternalId external_ids = 12;
 
   // Roles this party plays (contact, supplier, employee, customer, etc.).
