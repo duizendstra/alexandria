@@ -56,8 +56,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/djherbis/times v1.5.0 h1:79myA211VwPhFTqUk8xehWrsEO+zcIZj0zT8mXPVARU=
 github.com/djherbis/times v1.5.0/go.mod h1:5q7FDLvbNg1L/KaBmPcWlVR9NmoKo3+ucqUA3ijQhA0=
-github.com/duizendstra/alexandria/go/governance v0.1.0 h1:hB5fGJBCCOnKzowcJ5ZFVv3tqCwXV8Vt0o4lXfm5rvA=
-github.com/duizendstra/alexandria/go/governance v0.1.0/go.mod h1:ovPTgWL0MYL1+UjJSKio7LY9z3jTeRIKj66jo+CAYsk=
+github.com/duizendstra/alexandria/go/governance v0.2.0 h1:nVQAkwVItYQAjUVPy9RTyR9xUEQOChI1N6IRmlx/Cb0=
+github.com/duizendstra/alexandria/go/governance v0.2.0/go.mod h1:ovPTgWL0MYL1+UjJSKio7LY9z3jTeRIKj66jo+CAYsk=
 github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra v0.3.0 h1:uVxzZABnTj6kYE5dQyrsRQbERKXzLxTRP730tdYwehY=
 github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra v0.3.0/go.mod h1:X/iWn1EwOi8RlwJTkHZzx23sLNBEbRYEDOB3WyNEm64=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
