@@ -37,9 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **maintenance**:
   - Upgraded Google, ConnectRPC, and Protobuf dependencies to latest stable/secure versions.
   - Standardized Go modules version requirements to `go 1.26` (libraries minor version rule).
-  - Removed all `replace` directives from Go modules for cleaner dependency graph.
+  - Removed all `replace` directives from Go modules for cleaner dependency graph:
+    inter-module requires now pin published tags (`platform/web` previously required
+    the non-existent `apierr v0.0.0` and was unresolvable for external consumers;
+    `google` and `retry/gcp` pinned stale `retry` versions).
+  - Added `mod-hygiene` CI job: rejects committed `replace` directives, `v0.0.0`
+    pins, and modules missing Dependabot coverage.
   - Added unit tests for `go/slog-gcp/otelgcp` span context extraction.
-  - Expanded Dependabot configuration to cover all Go modules with external dependencies + actions.
+  - Expanded Dependabot configuration to cover all Go modules + actions.
   - Fixed dead code in `platform/async`, doc comment placement in `platform/apierr`, and doc example in `retry`.
   - Rewrote `contracts/README.md` to document the actual Protocol Buffer schemas and Buf compilation workflow.
 
