@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **go/iac/observability**: Configuration-driven Pulumi Observability blueprint — dedicated project with a BigQuery log-analytics dataset and an org-level audit-log sink routed into it (writer identity exported for downstream grants), placement resolved from a governance stack reference.
 - **go/iac/finops**: Configuration-driven Pulumi FinOps blueprint — dedicated project with a BigQuery billing-export dataset and an org-scoped budget (threshold alerts, email notification channels), placement resolved from a governance stack reference.
 - **go/iac/pulumi/gcpinfra**: Six new building blocks — billing budgets with threshold alerts (`budgets`), BigQuery datasets (`datasets`), org-level log sinks (`logsinks`), Cloud Build v2 Git connections with repo links (`connections`), Artifact Registry repositories with IAM grants (`registries`), and tag-push Cloud Build triggers (`triggers`).
 - **go/iac/workloads**: Configuration-driven Pulumi workloads blueprint — one or more projects per environment, each serving one or more concerns with per-concern exports, placement resolved from a governance stack reference, and an optional deploy-access grant for a delivery trigger SA.
