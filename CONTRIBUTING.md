@@ -37,14 +37,30 @@ cd go/slog-gcp
 go test -race -count=1 ./...
 ```
 
-Test all Go modules (modules are nested, so iterate `go.mod` files rather
-than top-level directories):
+Test all Go modules with [`just`](https://just.systems) (provided by the Nix
+dev shell):
+
+```bash
+just test-all    # go test -race across every module
+just lint-all    # golangci-lint across every module
+just cover-all   # per-module coverage summary
+just check       # vet + lint + test — the full pre-push gate
+```
+
+The recipes iterate `find go -name go.mod` — the same discovery the CI
+matrix uses — so local runs and CI cannot diverge on module coverage.
+Without `just`, run the equivalent loop directly:
 
 ```bash
 for modfile in $(find go -name go.mod); do
     (cd "$(dirname "$modfile")" && GOWORK=off go test -race -count=1 ./...)
 done
 ```
+
+CI enforces a per-module coverage ratchet
+(`.github/coverage-baselines.json`): coverage may not drop below the
+recorded baseline. Raise baselines as coverage improves; the long-term
+target is the 80% publication bar.
 
 ## Commit Conventions
 

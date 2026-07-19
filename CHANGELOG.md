@@ -7,7 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **go/governance** (breaking, pending `v0.2.0`): `plan.NewStarter` and
+  `plan.NewStandard` now take an `orgID` parameter, mirroring
+  `NewEnterprise`. Previously they could never satisfy `validateScope` at
+  Organization scope (no way to supply the required OrgID), so starter and
+  standard tiers were undeployable at org level. `go/iac/governance` derives
+  the org ID from the GCP parent for org-scope plans.
+
+### Added
+
+- **testing**: closed the zero-test gaps — `observability/audit/file`
+  (rotation, rename-failure self-healing, concurrent logging under `-race`,
+  scorecard parsing), the full `iac/*` tree (`folders.ParseScope`/`OrgID`
+  tables + fuzz, adapter validation, tier deployments via Pulumi mocks), and
+  fuzz targets for `privacyfilter` redaction and `datadiff` target parsing.
+- **justfile**: `test-all` / `vet-all` / `lint-all` / `cover-all` / `check`
+  recipes iterating every `go/**/go.mod` exactly like the CI matrix; `just`
+  added to the Nix dev shell.
+- **CI**: per-module coverage ratchet backed by
+  `.github/coverage-baselines.json` — coverage below the recorded baseline
+  fails the build; per-module percentages land in the job summary
+  (`go/contracts` exempt as generated code).
+
 ### Fixed
+
+- **go/observability/audit/file**: `ReadScorecard` no longer hangs on a
+  malformed log line. The `json.Decoder` stream loop could not resync after
+  a syntax error, so a single torn write (crash mid-append) spun the reader
+  forever; it now reads per-line and skips malformed lines as documented.
+- **go/iac/pulumi/gcpinfra** (pending `v0.1.1`): `folders.Apply` validated
+  tier policy it does not own — `hierarchy.Config.Validate()` requires ≥1
+  child, while `plan.validateStarter` forbids children, so every starter
+  deployment failed. The adapter now checks well-formedness only (parent,
+  root name, child uniqueness).
 
 - **.githooks**: replaced the live hooks with the golden `blueprints/githooks`
   set — `commit-msg` now accepts the `!` breaking-change marker (the previous

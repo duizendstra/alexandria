@@ -1,0 +1,21 @@
+{
+  "_comment": "Per-module coverage ratchet, enforced by the CI 'go' job. Baselines sit ~2pts under measured coverage to absorb noise; raise them as coverage improves — never lower without a recorded decision. Long-term target is the 80% publication bar (CONTRIBUTING.md). go/contracts is exempt (generated code).",
+  "go/dataquality/datadiff": 69,
+  "go/discovery/privacyfilter": 95,
+  "go/discovery/search": 0,
+  "go/discovery/search/searchtest": 0,
+  "go/google": 54,
+  "go/governance": 89,
+  "go/iac/governance": 93,
+  "go/iac/pulumi/gcpinfra": 88,
+  "go/observability/audit": 87,
+  "go/platform/apierr": 98,
+  "go/platform/async": 92,
+  "go/platform/cache": 98,
+  "go/platform/gcpenv": 87,
+  "go/platform/web": 70,
+  "go/retry": 86,
+  "go/retry/gcp": 84,
+  "go/slog-gcp": 54,
+  "go/slog-gcp/otelgcp": 83
+}
