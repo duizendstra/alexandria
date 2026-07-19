@@ -1,11 +1,16 @@
 version: "2"
 
-# Alexandria Library Lint Standard
+# Library lint profile — for reusable Go library repositories.
 #
-# Instance of blueprints/golangci/library.golangci.yml — same quality
-# bar as the consumer profile (blueprints/golangci/consumer.golangci.yml),
-# with adapted dependency rules and complexity limits for a library
-# codebase. Differences from the consumer profile are marked # LIBRARY:
+# Same quality bar as consumer.golangci.yml, with two adaptations for
+# library codebases: a curated external-dependency allowlist (libraries
+# may import vetted externals; consumers may not) and relaxed
+# complexity limits (library functions are richer than composition
+# roots).
+#
+# Copy to the repo root as .golangci.yml and adjust the two marked
+# sections. Keep the rest intact — every deviation should be a
+# deliberate, explainable decision.
 
 run:
   timeout: 10m
@@ -108,7 +113,6 @@ linters:
     - exptostd
 
     # ── 9. Quality ──
-    # LIBRARY: godox allowed — libraries may have TODO for tracked work.
     - lll
 
     # ── 10. Meta ──
@@ -121,7 +125,7 @@ linters:
     - mirror
 
   settings:
-    # LIBRARY: relaxed limits — library functions are richer than composition roots.
+    # Relaxed limits for library code (consumer profile is tighter).
     funlen:
       lines: 120
       statements: 60
@@ -149,8 +153,9 @@ linters:
     depguard:
       rules:
         main:
-          # LIBRARY: Alexandria can import vetted externals.
-          # Consumer config restricts to stdlib + Alexandria only.
+          # ADJUST: the external allowlist is the library's dependency
+          # policy. Start minimal; every addition is a deliberate
+          # decision — record why in the adding commit.
           list-mode: strict
           files:
             - "$all"
@@ -158,36 +163,15 @@ linters:
           allow:
             # ── Stdlib ──
             - $gostd
-
-            # ── Internal ──
+            # ── This repository ──
             - github.com/duizendstra/alexandria
-
-            # ── Vetted externals — every addition is a deliberate,
-            # recorded decision (see blueprints/golangci/README.md) ──
-            - connectrpc.com/connect
-            - google.golang.org
+            # ── Vetted externals (starter set — extend deliberately) ──
             - cloud.google.com/go
             - golang.org/x
-            - gopkg.in/yaml.v3
-            - github.com/spf13/cobra
-            - github.com/spf13/pflag
-            - github.com/spf13/viper
-            - github.com/google/uuid
-            - github.com/google/go-github
-            - github.com/google/go-cmp
-            - github.com/bradleyfalzon/ghinstallation/v2
-            - github.com/golang-jwt/jwt/v4
-            - github.com/modelcontextprotocol/go-sdk
-            - go.mau.fi/whatsmeow
-            - go.mau.fi/libsignal
-            - go.mau.fi/util
+            - google.golang.org
             - go.opentelemetry.io
             - github.com/pulumi/pulumi/sdk/v3
             - github.com/pulumi/pulumi-gcp/sdk/v9
-            - github.com/pulumi/pulumi-random/sdk/v4
-            - github.com/cespare/xxhash/v2
-            - github.com/mdp/qrterminal/v3
-            - modernc.org/sqlite
 
     ireturn:
       allow:
@@ -196,6 +180,7 @@ linters:
         - empty
         - stdlib
         - generic
+        # ADJUST: add framework interface types your code must return.
         - "github.com/pulumi/pulumi/sdk/v3/go/pulumi.Resource"
 
     gocritic:
@@ -217,10 +202,7 @@ linters:
       require-specific: true
 
     gomoddirectives:
-      replace-local: true
-      replace-allow-list:
-        - github.com/duizendstra/alexandria/go/slog-gcp
-        - github.com/duizendstra/alexandria/go/discovery/search
+      replace-local: false
 
     godot:
       scope: all
