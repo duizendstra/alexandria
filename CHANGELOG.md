@@ -55,7 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `.github/coverage-baselines.json` — coverage below the recorded baseline
   fails the build; per-module percentages land in the job summary
   (`go/contracts` exempt as generated code).
-
 - **go/retry/gcp** (pending `v0.1.0`): retryable-error classification now
   delegates to `apierr.RetryableStatus`/`RetryableGRPCCode` instead of
   maintaining a second copy of the transient tables (which had already
@@ -124,9 +123,30 @@ Released tags: `go/retry/v0.0.4`, `go/retry/gcp/v0.0.4`, `go/slog-gcp/v0.0.3`,
 `go/observability/audit/v0.0.3`, `go/contracts/v0.0.3`–`v0.0.4`,
 `go/platform/apierr/v0.0.3`, `go/platform/async/v0.1.0`,
 `go/platform/web/v0.0.2`, `go/platform/gcpenv/v0.0.1`, `go/governance/v0.1.0`,
-`go/iac/pulumi/gcpinfra/v0.1.0`, `go/iac/governance/v0.1.0`.
+`go/iac/pulumi/gcpinfra/v0.1.0`–`v0.3.0`, `go/iac/governance/v0.1.0`,
+`go/iac/identity/v0.1.0`, `go/iac/workloads/v0.1.0`, `go/iac/finops/v0.1.0`.
 
 ### Added
+
+- **go/iac/finops v0.1.0**: configuration-driven Pulumi FinOps blueprint —
+  dedicated project with a BigQuery billing-export dataset and an org-scoped
+  budget (threshold alerts, email notification channels), placement resolved
+  from a governance stack reference.
+- **go/iac/identity v0.1.0**: configuration-driven Pulumi identity blueprint —
+  dedicated project with Secret Manager secrets (pluggable `SecretResolver`,
+  default `pass`), service accounts, consumer/impersonator IAM, placement
+  resolved from a governance stack reference.
+- **go/iac/workloads v0.1.0**: configuration-driven Pulumi workloads
+  blueprint — one or more projects per environment, each serving one or more
+  concerns with per-concern exports, placement from a governance stack
+  reference, optional deploy-access grant for a delivery trigger SA.
+- **go/iac/pulumi/gcpinfra v0.2.0–v0.3.0**: ten new building blocks — GCP
+  projects with API enablement (`projects`), Secret Manager secrets
+  (`secrets`), service accounts (`serviceaccounts`), IAM member bindings
+  (`iambindings`), billing budgets (`budgets`), BigQuery datasets
+  (`datasets`), org-level log sinks (`logsinks`), Cloud Build v2 Git
+  connections (`connections`), Artifact Registry repositories (`registries`),
+  and tag-push Cloud Build triggers (`triggers`).
 
 - **go/platform/gcpenv v0.0.1**: canonical GCP project ID resolver (env vars,
   then metadata service with `GCP_METADATA_DISABLED` bypass); `slog-gcp` and
