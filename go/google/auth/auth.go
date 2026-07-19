@@ -18,17 +18,23 @@ import (
 	"time"
 
 	"cloud.google.com/go/auth/credentials/impersonate"
+	"github.com/duizendstra/alexandria/go/retry"
 	"github.com/duizendstra/alexandria/go/retry/gcp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 const (
 	envImpersonateServiceAccount = "GOOGLE_IMPERSONATE_SERVICE_ACCOUNT"
 	envOAuthClient               = "GOOGLE_OAUTH_CLIENT"
 	defaultServerTimeout         = 3 * time.Second
+
+	// defaultRetryAttempts is the default maximum number of attempts made by
+	// the transport-level retry for transient HTTP failures (429 and 5xx).
+	defaultRetryAttempts = 4
 )
 
 //nolint:gochecknoglobals // Stubbable for testing.
@@ -83,6 +89,8 @@ type config struct {
 	logger        *slog.Logger
 	httpClient    *http.Client
 	isInteractive bool
+	retryDisabled bool
+	retryAttempts int
 }
 
 // WithServiceAccountImpersonation configures direct SA-to-SA impersonation.
@@ -131,6 +139,83 @@ func WithHTTPClient(client *http.Client) Option {
 	}
 }
 
+// WithRetryAttempts tunes the maximum number of attempts made by the
+// transport-level retry for transient HTTP failures (429 and 5xx).
+// The default is 4. Values below 1 are ignored.
+func WithRetryAttempts(attempts int) Option {
+	return func(c *config) {
+		if attempts > 0 {
+			c.retryAttempts = attempts
+		}
+	}
+}
+
+// WithoutRetry disables the transport-level retry entirely. Use this when the
+// caller implements its own retry policy and double-retrying is undesirable.
+func WithoutRetry() Option {
+	return func(c *config) {
+		c.retryDisabled = true
+	}
+}
+
+// isRetryableStatus reports whether an HTTP status code represents a transient
+// failure worth retrying at the transport level: rate limiting (429) or
+// server-side errors (5xx).
+func isRetryableStatus(code int) bool {
+	return code == http.StatusTooManyRequests || code >= http.StatusInternalServerError
+}
+
+// retryRoundTripper wraps base (nil means http.DefaultTransport) with the
+// shared retry transport configured from cfg. Requests whose bodies cannot be
+// replayed (no GetBody) bypass the retry loop and are sent exactly once, so
+// streaming uploads keep their original single-attempt semantics and error
+// surface. Buffered media uploads set GetBody and are therefore retried.
+func (c *config) retryRoundTripper(base http.RoundTripper) http.RoundTripper {
+	if base == nil {
+		base = http.DefaultTransport
+	}
+
+	attempts := c.retryAttempts
+	if attempts < 1 {
+		attempts = defaultRetryAttempts
+	}
+
+	return &bodyAwareRetryTransport{
+		retrying: retry.Transport(attempts, isRetryableStatus, base),
+		direct:   base,
+	}
+}
+
+// bodyAwareRetryTransport sends rewindable requests through the retrying
+// transport and non-rewindable requests (a body without GetBody) directly to
+// the base transport in a single attempt.
+type bodyAwareRetryTransport struct {
+	retrying http.RoundTripper
+	direct   http.RoundTripper
+}
+
+func (t *bodyAwareRetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		return t.direct.RoundTrip(req) //nolint:wrapcheck // Transparent transport passthrough.
+	}
+
+	return t.retrying.RoundTrip(req) //nolint:wrapcheck // Transparent transport passthrough.
+}
+
+// wrapHTTPClient returns a shallow copy of client whose transport retries
+// transient failures. The caller's client is never mutated. When retry is
+// disabled, the client is returned untouched.
+func (c *config) wrapHTTPClient(client *http.Client) *http.Client {
+	if c.retryDisabled {
+		return client
+	}
+
+	wrapped := *client
+	wrapped.Transport = c.retryRoundTripper(client.Transport)
+
+	return &wrapped
+}
+
 // IsValidEmail checks if a string resembles a correct email pattern.
 func IsValidEmail(email string) bool {
 	if email == "" {
@@ -152,6 +237,12 @@ func IsValidServiceAccount(email string) bool {
 }
 
 // ResolveClient builds and returns the option-based client or credentials configuration.
+//
+// Every resolution path (injected client, impersonation, DWD, interactive
+// consent, and ADC fallback) routes HTTP traffic through a transport-level
+// retry for transient failures (429 and 5xx), so all API calls made with the
+// returned options inherit a uniform retry policy. Tune it with
+// WithRetryAttempts or opt out with WithoutRetry.
 func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) ([]option.ClientOption, error) {
 	cfg := &config{}
 	for _, opt := range opts {
@@ -159,7 +250,7 @@ func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) 
 	}
 
 	if cfg.httpClient != nil {
-		return []option.ClientOption{option.WithHTTPClient(cfg.httpClient)}, nil
+		return []option.ClientOption{option.WithHTTPClient(cfg.wrapHTTPClient(cfg.httpClient))}, nil
 	}
 
 	// Dynamic fallback to Environment service account if no mode is selected.
@@ -177,7 +268,7 @@ func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) 
 	}
 
 	if cfg.targetSA != "" {
-		return resolveImpersonationClient(cfg)
+		return resolveImpersonationClient(ctx, cfg)
 	}
 
 	if cfg.isInteractive {
@@ -185,11 +276,16 @@ func ResolveClient(ctx context.Context, defaultScopes []string, opts ...Option) 
 	}
 
 	// Fall back to Google Application Default Credentials (ADC).
-	return nil, nil
+	if cfg.retryDisabled {
+		// Defer credential detection to the API service constructor.
+		return nil, nil
+	}
+
+	return retryingClientOptions(ctx, cfg, option.WithScopes(cfg.scopes...))
 }
 
 // resolveImpersonationClient resolves direct or DWD impersonated service credentials.
-func resolveImpersonationClient(cfg *config) ([]option.ClientOption, error) {
+func resolveImpersonationClient(ctx context.Context, cfg *config) ([]option.ClientOption, error) {
 	if !IsValidServiceAccount(cfg.targetSA) {
 		return nil, ErrInvalidServiceAccount
 	}
@@ -215,7 +311,24 @@ func resolveImpersonationClient(cfg *config) ([]option.ClientOption, error) {
 		return nil, fmt.Errorf("failed to create impersonated credentials: %w", err)
 	}
 
-	return []option.ClientOption{option.WithAuthCredentials(creds)}, nil
+	if cfg.retryDisabled {
+		return []option.ClientOption{option.WithAuthCredentials(creds)}, nil
+	}
+
+	return retryingClientOptions(ctx, cfg, option.WithAuthCredentials(creds))
+}
+
+// retryingClientOptions builds an authenticated HTTP client whose base
+// transport retries transient failures, and returns it as the single client
+// option. Authentication (credential refresh) stays outside the retry loop,
+// so every retry attempt reuses the already-authorized request.
+func retryingClientOptions(ctx context.Context, cfg *config, authOpts ...option.ClientOption) ([]option.ClientOption, error) {
+	transport, err := htransport.NewTransport(ctx, cfg.retryRoundTripper(nil), authOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build retrying transport: %w", err)
+	}
+
+	return []option.ClientOption{option.WithHTTPClient(&http.Client{Transport: transport})}, nil
 }
 
 // resolveInteractiveClient resolves a consent-based interactive client.
@@ -236,24 +349,30 @@ func resolveInteractiveClient(ctx context.Context, cfg *config) ([]option.Client
 		return nil, err
 	}
 
-	return []option.ClientOption{option.WithHTTPClient(client)}, nil
+	return []option.ClientOption{option.WithHTTPClient(cfg.wrapHTTPClient(client))}, nil
 }
 
 // DWDValidator provides a mechanism to verify that Domain-Wide Delegation (DWD)
-// is authorized and active for a given subject email address.
+// is authorized and active for the credentials carried by a Drive service.
 type DWDValidator struct {
 	service *drive.Service
 }
 
-// NewDWDValidator creates a new DWDValidator instance.
+// NewDWDValidator creates a new DWDValidator instance. The provided service
+// must already be built with the delegated subject applied (for example via
+// ResolveClient with WithDomainWideDelegation); the validator checks whatever
+// identity those credentials carry.
 func NewDWDValidator(srv *drive.Service) *DWDValidator {
 	return &DWDValidator{service: srv}
 }
 
-// ValidateAccess performs a basic root-level validation.
-func (v *DWDValidator) ValidateAccess(ctx context.Context, userEmail string) error {
+// ValidateAccess performs a basic root-level validation by reading the Drive
+// root folder metadata with the credentials the underlying service was built
+// with. It validates the subject baked into those credentials — it cannot
+// validate an arbitrary user, which is why it takes no user email parameter.
+func (v *DWDValidator) ValidateAccess(ctx context.Context) error {
 	if v == nil || v.service == nil {
-		return fmt.Errorf("DWD validation failed for %s: %w", userEmail, ErrNilValidator)
+		return fmt.Errorf("DWD validation failed: %w", ErrNilValidator)
 	}
 
 	err := gcp.WithRetry(ctx, func() error {
@@ -265,7 +384,7 @@ func (v *DWDValidator) ValidateAccess(ctx context.Context, userEmail string) err
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("DWD validation failed for %s: %w", userEmail, err)
+		return fmt.Errorf("DWD validation failed: %w", err)
 	}
 
 	return nil
