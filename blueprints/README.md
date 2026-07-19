@@ -9,9 +9,11 @@ Project scaffolding templates for bootstrapping new repositories.
 | [service/.ko.yaml](service/.ko.yaml) | Golden ko build config for Go Cloud Run services |
 | [githooks/](githooks/) | Golden git hooks for Go repos — conventional commits, staged-content gofmt + secret scan, pre-push quality gate |
 | [golangci/](golangci/) | Golden golangci-lint profiles — one quality bar, library and consumer dependency postures |
+| [workstation/](workstation/) | Workstation bootstrap for the pass + GPG secrets workflow — non-interactive agent unlock, .secrets.yaml → env exports |
 
 ## Categories
 
 - **service/** — Go Cloud Run service scaffolding
 - **githooks/** — repository git hooks (opt-in via `core.hooksPath`)
 - **golangci/** — lint configuration profiles
+- **workstation/** — developer workstation secrets/GPG bootstrap
