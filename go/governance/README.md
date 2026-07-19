@@ -31,12 +31,13 @@ Following Google Cloud naming: Starter / Standard / Enterprise.
 | Folder hierarchy | Single root folder | Environment folders (dev/prod) | Full organizational tree |
 | Classification | — | — | Tag keys and dimensions |
 | Billing export | — | — | Billing account exported |
-| Org-level exports | — | — | OrgID exported downstream |
+| Org-level exports | At Organization scope | At Organization scope | OrgID exported downstream |
 | **Available at Folder scope** | ✅ | ✅ | ❌ |
 | **Available at Organization scope** | ✅ | ✅ | ✅ |
 
-Enterprise requires Organization scope. Classification and org-level exports
-are GCP org-level resources — they cannot be created at folder level.
+Enterprise requires Organization scope. Classification is a GCP org-level
+resource — tag keys cannot be created at folder level. The OrgID export is
+scope-driven: any tier deployed at Organization scope exports it.
 
 ### Moving between tiers
 
