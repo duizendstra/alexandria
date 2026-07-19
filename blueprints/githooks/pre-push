@@ -1,0 +1,31 @@
+#!/bin/sh
+# Pre-push quality gate: vet, lint, test, and build before shipping.
+#
+# Note: this validates the current working tree, not the exact commits
+# being pushed — push from a clean tree for a faithful gate.
+set -e
+
+# Match CI: resolve modules standalone, ignoring any parent go.work.
+GOWORK=off
+export GOWORK
+
+echo "Running quality gate..."
+
+echo "  → go vet"
+go vet ./...
+
+echo "  → golangci-lint"
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "❌ golangci-lint not found — the quality gate fails closed."
+  echo "   Install it (home-manager provides it) or push from a full shell."
+  exit 1
+fi
+golangci-lint run ./...
+
+echo "  → go test"
+go test ./...
+
+echo "  → go build"
+go build ./...
+
+echo "✅ Quality gate passed"
