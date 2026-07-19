@@ -41,6 +41,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.2.0 | Pulumi adapter packages for Google Cloud infrastructure |
 | [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning GCP governance |
 | [iac/identity](go/iac/identity/) | `github.com/duizendstra/alexandria/go/iac/identity` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning an identity project (secrets, SAs, IAM) |
+| [iac/workloads](go/iac/workloads/) | `github.com/duizendstra/alexandria/go/iac/workloads` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning multi-project workload environments with per-concern exports |
 
 Version numbers signal maturity: `v0.0.x` modules are experimental; `v0.1.x`
 means the API shape has been validated by at least one real consumer (see
