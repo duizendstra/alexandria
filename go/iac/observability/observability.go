@@ -2,11 +2,14 @@ package observability
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/duizendstra/alexandria/go/governance/exports"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/datasets"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/logsinks"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/projects"
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/uptimechecks"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/monitoring"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -17,6 +20,10 @@ const defaultRegion = "europe-west4"
 // defaultGovernanceFolder is the folder key read from the governance
 // stack's folder-ID export map when no "governanceFolder" config is set.
 const defaultGovernanceFolder = "shared"
+
+// defaultURLOutputKey is the stack-reference output an uptime target reads
+// its probed URL from when the target sets no urlOutputKey.
+const defaultURLOutputKey = "frontendUrl"
 
 // Params allows upstream BCs to pass values directly (collapsed mode).
 // When nil, all values come from Pulumi stack config (enterprise mode).
@@ -91,6 +98,10 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 	}, destination)
 	if err != nil {
 		return fmt.Errorf("org log sink: %w", err)
+	}
+
+	if err := applyMonitoring(ctx, cfg, projectOutputs.ProjectID); err != nil {
+		return err
 	}
 
 	// Sink writer identity exported so downstream can grant BQ access.
@@ -170,6 +181,112 @@ func fromGovernanceStack(ctx *pulumi.Context, cfg *config.Config, place *placeme
 			}
 		}
 	}
+}
+
+// uptimeTarget is one HTTPS endpoint to monitor, read from the optional
+// "uptimeTargets" JSON config array. The probed URL comes from the named
+// stack reference's URLOutputKey output (default "frontendUrl").
+type uptimeTarget struct {
+	DisplayName   string   `json:"displayName"`
+	StackRef      string   `json:"stackRef"`
+	URLOutputKey  string   `json:"urlOutputKey"`
+	StatusClasses []string `json:"statusClasses"`
+}
+
+// applyMonitoring creates the ops-email notification channel (when the
+// "alertEmail" config is set) and, for each configured uptime target, an
+// HTTPS uptime check with a failure alert routed to that channel. It is a
+// no-op when neither is configured.
+func applyMonitoring(ctx *pulumi.Context, cfg *config.Config, projectID pulumi.StringOutput) error {
+	var channelIDs pulumi.StringArray
+	if email := cfg.Get("alertEmail"); email != "" {
+		channel, err := monitoring.NewNotificationChannel(ctx, "ops-email", &monitoring.NotificationChannelArgs{
+			Project:     projectID,
+			DisplayName: pulumi.Sprintf("Observability ops alerts: %s", email),
+			Type:        pulumi.String("email"),
+			Labels: pulumi.StringMap{
+				"email_address": pulumi.String(email),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("ops email channel: %w", err)
+		}
+		channelIDs = append(channelIDs, channel.ID())
+	}
+
+	targets, err := uptimeTargetsFromConfig(cfg)
+	if err != nil {
+		return err
+	}
+	for _, t := range targets {
+		if err := applyUptimeTarget(ctx, projectID, channelIDs, t); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// uptimeTargetsFromConfig reads and parses the optional "uptimeTargets" JSON
+// config array. Absent config yields no targets.
+func uptimeTargetsFromConfig(cfg *config.Config) ([]uptimeTarget, error) {
+	if cfg.Get("uptimeTargets") == "" {
+		return nil, nil
+	}
+
+	var targets []uptimeTarget
+	if err := cfg.GetObject("uptimeTargets", &targets); err != nil {
+		return nil, fmt.Errorf("parse uptimeTargets: %w", err)
+	}
+
+	return targets, nil
+}
+
+// applyUptimeTarget resolves one target's URL from its stack reference and
+// provisions the uptime check + failure alert for it.
+func applyUptimeTarget(
+	ctx *pulumi.Context,
+	projectID pulumi.StringOutput,
+	channelIDs pulumi.StringArrayInput,
+	t uptimeTarget,
+) error {
+	ref, err := pulumi.NewStackReference(ctx, t.StackRef, nil)
+	if err != nil {
+		return fmt.Errorf("uptime target %q stack ref %q: %w", t.DisplayName, t.StackRef, err)
+	}
+
+	key := t.URLOutputKey
+	if key == "" {
+		key = defaultURLOutputKey
+	}
+	// The URL is a stack-ref output; derive the host with a string transform
+	// (not resource creation) so it flows to the check as a Pulumi input.
+	//nolint:forcetypeassert // ApplyT on a func returning string always yields a StringOutput.
+	host := ref.GetStringOutput(pulumi.String(key)).ApplyT(hostFromURL).(pulumi.StringOutput)
+
+	classes := t.StatusClasses
+	if len(classes) == 0 {
+		// IAP-fronted endpoints answer unauthenticated probes with a sign-in redirect.
+		classes = []string{uptimechecks.Class2xx, uptimechecks.Class3xx}
+	}
+
+	if err := uptimechecks.Apply(ctx, projectID, &uptimechecks.Config{
+		DisplayName:           t.DisplayName,
+		AcceptedStatusClasses: classes,
+	}, host, channelIDs, nil); err != nil {
+		return fmt.Errorf("uptime check %q: %w", t.DisplayName, err)
+	}
+
+	return nil
+}
+
+// hostFromURL strips the scheme and any trailing slash from a URL, leaving the
+// bare host the uptime check probes.
+func hostFromURL(u string) string {
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+
+	return strings.TrimSuffix(u, "/")
 }
 
 // Observability runs observability as a standalone Pulumi program.
