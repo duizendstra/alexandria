@@ -10,7 +10,6 @@ import (
 func validConfig() uptimechecks.Config {
 	return uptimechecks.Config{
 		DisplayName:           "app prod",
-		Host:                  "app.example.com",
 		Path:                  "/healthz",
 		Port:                  443,
 		AcceptedStatusClasses: []string{uptimechecks.Class2xx, uptimechecks.Class3xx},
@@ -27,8 +26,8 @@ func TestValidateValid(t *testing.T) {
 }
 
 func TestValidateMinimal(t *testing.T) {
-	// Only the two required fields set; everything else defaults.
-	c := uptimechecks.Config{DisplayName: "x", Host: "h"}
+	// Only the one required field set; everything else defaults.
+	c := uptimechecks.Config{DisplayName: "x"}
 	if err := c.Validate(); err != nil {
 		t.Errorf("unexpected error for minimal config: %v", err)
 	}
@@ -39,14 +38,6 @@ func TestValidateMissingDisplayName(t *testing.T) {
 	c.DisplayName = ""
 	if err := c.Validate(); !errors.Is(err, uptimechecks.ErrDisplayNameRequired) {
 		t.Errorf("expected ErrDisplayNameRequired, got %v", err)
-	}
-}
-
-func TestValidateMissingHost(t *testing.T) {
-	c := validConfig()
-	c.Host = ""
-	if err := c.Validate(); !errors.Is(err, uptimechecks.ErrHostRequired) {
-		t.Errorf("expected ErrHostRequired, got %v", err)
 	}
 }
 
