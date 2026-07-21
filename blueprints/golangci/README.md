@@ -37,6 +37,13 @@ standard; deviations should be deliberate and explainable.
   When a package is deleted, delete its exclusion — a config full of
   dead rules stops being trusted.
 
+## Resolutions
+
+Recurring fixes for reaching 0 issues under these profiles — the
+gocritic/nonamedreturns struct pattern, err113 sentinels, the pulumi
+`forcetypeassert` rewrite, and the goconst-counts-tests trap — live in
+[`docs/07-playbooks/golangci-resolutions.md`](../../docs/07-playbooks/golangci-resolutions.md).
+
 ## Pairing
 
 Pairs with [`blueprints/githooks/`](../githooks/): the pre-push hook
