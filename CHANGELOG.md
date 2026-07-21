@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2026-07-21 — gcpinfra uptimechecks building block
+
+Released tags: `go/iac/pulumi/gcpinfra/v0.6.0`.
+
 ### Added
 
-- **go/iac/pulumi/gcpinfra**: `uptimechecks.Apply` provisions an HTTPS
+- **go/iac/pulumi/gcpinfra v0.6.0**: `uptimechecks.Apply` provisions an HTTPS
   `UptimeCheckConfig` on a caller-supplied host/path plus a failure
   `AlertPolicy` tied to the check. IAP-aware acceptance —
   `AcceptedStatusClasses` defaults to `[Class2xx]`; callers add `Class3xx`
