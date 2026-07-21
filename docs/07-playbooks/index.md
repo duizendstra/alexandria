@@ -28,3 +28,4 @@ This folder contains step-by-step how-to guides for common development and maint
 ## Contents
 
 - [onboarding.md](onboarding.md) — Step-by-step developer learning playbook to set up a 100% declarative, local hermetic workspace using Nix in under 60 seconds.
+- [cross-module-release.md](cross-module-release.md) — How to land and release a change spanning a module and its consumers: staged version pins, local verification with an uncommitted `go.work`, and path-prefixed tagging in dependency order.
