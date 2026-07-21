@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2026-07-21 — gcpinfra uptimechecks host as runtime input
+
+Released tags: `go/iac/pulumi/gcpinfra/v0.7.0`.
+
 ### Changed
 
-- **go/iac/pulumi/gcpinfra** (breaking): `uptimechecks.Apply` now takes the
-  probed `host` as a runtime `pulumi.StringInput` parameter instead of a static
-  `Config.Host` string, so the check can target a dynamic stack-ref output such
-  as a Cloud Run URI. `Config.Host` and `ErrHostRequired` are removed. New
-  signature: `Apply(ctx, projectID, cfg, host, channelIDs, deps)`.
+- **go/iac/pulumi/gcpinfra v0.7.0** (breaking): `uptimechecks.Apply` now takes
+  the probed `host` as a runtime `pulumi.StringInput` parameter instead of a
+  static `Config.Host` string, so the check can target a dynamic stack-ref
+  output such as a Cloud Run URI. `Config.Host` and `ErrHostRequired` are
+  removed. New signature: `Apply(ctx, projectID, cfg, host, channelIDs, deps)`.
 
 ## 2026-07-21 — gcpinfra uptimechecks building block
 
