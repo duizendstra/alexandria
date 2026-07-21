@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 2026-07-21 — observability config-driven uptime checks
+
+Released tags: `go/iac/observability/v0.2.0`.
+
 ### Added
 
-- **go/iac/observability**: the blueprint now provisions monitoring. When
+- **go/iac/observability v0.2.0**: the blueprint now provisions monitoring. When
   `alertEmail` is set it creates an ops email notification channel, and for
   each entry in the optional `uptimeTargets` JSON config it resolves a stack
   reference, derives the host from that stack's URL output, and creates an
