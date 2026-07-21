@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **go/iac/observability**: the blueprint now provisions monitoring. When
+  `alertEmail` is set it creates an ops email notification channel, and for
+  each entry in the optional `uptimeTargets` JSON config it resolves a stack
+  reference, derives the host from that stack's URL output, and creates an
+  HTTPS uptime check with a failure alert routed to the channel (via
+  `gcpinfra/uptimechecks`). Bumps the `gcpinfra` dependency to v0.7.0.
+
 ## 2026-07-21 — gcpinfra uptimechecks host as runtime input
 
 Released tags: `go/iac/pulumi/gcpinfra/v0.7.0`.
