@@ -8,8 +8,6 @@ import (
 var (
 	// ErrDisplayNameRequired means the uptime check has no display name.
 	ErrDisplayNameRequired = errors.New("uptimechecks: DisplayName is required")
-	// ErrHostRequired means the uptime check has no host to monitor.
-	ErrHostRequired = errors.New("uptimechecks: Host is required")
 	// ErrPortOutOfRange means Port is set outside the valid 1-65535 range.
 	ErrPortOutOfRange = errors.New("uptimechecks: Port must be between 1 and 65535")
 	// ErrPeriodInvalid means Period is not one of the values GCP accepts.
@@ -69,14 +67,13 @@ func validPeriod(p string) bool {
 // Config defines an HTTPS uptime check and its failure alert policy.
 //
 // It is deliberately serializable and free of Pulumi types so a composition
-// root can drive it from JSON. The runtime inputs an uptime check needs —
-// the project ID and the notification channel IDs the alert routes to — are
-// passed to Apply as Pulumi values, not carried here.
+// root can drive it from JSON. The runtime inputs an uptime check needs — the
+// host to probe, the project ID, and the notification channel IDs the alert
+// routes to — are passed to Apply as Pulumi values, not carried here (the host
+// is commonly a stack-ref output such as a Cloud Run URI).
 type Config struct {
 	// DisplayName is the uptime check (and derived alert) display name.
 	DisplayName string `json:"displayName"`
-	// Host is the hostname to probe, e.g. "app.example.com".
-	Host string `json:"host"`
 	// Path is the request path (default: "/").
 	Path string `json:"path"`
 	// Port is the TCP port to probe (default: 443).
@@ -96,9 +93,6 @@ type Config struct {
 func (c *Config) Validate() error {
 	if c.DisplayName == "" {
 		return ErrDisplayNameRequired
-	}
-	if c.Host == "" {
-		return ErrHostRequired
 	}
 	if c.Port < 0 || c.Port > 65535 {
 		return ErrPortOutOfRange
@@ -120,7 +114,6 @@ func (c *Config) Validate() error {
 func (c *Config) resolved() resolvedConfig {
 	r := resolvedConfig{
 		displayName: c.DisplayName,
-		host:        c.Host,
 		path:        orString(c.Path, defaultPath),
 		port:        c.Port,
 		period:      orString(c.Period, defaultPeriod),
@@ -144,7 +137,6 @@ func (c *Config) resolved() resolvedConfig {
 
 type resolvedConfig struct {
 	displayName   string
-	host          string
 	path          string
 	port          int
 	period        string

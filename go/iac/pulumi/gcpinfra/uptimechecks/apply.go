@@ -16,14 +16,17 @@ const (
 	alertDuration        = "60s"
 )
 
-// Apply creates an HTTPS UptimeCheckConfig for cfg.Host and an AlertPolicy that
+// Apply creates an HTTPS UptimeCheckConfig probing host and an AlertPolicy that
 // fires — routing to the caller-supplied channelIDs — when the check reports
-// failures over the detection window. Notification channels are provided by the
-// caller (e.g. reusing the ones budgets creates) rather than created here.
+// failures over the detection window. host is a Pulumi input so it can be a
+// stack-ref output (e.g. a Cloud Run URI) as well as a literal. Notification
+// channels are provided by the caller (e.g. reusing the ones budgets creates)
+// rather than created here.
 func Apply(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
 	cfg *Config,
+	host pulumi.StringInput,
 	channelIDs pulumi.StringArrayInput,
 	deps []pulumi.Resource,
 ) error {
@@ -56,7 +59,7 @@ func Apply(
 			Type: pulumi.String("uptime_url"),
 			Labels: pulumi.StringMap{
 				"project_id": projectID,
-				"host":       pulumi.String(r.host),
+				"host":       host,
 			},
 		},
 	}, pulumi.DependsOn(deps))
