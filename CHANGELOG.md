@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **go/iac/pulumi/gcpinfra**: `uptimechecks.Apply` provisions an HTTPS
+  `UptimeCheckConfig` on a caller-supplied host/path plus a failure
+  `AlertPolicy` tied to the check. IAP-aware acceptance —
+  `AcceptedStatusClasses` defaults to `[Class2xx]`; callers add `Class3xx`
+  for endpoints whose unauthenticated probes are redirected to the IAP
+  sign-in page. Notification channels are caller-supplied IDs (a
+  `pulumi.StringArrayInput` to `Apply`) rather than created here, reusing
+  the channels `budgets` already provisions instead of duplicating the
+  primitive.
+
 ## 2026-07-19 — cloudrun multi-container (sidecar) services
 
 Released tags: `go/iac/pulumi/gcpinfra/v0.5.0`.
