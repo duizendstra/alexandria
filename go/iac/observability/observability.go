@@ -25,9 +25,10 @@ const defaultGovernanceFolder = "shared"
 // its probed URL from when the target sets no urlOutputKey.
 const defaultURLOutputKey = "frontendUrl"
 
-// defaultSinkLogNames is the org log sink's log-name allowlist when no
-// "sinkLogNames" config is set — preserves the original audit-logs-only
-// behaviour.
+// defaultSinkLogNames is the org log sink's log-name allowlist, always
+// included regardless of "sinkExtraLogNames" config — preserves the
+// original audit-logs-only behaviour and guarantees audit capture can't be
+// dropped by an incomplete caller-supplied list.
 func defaultSinkLogNames() []string {
 	return []string{"cloudaudit.googleapis.com"}
 }
@@ -124,21 +125,25 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 	return nil
 }
 
-// sinkLogNamesFromConfig reads the optional "sinkLogNames" JSON config
-// array — a list of log names the org sink allows through. Absent config
-// yields the audit-only default, so an omitted field preserves today's
-// sink unchanged.
+// sinkLogNamesFromConfig returns the org sink's log-name allowlist: the
+// audit-only default, extended by the optional "sinkExtraLogNames" JSON
+// config array. Callers add log streams alongside audit capture rather
+// than reconstructing the whole list, so an omitted or empty key preserves
+// today's sink unchanged and a caller can't accidentally drop audit
+// capture by an incomplete list.
 func sinkLogNamesFromConfig(cfg *config.Config) ([]string, error) {
-	if cfg.Get("sinkLogNames") == "" {
-		return defaultSinkLogNames(), nil
+	names := defaultSinkLogNames()
+
+	if cfg.Get("sinkExtraLogNames") == "" {
+		return names, nil
 	}
 
-	var names []string
-	if err := cfg.GetObject("sinkLogNames", &names); err != nil {
-		return nil, fmt.Errorf("parse sinkLogNames: %w", err)
+	var extra []string
+	if err := cfg.GetObject("sinkExtraLogNames", &extra); err != nil {
+		return nil, fmt.Errorf("parse sinkExtraLogNames: %w", err)
 	}
 
-	return names, nil
+	return append(names, extra...), nil
 }
 
 // sinkFilter composes a Cloud Logging filter matching any of the given log

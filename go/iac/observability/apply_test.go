@@ -92,22 +92,22 @@ func runApply(t *testing.T, extraConfig map[string]any) string {
 	return filter
 }
 
-func TestApply_OmittedSinkLogNamesYieldsTodaysSink(t *testing.T) {
+func TestApply_OmittedSinkExtraLogNamesYieldsTodaysSink(t *testing.T) {
 	got := runApply(t, nil)
 
 	const wantOriginalFilter = `logName:"logs/cloudaudit.googleapis.com"`
 	if got != wantOriginalFilter {
-		t.Errorf("sink filter with sinkLogNames omitted = %q, want unchanged original %q", got, wantOriginalFilter)
+		t.Errorf("sink filter with sinkExtraLogNames omitted = %q, want unchanged original %q", got, wantOriginalFilter)
 	}
 }
 
-func TestApply_CallerSuppliedSinkLogNamesAreHonored(t *testing.T) {
+func TestApply_CallerSuppliedExtraLogNamesAreAddedToTheDefault(t *testing.T) {
 	got := runApply(t, map[string]any{
-		"sinkLogNames": []string{"one.example.com", "two.example.com"},
+		"sinkExtraLogNames": []string{"one.example.com", "two.example.com"},
 	})
 
-	const want = `logName:"logs/one.example.com" OR logName:"logs/two.example.com"`
+	const want = `logName:"logs/cloudaudit.googleapis.com" OR logName:"logs/one.example.com" OR logName:"logs/two.example.com"`
 	if got != want {
-		t.Errorf("sink filter with caller-supplied sinkLogNames = %q, want %q", got, want)
+		t.Errorf("sink filter with caller-supplied sinkExtraLogNames = %q, want %q", got, want)
 	}
 }

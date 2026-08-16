@@ -9,10 +9,9 @@ an org-level audit-log sink routed into it.
 1. A GCP project (BigQuery, Logging, Monitoring APIs enabled, deletion
    policy `PREVENT`, no default VPC) in a governance-managed folder
 2. An `org_logs` BigQuery dataset for aggregated audit/activity logs
-3. An org-level log sink (`org-audit-to-bigquery`) filtering the
-   configured log-name allowlist (default: `cloudaudit.googleapis.com`
-   only) from the whole organization into the dataset
-   (`includeChildren: true`)
+3. An org-level log sink (`org-audit-to-bigquery`) filtering audit logs
+   (`cloudaudit.googleapis.com`), extended by any configured log names,
+   from the whole organization into the dataset (`includeChildren: true`)
 4. *(optional)* An ops-email notification channel and, per configured
    `uptimeTargets` entry, an HTTPS uptime check with a failure alert
    routed to that channel
@@ -33,20 +32,23 @@ downstream stack can grant it BigQuery access.
 | `orgID` | fallback | Organization ID (sink source scope); required unless resolved via params or governance stack |
 | `alertEmail` | no | Ops recipient; when set, an email notification channel is created and uptime alerts route to it |
 | `uptimeTargets` | no | JSON array of HTTPS endpoints to monitor (see below) |
-| `sinkLogNames` | no | JSON array of log names the org sink allows through (default `["cloudaudit.googleapis.com"]`) |
+| `sinkExtraLogNames` | no | JSON array of log names to add to the org sink's allowlist, alongside audit logs |
 
-### `sinkLogNames`
+### `sinkExtraLogNames`
 
-A JSON array of strings. Each entry is matched against a log's `logName`
-with Cloud Logging's `:` (has/substring) operator — the same test the
-sink's original hardcoded filter used — and the entries are OR'd
-together. **The sink is org-scoped with `includeChildren: true`:** an
-over-broad entry (e.g. an empty string) captures logs from every project
-in the organization, so keep entries as specific as the source log
-names allow.
+A JSON array of strings. The sink always captures audit logs
+(`cloudaudit.googleapis.com`); each entry here is *added* to that
+allowlist, not a replacement for it — a caller can't accidentally drop
+audit capture by supplying an incomplete list. Each entry is matched
+against a log's `logName` with Cloud Logging's `:` (has/substring)
+operator — the same test the sink's original hardcoded filter used — and
+all entries are OR'd together. **The sink is org-scoped with
+`includeChildren: true`:** an over-broad entry (e.g. an empty string)
+captures logs from every project in the organization, so keep entries as
+specific as the source log names allow.
 
 ```json
-["cloudaudit.googleapis.com", "example.googleapis.com"]
+["example.googleapis.com"]
 ```
 
 ### `uptimeTargets`

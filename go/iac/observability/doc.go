@@ -12,9 +12,9 @@
 // The sink's writer identity is exported so downstream stacks can grant
 // it BigQuery access.
 //
-// The sink's log-name allowlist comes from the optional "sinkLogNames"
-// JSON config array; an omitted key defaults to audit logs only
-// (["cloudaudit.googleapis.com"]), matching the sink's original behaviour.
+// The sink always captures audit logs (["cloudaudit.googleapis.com"]) and
+// extends that allowlist with the optional "sinkExtraLogNames" JSON config
+// array; an omitted key preserves the sink's original audit-only behaviour.
 //
 // Apply is the composable unit — supports all deployment scenarios:
 //
