@@ -1,7 +1,9 @@
 package observability
 
 import (
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/duizendstra/alexandria/go/governance/exports"
@@ -143,7 +145,35 @@ func sinkLogNamesFromConfig(cfg *config.Config) ([]string, error) {
 		return nil, fmt.Errorf("parse sinkExtraLogNames: %w", err)
 	}
 
+	for _, name := range extra {
+		if err := validateSinkLogName(name); err != nil {
+			return nil, fmt.Errorf("sinkExtraLogNames: %w", err)
+		}
+	}
+
 	return append(names, extra...), nil
+}
+
+// sinkLogNameCharset is the character set an org sink filter clause
+// tolerates. Rejecting everything else — including `"`, which would
+// otherwise let a caller-supplied entry break out of the filter's quoted
+// clause — keeps the composed filter to "which log names", never arbitrary
+// Cloud Logging filter syntax. `%` is allowed for URL-encoded log IDs.
+const sinkLogNameCharset = `^[A-Za-z0-9._/%-]+$`
+
+// ErrInvalidSinkLogName means a sinkExtraLogNames entry is empty or
+// contains a character outside sinkLogNameCharset.
+var ErrInvalidSinkLogName = errors.New("observability: invalid sinkExtraLogNames entry")
+
+// validateSinkLogName rejects empty entries and any character outside
+// sinkLogNameCharset, so a bad caller-supplied entry fails the deploy
+// instead of silently widening the org-wide, IncludeChildren:true sink.
+func validateSinkLogName(name string) error {
+	if !regexp.MustCompile(sinkLogNameCharset).MatchString(name) {
+		return fmt.Errorf("%w: %q must match %s", ErrInvalidSinkLogName, name, sinkLogNameCharset)
+	}
+
+	return nil
 }
 
 // sinkFilter composes a Cloud Logging filter matching any of the given log

@@ -10,6 +10,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// keySinkExtraLogNames is the config key under test throughout this file.
+const keySinkExtraLogNames = "sinkExtraLogNames"
+
 // requiredConfig is the minimal placement config Apply needs when no
 // Params and no governanceStack are supplied.
 var requiredConfig = map[string]any{
@@ -70,8 +73,9 @@ func setConfig(t *testing.T, kv map[string]any) {
 }
 
 // runApply runs observability.Apply(ctx, nil) under mocks and returns the
-// filter string the org log sink resource was created with.
-func runApply(t *testing.T, extraConfig map[string]any) string {
+// filter string the org log sink resource was created with (empty if Apply
+// errored before the sink resource was registered) and Apply's error.
+func runApply(t *testing.T, extraConfig map[string]any) (string, error) {
 	t.Helper()
 
 	cfg := make(map[string]any, len(requiredConfig)+len(extraConfig))
@@ -85,15 +89,15 @@ func runApply(t *testing.T, extraConfig map[string]any) string {
 	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
 		return observability.Apply(ctx, nil)
 	}, pulumi.WithMocks("project", "stack", mocks))
-	if err != nil {
-		t.Fatalf("Apply: %v", err)
-	}
 
-	return filter
+	return filter, err
 }
 
 func TestApply_OmittedSinkExtraLogNamesYieldsTodaysSink(t *testing.T) {
-	got := runApply(t, nil)
+	got, err := runApply(t, nil)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
 
 	const wantOriginalFilter = `logName:"logs/cloudaudit.googleapis.com"`
 	if got != wantOriginalFilter {
@@ -102,12 +106,33 @@ func TestApply_OmittedSinkExtraLogNamesYieldsTodaysSink(t *testing.T) {
 }
 
 func TestApply_CallerSuppliedExtraLogNamesAreAddedToTheDefault(t *testing.T) {
-	got := runApply(t, map[string]any{
-		"sinkExtraLogNames": []string{"one.example.com", "two.example.com"},
+	got, err := runApply(t, map[string]any{
+		keySinkExtraLogNames: []string{"one.example.com", "two.example.com"},
 	})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
 
 	const want = `logName:"logs/cloudaudit.googleapis.com" OR logName:"logs/one.example.com" OR logName:"logs/two.example.com"`
 	if got != want {
 		t.Errorf("sink filter with caller-supplied sinkExtraLogNames = %q, want %q", got, want)
+	}
+}
+
+func TestApply_EmptyExtraLogNameEntryFailsClosed(t *testing.T) {
+	_, err := runApply(t, map[string]any{
+		keySinkExtraLogNames: []string{""},
+	})
+	if err == nil {
+		t.Fatal("Apply with an empty sinkExtraLogNames entry: want error, got nil")
+	}
+}
+
+func TestApply_QuoteBreakingExtraLogNameEntryFailsClosed(t *testing.T) {
+	_, err := runApply(t, map[string]any{
+		keySinkExtraLogNames: []string{`x" OR NOT logName:"nothing`},
+	})
+	if err == nil {
+		t.Fatal("Apply with a quote-breaking sinkExtraLogNames entry: want error, got nil")
 	}
 }

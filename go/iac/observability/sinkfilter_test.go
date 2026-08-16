@@ -29,3 +29,28 @@ func TestSinkFilter(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSinkLogName(t *testing.T) {
+	valid := []string{
+		"cloudaudit.googleapis.com",
+		"example.googleapis.com%2Frequests",
+		"a-b_c.d/e",
+	}
+	for _, name := range valid {
+		if err := validateSinkLogName(name); err != nil {
+			t.Errorf("validateSinkLogName(%q) = %v, want nil", name, err)
+		}
+	}
+
+	invalid := []string{
+		"",
+		`x" OR NOT logName:"nothing`,
+		"has space",
+		"semi;colon",
+	}
+	for _, name := range invalid {
+		if err := validateSinkLogName(name); err == nil {
+			t.Errorf("validateSinkLogName(%q) = nil, want error", name)
+		}
+	}
+}

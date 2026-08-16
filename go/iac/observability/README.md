@@ -42,10 +42,15 @@ allowlist, not a replacement for it — a caller can't accidentally drop
 audit capture by supplying an incomplete list. Each entry is matched
 against a log's `logName` with Cloud Logging's `:` (has/substring)
 operator — the same test the sink's original hardcoded filter used — and
-all entries are OR'd together. **The sink is org-scoped with
-`includeChildren: true`:** an over-broad entry (e.g. an empty string)
-captures logs from every project in the organization, so keep entries as
-specific as the source log names allow.
+all entries are OR'd together.
+
+**The sink is org-scoped with `includeChildren: true`, so entries are
+validated, not just documented:** each one must match
+`^[A-Za-z0-9._/%-]+$` (letters, digits, `.`, `_`, `/`, `%`, `-`) or `Apply`
+fails the deploy. This rejects an empty string, which would otherwise
+match every log in every project, and rejects any character — starting
+with `"` — that could break out of the filter's quoted clause and inject
+arbitrary Cloud Logging filter syntax.
 
 ```json
 ["example.googleapis.com"]
