@@ -1,7 +1,10 @@
 package observability
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/duizendstra/alexandria/go/governance/exports"
@@ -24,6 +27,14 @@ const defaultGovernanceFolder = "shared"
 // defaultURLOutputKey is the stack-reference output an uptime target reads
 // its probed URL from when the target sets no urlOutputKey.
 const defaultURLOutputKey = "frontendUrl"
+
+// defaultSinkLogNames is the org log sink's log-name allowlist, always
+// included regardless of "sinkExtraLogNames" config — preserves the
+// original audit-logs-only behaviour and guarantees audit capture can't be
+// dropped by an incomplete caller-supplied list.
+func defaultSinkLogNames() []string {
+	return []string{"cloudaudit.googleapis.com"}
+}
 
 // Params allows upstream BCs to pass values directly (collapsed mode).
 // When nil, all values come from Pulumi stack config (enterprise mode).
@@ -90,10 +101,15 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 		projectOutputs.ProjectID, datasetOutputs.DatasetID,
 	)
 
+	sinkLogNames, err := sinkLogNamesFromConfig(cfg)
+	if err != nil {
+		return err
+	}
+
 	sinkOutputs, err := logsinks.Apply(ctx, logsinks.Config{
 		Name:            "org-audit-to-bigquery",
 		OrgID:           place.orgID,
-		Filter:          `logName:"logs/cloudaudit.googleapis.com"`,
+		Filter:          sinkFilter(sinkLogNames),
 		IncludeChildren: true,
 	}, destination)
 	if err != nil {
@@ -110,6 +126,89 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 	ctx.Export("sinkWriterIdentity", sinkOutputs.WriterIdentity)
 
 	return nil
+}
+
+// sinkLogNamesFromConfig returns the org sink's log-name allowlist: the
+// audit-only default, extended by the optional "sinkExtraLogNames" JSON
+// config array. Callers add log streams alongside audit capture rather
+// than reconstructing the whole list, so an omitted or empty key preserves
+// today's sink unchanged and a caller can't accidentally drop audit
+// capture by an incomplete list.
+func sinkLogNamesFromConfig(cfg *config.Config) ([]string, error) {
+	names := defaultSinkLogNames()
+
+	if cfg.Get("sinkExtraLogNames") == "" {
+		return names, nil
+	}
+
+	var extra []string
+	if err := cfg.GetObject("sinkExtraLogNames", &extra); err != nil {
+		return nil, fmt.Errorf("parse sinkExtraLogNames: %w", err)
+	}
+
+	for _, name := range extra {
+		if err := validateSinkLogName(name); err != nil {
+			return nil, fmt.Errorf("sinkExtraLogNames: %w", err)
+		}
+	}
+
+	return append(names, extra...), nil
+}
+
+// sinkLogNameCharset is the character set an org sink filter clause
+// tolerates. Rejecting everything else — including `"`, which would
+// otherwise let a caller-supplied entry break out of the filter's quoted
+// clause — keeps the composed filter to "which log names", never arbitrary
+// Cloud Logging filter syntax. `%` is allowed for URL-encoded log IDs.
+const sinkLogNameCharset = `^[A-Za-z0-9._/%-]+$`
+
+// sinkLogNamePattern is compiled once and reused by every
+// validateSinkLogName call.
+var sinkLogNamePattern = regexp.MustCompile(sinkLogNameCharset)
+
+// ErrInvalidSinkLogName means a sinkExtraLogNames entry is empty or
+// contains a character outside sinkLogNameCharset, either directly or once
+// percent-decoded.
+var ErrInvalidSinkLogName = errors.New("observability: invalid sinkExtraLogNames entry")
+
+// validateSinkLogName rejects empty entries and any character outside
+// sinkLogNameCharset, so a bad caller-supplied entry fails the deploy
+// instead of silently widening the org-wide, IncludeChildren:true sink.
+//
+// It also rejects entries that decode (percent-unescape) to something
+// outside the charset. logsinks passes the filter to the provider
+// verbatim — nothing in this module decodes it — but the guarantee this
+// charset exists to make ("caller names log streams, never arbitrary
+// filter syntax") must not depend on whether a downstream layer decodes
+// the string before evaluating it. A malformed percent-escape is rejected
+// too, on the same fail-closed reasoning.
+func validateSinkLogName(name string) error {
+	if !sinkLogNamePattern.MatchString(name) {
+		return fmt.Errorf("%w: %q must match %s", ErrInvalidSinkLogName, name, sinkLogNameCharset)
+	}
+
+	decoded, err := url.PathUnescape(name)
+	if err != nil {
+		return fmt.Errorf("%w: %q is not validly percent-encoded: %w", ErrInvalidSinkLogName, name, err)
+	}
+
+	if !sinkLogNamePattern.MatchString(decoded) {
+		return fmt.Errorf("%w: %q decodes to %q, which must also match %s", ErrInvalidSinkLogName, name, decoded, sinkLogNameCharset)
+	}
+
+	return nil
+}
+
+// sinkFilter composes a Cloud Logging filter matching any of the given log
+// names. Each name is matched with the `logName:"logs/<name>"` substring
+// operator, the same test the original hardcoded filter used.
+func sinkFilter(logNames []string) string {
+	clauses := make([]string, len(logNames))
+	for i, name := range logNames {
+		clauses[i] = fmt.Sprintf(`logName:"logs/%s"`, name)
+	}
+
+	return strings.Join(clauses, " OR ")
 }
 
 // resolvePlacement determines folder ID, billing account, and org ID from
