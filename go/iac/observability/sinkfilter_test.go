@@ -47,6 +47,12 @@ func TestValidateSinkLogName(t *testing.T) {
 		`x" OR NOT logName:"nothing`,
 		"has space",
 		"semi;colon",
+		// Passes the raw charset check (letters, digits, % only) but
+		// percent-decodes to `" OR severity>=DEFAULT` — must be caught by
+		// the decoded-form check, not just the raw one.
+		"%22%20OR%20severity%3E%3DDEFAULT",
+		// Malformed percent-escape: url.PathUnescape errors, must fail closed.
+		"bad%zzescape",
 	}
 	for _, name := range invalid {
 		if err := validateSinkLogName(name); err == nil {

@@ -3,6 +3,7 @@ package observability
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -161,16 +162,38 @@ func sinkLogNamesFromConfig(cfg *config.Config) ([]string, error) {
 // Cloud Logging filter syntax. `%` is allowed for URL-encoded log IDs.
 const sinkLogNameCharset = `^[A-Za-z0-9._/%-]+$`
 
+// sinkLogNamePattern is compiled once and reused by every
+// validateSinkLogName call.
+var sinkLogNamePattern = regexp.MustCompile(sinkLogNameCharset)
+
 // ErrInvalidSinkLogName means a sinkExtraLogNames entry is empty or
-// contains a character outside sinkLogNameCharset.
+// contains a character outside sinkLogNameCharset, either directly or once
+// percent-decoded.
 var ErrInvalidSinkLogName = errors.New("observability: invalid sinkExtraLogNames entry")
 
 // validateSinkLogName rejects empty entries and any character outside
 // sinkLogNameCharset, so a bad caller-supplied entry fails the deploy
 // instead of silently widening the org-wide, IncludeChildren:true sink.
+//
+// It also rejects entries that decode (percent-unescape) to something
+// outside the charset. logsinks passes the filter to the provider
+// verbatim — nothing in this module decodes it — but the guarantee this
+// charset exists to make ("caller names log streams, never arbitrary
+// filter syntax") must not depend on whether a downstream layer decodes
+// the string before evaluating it. A malformed percent-escape is rejected
+// too, on the same fail-closed reasoning.
 func validateSinkLogName(name string) error {
-	if !regexp.MustCompile(sinkLogNameCharset).MatchString(name) {
+	if !sinkLogNamePattern.MatchString(name) {
 		return fmt.Errorf("%w: %q must match %s", ErrInvalidSinkLogName, name, sinkLogNameCharset)
+	}
+
+	decoded, err := url.PathUnescape(name)
+	if err != nil {
+		return fmt.Errorf("%w: %q is not validly percent-encoded: %w", ErrInvalidSinkLogName, name, err)
+	}
+
+	if !sinkLogNamePattern.MatchString(decoded) {
+		return fmt.Errorf("%w: %q decodes to %q, which must also match %s", ErrInvalidSinkLogName, name, decoded, sinkLogNameCharset)
 	}
 
 	return nil

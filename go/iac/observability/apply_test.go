@@ -136,3 +136,18 @@ func TestApply_QuoteBreakingExtraLogNameEntryFailsClosed(t *testing.T) {
 		t.Fatal("Apply with a quote-breaking sinkExtraLogNames entry: want error, got nil")
 	}
 }
+
+// TestApply_PercentEncodedQuoteBreakingExtraLogNameEntryFailsClosed uses a
+// payload built entirely from the allowed charset (letters, digits, %) so
+// it passes the raw check, but percent-decodes to `" OR severity>=DEFAULT`.
+// This only fails if the decoded form is validated too — a fail-closed
+// guarantee that must hold regardless of whether any downstream layer
+// (the Pulumi provider, the Cloud Logging API) ever decodes the filter.
+func TestApply_PercentEncodedQuoteBreakingExtraLogNameEntryFailsClosed(t *testing.T) {
+	_, err := runApply(t, map[string]any{
+		keySinkExtraLogNames: []string{"%22%20OR%20severity%3E%3DDEFAULT"},
+	})
+	if err == nil {
+		t.Fatal("Apply with a percent-encoded quote-breaking sinkExtraLogNames entry: want error, got nil")
+	}
+}
