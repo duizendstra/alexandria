@@ -7,10 +7,14 @@
 // Creates:
 //   - Observability project — hosts the log analytics dataset
 //   - BigQuery dataset — receives aggregated audit/activity logs
-//   - Org-level log sink — routes audit logs to the dataset
+//   - Org-level log sink — routes an allowlist of log names to the dataset
 //
 // The sink's writer identity is exported so downstream stacks can grant
 // it BigQuery access.
+//
+// The sink always captures audit logs (["cloudaudit.googleapis.com"]) and
+// extends that allowlist with the optional "sinkExtraLogNames" JSON config
+// array; an omitted key preserves the sink's original audit-only behaviour.
 //
 // Apply is the composable unit — supports all deployment scenarios:
 //
