@@ -25,6 +25,13 @@ const defaultGovernanceFolder = "shared"
 // its probed URL from when the target sets no urlOutputKey.
 const defaultURLOutputKey = "frontendUrl"
 
+// defaultSinkLogNames is the org log sink's log-name allowlist when no
+// "sinkLogNames" config is set — preserves the original audit-logs-only
+// behaviour.
+func defaultSinkLogNames() []string {
+	return []string{"cloudaudit.googleapis.com"}
+}
+
 // Params allows upstream BCs to pass values directly (collapsed mode).
 // When nil, all values come from Pulumi stack config (enterprise mode).
 type Params struct {
@@ -90,10 +97,15 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 		projectOutputs.ProjectID, datasetOutputs.DatasetID,
 	)
 
+	sinkLogNames, err := sinkLogNamesFromConfig(cfg)
+	if err != nil {
+		return err
+	}
+
 	sinkOutputs, err := logsinks.Apply(ctx, logsinks.Config{
 		Name:            "org-audit-to-bigquery",
 		OrgID:           place.orgID,
-		Filter:          `logName:"logs/cloudaudit.googleapis.com"`,
+		Filter:          sinkFilter(sinkLogNames),
 		IncludeChildren: true,
 	}, destination)
 	if err != nil {
@@ -110,6 +122,35 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 	ctx.Export("sinkWriterIdentity", sinkOutputs.WriterIdentity)
 
 	return nil
+}
+
+// sinkLogNamesFromConfig reads the optional "sinkLogNames" JSON config
+// array — a list of log names the org sink allows through. Absent config
+// yields the audit-only default, so an omitted field preserves today's
+// sink unchanged.
+func sinkLogNamesFromConfig(cfg *config.Config) ([]string, error) {
+	if cfg.Get("sinkLogNames") == "" {
+		return defaultSinkLogNames(), nil
+	}
+
+	var names []string
+	if err := cfg.GetObject("sinkLogNames", &names); err != nil {
+		return nil, fmt.Errorf("parse sinkLogNames: %w", err)
+	}
+
+	return names, nil
+}
+
+// sinkFilter composes a Cloud Logging filter matching any of the given log
+// names. Each name is matched with the `logName:"logs/<name>"` substring
+// operator, the same test the original hardcoded filter used.
+func sinkFilter(logNames []string) string {
+	clauses := make([]string, len(logNames))
+	for i, name := range logNames {
+		clauses[i] = fmt.Sprintf(`logName:"logs/%s"`, name)
+	}
+
+	return strings.Join(clauses, " OR ")
 }
 
 // resolvePlacement determines folder ID, billing account, and org ID from
