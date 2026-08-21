@@ -16,7 +16,9 @@ import (
 
 const (
 	actionCreateIdeas = "ideas.create"
+	actionCreate      = "create"
 	actionView        = "view"
+	actionDelete      = "delete"
 	actorMCP          = "mcp"
 	actorCLI          = "cli"
 	actorAlice        = "alice"
@@ -338,7 +340,7 @@ func TestReadScorecard(t *testing.T) {
 	_ = w.Log(context.Background(), audit.Entry{Actor: actorAlice, Action: actionView, Resource: "r1"})
 	_ = w.Log(context.Background(), audit.Entry{Actor: actorBob, Action: "edit", Resource: "r2"})
 	_ = w.Log(context.Background(), audit.Entry{Actor: actorBob, Action: actionView, Resource: "r3"})
-	_ = w.Log(context.Background(), audit.Entry{Actor: "charlie", Action: "delete", Resource: "r4"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: "charlie", Action: actionDelete, Resource: "r4"})
 
 	_ = w.Close()
 

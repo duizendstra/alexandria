@@ -7,13 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-
+- **go/dataquality/datadiff**: Added in-memory set and map parity comparison engine (`SetDiff[T]`, `MapDiff[K, V]`) and 3-way migration reconciler (`ThreeWayDiff[T]`) proving the mathematical equation `baseline ∖ leftovers == target`.
+- **go/observability/audit**: Added streaming JSONL `Reader`, predicate `Filter`, and summary `AggregateScorecard` calculation for audit trail event processing.
 - **go/governance/gate**: Policy evaluation gate engine (`Gate`, `Policy`, `Rule`, `Verdict`, `Status`, `Enforce`) supporting Standard, Strict, and Permissive evaluation, invariant check adapter bridges, and JSON report serialization.
 - **go/google/workspace/drive**: Added Shared Drive lifecycle management (`CreateSharedDrive`, `FindSharedDriveByName`, `GetSharedDrive`, `ListSharedDrives`), folder operations (`CreateFolder`, `FindFolder`, `FindFolderByProperty`), safe file relocation with automatic parent resolution (`MoveFile`, `TrashFile`), and idempotent drive membership reconciliation (`EnsureDriveMembership`, `RoleRank`, `ListDriveMembers`, `ListFilePermissions`, `DeleteDriveMember`, `DeleteFilePermission`).
-- **go/platform/workflow**: Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks (`Workflow`, `Step`, `Hooks`).
-- **go/iac/pulumi/runner**: Programmatic Pulumi CLI automation engine built on `procrun` (`SelectOrCreateStack`, `SetConfig`, `Up`, `Destroy`, `GetOutputs`).
-- **go/google**: Added `resourcemanager` (GCP Project lifecycle, folder/org placement, Cloud Billing linking) and `serviceusage` (API status inspection, batch service enablement) packages with convenience factories in `go/google/client`.
 - **go/google/auth**: Added `ValidateAccessAs(ctx, expectedEmail)` on `*DWDValidator` to verify effective impersonated identity via `About.Get` before root access validation, returning `ErrSubjectMismatch` on identity discrepancy.
 - **go/slog-gcp**: Supported Cloud Logging deduplication using native `logging.googleapis.com/insertId` via `WithInsertID`, `WithInsertIDKey`, and `WithCustomInsertIDKey` options.
 - **go/observability/audit**: Added bidirectional Protocol Buffer contract conversions (`(Entry).ToProto()`, `EntryFromProto()`, `(Scorecard).ToProto()`, `ScorecardFromProto()`) consuming `go/contracts/observability/audit/v1alpha1`.

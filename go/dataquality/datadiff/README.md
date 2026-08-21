@@ -4,7 +4,8 @@
 
 ## Features
 
-- **Multi-Layered Reconciliation**: Four independent comparison layers: Schema validation, Volume (row counts), Content hash comparison, and Column-level statistical aggregates.
+- **Multi-Layered Table Reconciliation**: Four independent comparison layers: Schema validation, Volume (row counts), Content hash comparison, and Column-level statistical aggregates.
+- **In-Memory Set & Map Parity Differ**: Generic `SetDiff[T]`, `MapDiff[K, V]`, and 3-way migration reconciler `ThreeWayDiff[T]` (`baseline ∖ leftovers == target`) for fast memory-level manifest diffing.
 - **Port/Adapter Architecture**: Zero external dependencies in the core domain; platform-specific comparators (e.g., BigQuery comparison) are decoupled.
 - **Nested Column Flattening**: Recursive dot-notation flattener for record/struct data structures.
 - **Configurable Diffs Cap**: Prevents memory bloat by capping the maximum returned row-level differences.
