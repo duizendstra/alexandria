@@ -35,6 +35,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [discovery/search/searchtest](go/discovery/search/searchtest/) | `github.com/duizendstra/alexandria/go/discovery/search/searchtest` | v0.0.2 | Reusable contract tests for `search.Index` adapters |
 | [platform/apierr](go/platform/apierr/) | `github.com/duizendstra/alexandria/go/platform/apierr` | v0.1.0 | Sentinel errors for vendor API interactions |
 | [platform/async](go/platform/async/) | `github.com/duizendstra/alexandria/go/platform/async` | v0.1.0 | In-memory async task runner with lifecycle states |
+| [platform/buildstamp](go/platform/buildstamp/) | `github.com/duizendstra/alexandria/go/platform/buildstamp` | v0.0.1 | Build provenance stamping and strict pre-run verification (commit, dirty tree, dependency revisions) |
 | [platform/cache](go/platform/cache/) | `github.com/duizendstra/alexandria/go/platform/cache` | v0.0.1 | Generic, concurrent-safe in-memory TTL cache |
 | [platform/gcpenv](go/platform/gcpenv/) | `github.com/duizendstra/alexandria/go/platform/gcpenv` | v0.1.0 | Canonical GCP project ID resolution (env vars + metadata service) |
 | [platform/passstore](go/platform/passstore/) | `github.com/duizendstra/alexandria/go/platform/passstore` | v0.1.0 | Deploy-time secret retrieval from the local pass store |
