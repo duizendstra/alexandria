@@ -104,10 +104,9 @@ func RetryableGRPCCode(code uint32) bool {
 }
 
 // StatusError wraps a sentinel error with the HTTP status code and
-// response body excerpt. Use [errors.As] to extract context:
+// response body excerpt. Use [errors.AsType] to extract context:
 //
-//	var se *apierr.StatusError
-//	if errors.As(err, &se) {
+//	if se, ok := errors.AsType[*apierr.StatusError](err); ok {
 //	    log.Info("failed", "status", se.Status, "body", se.Body)
 //	}
 type StatusError struct {
