@@ -4,148 +4,268 @@ updates:
     directory: "/go/contracts/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/dataquality/datadiff/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/discovery/privacyfilter/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/discovery/search/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/discovery/search/searchtest/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/google/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/governance/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/governance/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/delivery/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/finops/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/identity/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/observability/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/pulumi/gcpinfra/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/pulumi/stackref/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/iac/workloads/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/observability/audit/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/apierr/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/async/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/buildstamp/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/cache/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/gcpenv/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/passstore/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/procrun/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/runstate/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/web/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/retry/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/retry/gcp/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/slog-gcp/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/go/slog-gcp/otelgcp/"
     schedule:
       interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"

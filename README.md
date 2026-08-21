@@ -13,7 +13,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | Directory | Concern | Description |
 |---|---|---|
 | [`go/`](go/) | **BUILD** | Go modules — each with its own `go.mod`, independently versioned |
-| [`contracts/`](contracts/) | **DEFINE** | API contracts — proto, OpenAPI, and schema definitions |
+| [`contracts/`](contracts/) | **DEFINE** | API contracts — Protocol Buffer and ConnectRPC service definitions |
 | [`skills/`](skills/) | **TEACH** | Antigravity AI skills — shareable agent instructions |
 | [`blueprints/`](blueprints/) | **SCAFFOLD** | Golden configuration templates — ko service builds, git hooks, golangci profiles |
 | [`docs/`](docs/) | **KNOW** | Documentation vault — full 8-folder OKF structure |

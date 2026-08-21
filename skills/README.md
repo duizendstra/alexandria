@@ -26,8 +26,19 @@ Consumer repos inherit skills via `skills.json`:
 | [ko-build](ko-build/) | ko container build setup for Go services targeting GCP Cloud Run |
 | [release-review](release-review/) | Pre-release repository review with 6 specialized parallel agents |
 
+## Review Skill Selection Guide
+
+Alexandria provides three multi-agent review skills. Choose the right one for your workflow:
+
+| Review Skill | Primary Focus | Mechanism | When to Choose |
+|---|---|---|---|
+| **`release-review`** | Repository release readiness | 6 parallel agents (Security, Licenses, Docs, CI/Tags, Public Hygiene, Code Quality) | Required before tagging releases or making repositories public. Validates compliance and hygiene. |
+| **`diffract-review`** | Code & doc structural quality | 9 deterministic lenses (tools first: grep, find, wc) with CHECK mediator | Ideal for deep review of significant PRs, refactors, blueprints, or large documentation changes. |
+| **`dialectical-review`** | Architecture & design trade-offs | Adversarial thesis/antithesis debate per expert role + mediator | Best for complex architectural decisions, high-risk design changes, or challenging technical trade-offs. |
+
 ## Creating a Skill
 
 Each skill is a directory with a `SKILL.md` file (YAML frontmatter + markdown
 instructions). See the Antigravity documentation for the full skill authoring
 guide.
+
