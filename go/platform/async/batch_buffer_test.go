@@ -109,8 +109,8 @@ func TestBatchBufferAddFlushErrorRecoverable(t *testing.T) {
 		t.Fatal("expected error from Add when flush fails, got nil")
 	}
 
-	var flushErr *FlushError[int]
-	if !errors.As(err, &flushErr) {
+	flushErr, ok := errors.AsType[*FlushError[int]](err)
+	if !ok {
 		t.Fatalf("expected *FlushError[int], got %T: %v", err, err)
 	}
 
@@ -175,8 +175,8 @@ func TestBatchBufferFlushErrorRecoverable(t *testing.T) {
 		t.Fatal("expected error from Flush when callback fails, got nil")
 	}
 
-	var flushErr *FlushError[string]
-	if !errors.As(err, &flushErr) {
+	flushErr, ok := errors.AsType[*FlushError[string]](err)
+	if !ok {
 		t.Fatalf("expected *FlushError[string], got %T: %v", err, err)
 	}
 

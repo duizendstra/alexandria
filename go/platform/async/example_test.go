@@ -70,8 +70,7 @@ func ExampleFlushError() {
 	// so the caller can retry or salvage the items.
 	err := buf.Flush(ctx)
 
-	var flushErr *async.FlushError[int]
-	if errors.As(err, &flushErr) {
+	if flushErr, ok := errors.AsType[*async.FlushError[int]](err); ok {
 		fmt.Println(flushErr.Items, errors.Is(err, errSinkUnavailable))
 	}
 	// Output: [1 2] true
