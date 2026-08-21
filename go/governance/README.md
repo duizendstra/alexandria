@@ -57,6 +57,7 @@ scope.Scope                  Organization or Folder — determines capabilities
 hierarchy.Config             Folder tree definition
 classification.Dimension     Tag key / label axis
 invariant.Rule / Check       A named rule and its evidence-carrying outcome
+gate.Gate / Policy           Policy gate engine and execution barrier
 ```
 
 ## Verifying that governance holds
@@ -79,6 +80,22 @@ check := b.Done()
 
 Rules collected in a slice make a suite enumerable — countable, listable, and
 checkable for whether every rule has a test of its own.
+
+## Policy Gates
+
+`gate` provides deterministic release and mutation gates parameterized by policy:
+- **Strict**: Fails if ANY rule fails or triggers an anomaly.
+- **Standard**: Fails only if a rule fails (anomalies produce warnings).
+- **Permissive**: Informational only; never blocks execution.
+
+```go
+g := gate.New(gate.Strict)
+g.Add(gate.FromCheck(check))
+verdict, report := g.Evaluate()
+if err := g.Enforce(); err != nil {
+    // Gate blocked
+}
+```
 
 The `Plan` is the port. This module is pure Go with zero external
 dependencies — provisioning adapters (Pulumi, Terraform, any cloud)
