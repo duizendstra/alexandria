@@ -9,6 +9,8 @@ import (
 
 	"github.com/duizendstra/alexandria/go/google/auth"
 	"github.com/duizendstra/alexandria/go/google/client"
+	"github.com/duizendstra/alexandria/go/google/resourcemanager"
+	"github.com/duizendstra/alexandria/go/google/serviceusage"
 	workspacedrive "github.com/duizendstra/alexandria/go/google/workspace/drive"
 	google_drive "google.golang.org/api/drive/v3"
 )
@@ -44,6 +46,26 @@ func TestNewServices_InjectClient(t *testing.T) {
 		}
 		if srv == nil {
 			t.Fatal("expected non-nil reports service")
+		}
+	})
+
+	t.Run("NewResourceManagerService", func(t *testing.T) {
+		srv, err := client.NewResourceManagerService(ctx, resourcemanager.Config{}, auth.WithHTTPClient(httpClient))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if srv == nil {
+			t.Fatal("expected non-nil resourcemanager service")
+		}
+	})
+
+	t.Run("NewServiceUsageService", func(t *testing.T) {
+		srv, err := client.NewServiceUsageService(ctx, serviceusage.Config{}, auth.WithHTTPClient(httpClient))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if srv == nil {
+			t.Fatal("expected non-nil serviceusage service")
 		}
 	})
 }

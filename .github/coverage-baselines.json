@@ -4,7 +4,7 @@
   "go/discovery/privacyfilter": 95,
   "go/discovery/search": 0,
   "go/discovery/search/searchtest": 0,
-  "go/google": 57,
+  "go/google": 64,
   "go/governance": 90,
   "go/iac/delivery": 0,
   "go/iac/finops": 0,
@@ -12,6 +12,7 @@
   "go/iac/identity": 0,
   "go/iac/observability": 55,
   "go/iac/pulumi/gcpinfra": 66,
+  "go/iac/pulumi/runner": 85,
   "go/iac/pulumi/stackref": 83,
   "go/iac/workloads": 0,
   "go/observability/audit": 90,
@@ -24,9 +25,9 @@
   "go/platform/procrun": 92,
   "go/platform/runstate": 84,
   "go/platform/web": 75,
+  "go/platform/workflow": 95,
   "go/retry": 86,
   "go/retry/gcp": 84,
   "go/slog-gcp": 60,
   "go/slog-gcp/otelgcp": 83
 }
-
