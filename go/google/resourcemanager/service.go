@@ -216,8 +216,7 @@ func (s *Service) LinkBilling(ctx context.Context, projectID, billingAccountID s
 }
 
 func isNotFound(err error) bool {
-	var gErr *googleapi.Error
-	if errors.As(err, &gErr) {
+	if gErr, ok := errors.AsType[*googleapi.Error](err); ok {
 		return gErr.Code == http.StatusNotFound
 	}
 
