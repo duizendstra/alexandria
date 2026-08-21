@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **go/governance/invariant**: Domain invariant rule evaluation engine with typed verdicts (pass, anomaly, fail), ordered execution, and structured notes.
+- **go/platform/buildstamp**: Build provenance stamping and strict pre-run verification (commit revision, dirty worktree detection, dependency revisions).
+- **go/platform/procrun**: Controlled external command runner isolating PATH, scrubbing parent environment variables, and capturing output safely to logs.
+- **go/platform/runstate**: Repeatable on-disk run state primitives with exclusive per-subject filesystem locking and content/revision leases.
+
+### Changed
+
+- **Modernization**: Upgraded Go error assertion idioms to `errors.AsType` across `go/platform`, `go/retry`, and consumer modules.
+- **Protobuf**: Regenerated all compiled Go contracts against `google.golang.org/protobuf v1.36.12`.
+- **Dependencies**: Upgraded Pulumi SDK to `3.256.0` and Pulumi GCP provider to `9.34.1` across all `go/iac` modules.
+
 ## 2026-07-21 — observability config-driven uptime checks
 
 Released tags: `go/iac/observability/v0.2.0`.
