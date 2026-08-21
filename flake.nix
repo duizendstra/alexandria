@@ -24,6 +24,7 @@
 
           shellHook = ''
             export GOTOOLCHAIN=local
+            go version | grep -q 'go1\.26' || echo "warning: alexandria requires Go 1.26"
             echo "alexandria dev shell — go $(go version | cut -d' ' -f3), $(buf --version | head -1), golangci-lint $(golangci-lint version --short 2>/dev/null || true)"
           '';
         };

@@ -72,10 +72,19 @@ jobs:
             exit 1
           fi
 
+      - name: Install govulncheck
+        if: matrix.module != 'go/contracts'
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+      - name: Vulncheck
+        if: matrix.module != 'go/contracts'
+        working-directory: ${{ matrix.module }}
+        run: GOWORK=off govulncheck ./...
+
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.13.1
           working-directory: ${{ matrix.module }}
 
   mod-hygiene:
