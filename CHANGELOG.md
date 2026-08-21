@@ -13,10 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **go/slog-gcp**: Supported Cloud Logging deduplication using native `logging.googleapis.com/insertId` via `WithInsertID`, `WithInsertIDKey`, and `WithCustomInsertIDKey` options.
 - **go/observability/audit**: Added bidirectional Protocol Buffer contract conversions (`(Entry).ToProto()`, `EntryFromProto()`, `(Scorecard).ToProto()`, `ScorecardFromProto()`) consuming `go/contracts/observability/audit/v1alpha1`.
 - **go/governance/invariant**: Domain invariant rule evaluation engine with typed verdicts (pass, anomaly, fail), ordered execution, and structured notes.
-- **go/platform/buildstamp**: Build provenance stamping and strict pre-run verification (commit revision, dirty worktree detection, dependency revisions).
-- **go/platform/procrun**: Controlled external command runner isolating PATH, scrubbing parent environment variables, and capturing output safely to logs.
-- **go/platform/runstate**: Repeatable on-disk run state primitives with exclusive per-subject filesystem locking and content/revision leases.
-- **Documentation & Playbooks**: Added [`docs/07-playbooks/module-adoption.md`](docs/07-playbooks/module-adoption.md) covering consumer de-vendoring, local `replace` directive removal, dynamic caller discovery, and build provenance stamping conventions.
+- **go/platform/buildstamp**: Build provenance stamping and strict pre-run verification (commit revision, dirty worktree detection, dependency revisions), with native fuzzing (`FuzzParseStamp`, `FuzzMatches`).
+- **go/platform/procrun**: Controlled external command runner isolating PATH, scrubbing parent environment variables, and capturing output safely to logs, with native environment scrubbing fuzzing (`FuzzEnvironScrubbing`).
+- **go/platform/runstate**: Repeatable on-disk run state primitives with exclusive per-subject filesystem locking and content/revision leases, with native path traversal and lease fuzzing (`FuzzCheckSubject`, `FuzzLeaseValid`, `FuzzLeaseJSON`).
+- **Native Fuzz Testing & Modernization**: Added native Go fuzz testing suites across core platform and governance primitives (`fuzz-all` task runner recipe), `just modernize` (`go fix`) automation, and CI module hygiene modernization enforcement.
+- **Documentation & Architecture**: Added [`docs/03-architecture/go-agentic-engineering.md`](docs/03-architecture/go-agentic-engineering.md) on verification-first platform engineering and Go guardrails, Rule 16 on standard library primacy and AI self-correction loops in `.agents/AGENTS.md`, and [`docs/07-playbooks/module-adoption.md`](docs/07-playbooks/module-adoption.md) on downstream adoption.
 - **Release Automation**: Adopted Google's `release-please` in manifest mode with `.release-please-manifest.json`, `.release-please-config.json`, `.github/workflows/release.yml`, and module-hygiene version parity enforcement across all 29 Go modules.
 
 ### Changed
