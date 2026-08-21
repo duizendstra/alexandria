@@ -19,6 +19,9 @@ const (
 
 	// FieldSourceLocation is the Cloud Logging source location field key.
 	FieldSourceLocation = "logging.googleapis.com/sourceLocation"
+
+	// FieldInsertID is the Cloud Logging insert ID field key used for log deduplication.
+	FieldInsertID = "logging.googleapis.com/insertId"
 )
 
 // GCP severity levels beyond slog's built-in levels.

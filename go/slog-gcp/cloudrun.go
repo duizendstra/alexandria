@@ -21,11 +21,12 @@ type traceContextKey struct{}
 type SetupOption func(*setupConfig)
 
 type setupConfig struct {
-	levelVar  *slog.LevelVar
-	projectID string
-	eventID   *bool
-	resolver  IDResolver
-	labels    map[string]string
+	levelVar    *slog.LevelVar
+	projectID   string
+	insertID    *bool
+	insertIDKey string
+	resolver    IDResolver
+	labels      map[string]string
 }
 
 // WithLevelVar configures the logger to use the given [slog.LevelVar]
@@ -50,11 +51,24 @@ func WithProjectID(id string) SetupOption {
 	}
 }
 
-// WithEventIDEnabled configures whether a unique event_id is generated per log line.
-func WithEventIDEnabled(enabled bool) SetupOption {
+// WithInsertIDEnabled configures whether a unique insertId is generated per log line
+// for Cloud Logging deduplication.
+func WithInsertIDEnabled(enabled bool) SetupOption {
 	return func(cfg *setupConfig) {
-		cfg.eventID = &enabled
+		cfg.insertID = &enabled
 	}
+}
+
+// WithCustomInsertIDKey configures a custom field key used for the insert ID.
+func WithCustomInsertIDKey(key string) SetupOption {
+	return func(cfg *setupConfig) {
+		cfg.insertIDKey = key
+	}
+}
+
+// WithEventIDEnabled is a backward-compatible alias for [WithInsertIDEnabled].
+func WithEventIDEnabled(enabled bool) SetupOption {
+	return WithInsertIDEnabled(enabled)
 }
 
 // WithTraceResolver configures a custom trace ID resolver.
@@ -123,8 +137,11 @@ func InitCloudRun(opts ...SetupOption) slog.Handler {
 	})
 
 	var handlerOpts []Option
-	if cfg.eventID != nil {
-		handlerOpts = append(handlerOpts, WithEventID(*cfg.eventID))
+	if cfg.insertID != nil {
+		handlerOpts = append(handlerOpts, WithInsertID(*cfg.insertID))
+	}
+	if cfg.insertIDKey != "" {
+		handlerOpts = append(handlerOpts, WithInsertIDKey(cfg.insertIDKey))
 	}
 
 	h := NewHandler(inner, resolver, cfg.projectID, handlerOpts...)

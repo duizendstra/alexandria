@@ -272,6 +272,101 @@ func TestDWDValidator_ValidateAccess_NilService(t *testing.T) {
 	})
 }
 
+func TestDWDValidator_ValidateAccessAs(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("nil validator", func(t *testing.T) {
+		var v *DWDValidator
+		err := v.ValidateAccessAs(ctx, "user@example.com")
+		if !errors.Is(err, ErrNilValidator) {
+			t.Errorf("expected ErrNilValidator, got %v", err)
+		}
+	})
+
+	t.Run("nil service", func(t *testing.T) {
+		v := NewDWDValidator(nil)
+		err := v.ValidateAccessAs(ctx, "user@example.com")
+		if !errors.Is(err, ErrNilValidator) {
+			t.Errorf("expected ErrNilValidator, got %v", err)
+		}
+	})
+
+	t.Run("empty expected email", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"user":{"emailAddress":"user@example.com"}}`))
+		}))
+		defer ts.Close()
+
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}))
+		v := NewDWDValidator(srv)
+
+		err := v.ValidateAccessAs(ctx, "")
+		if !errors.Is(err, ErrNoSubjectEmail) {
+			t.Errorf("expected ErrNoSubjectEmail, got %v", err)
+		}
+	})
+
+	t.Run("matching subject succeeds", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "about") {
+				_, _ = w.Write([]byte(`{"user":{"emailAddress":"dwd-user@example.com"}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"id":"root"}`))
+			}
+		}))
+		defer ts.Close()
+
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}))
+		v := NewDWDValidator(srv)
+
+		if err := v.ValidateAccessAs(ctx, "dwd-user@example.com"); err != nil {
+			t.Fatalf("expected ValidateAccessAs to succeed, got %v", err)
+		}
+	})
+
+	t.Run("case-insensitive subject matches", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "about") {
+				_, _ = w.Write([]byte(`{"user":{"emailAddress":"User@Example.COM"}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"id":"root"}`))
+			}
+		}))
+		defer ts.Close()
+
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}))
+		v := NewDWDValidator(srv)
+
+		if err := v.ValidateAccessAs(ctx, "user@example.com"); err != nil {
+			t.Fatalf("expected case-insensitive match to succeed, got %v", err)
+		}
+	})
+
+	t.Run("mismatched subject returns ErrSubjectMismatch", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "about") {
+				_, _ = w.Write([]byte(`{"user":{"emailAddress":"actual-sa@project.iam.gserviceaccount.com"}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"id":"root"}`))
+			}
+		}))
+		defer ts.Close()
+
+		srv := resolveDriveService(t, ctx, ts.URL, WithHTTPClient(&http.Client{}))
+		v := NewDWDValidator(srv)
+
+		err := v.ValidateAccessAs(ctx, "expected-user@example.com")
+		if !errors.Is(err, ErrSubjectMismatch) {
+			t.Fatalf("expected ErrSubjectMismatch, got %v", err)
+		}
+	})
+}
+
+
 // writeFakeServiceAccountKey writes a syntactically valid service account key
 // file (with a freshly generated RSA key) and returns its path. Credential
 // detection parses the file without any network calls.

@@ -6,7 +6,7 @@
 //
 // # What
 //
-// A [slog.Handler] wrapper that auto-injects event_id, GCP trace URL,
+// A [slog.Handler] wrapper that auto-injects insertId, GCP trace URL,
 // span ID, and trace_sampled into every log record. Includes severity
 // value mapping and Cloud Error Reporting helpers.
 //

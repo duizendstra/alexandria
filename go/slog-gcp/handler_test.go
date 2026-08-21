@@ -53,7 +53,7 @@ func TestHandler_InjectsAllFields(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "my-project", sloggcp.WithEventID(true)))
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "my-project", sloggcp.WithInsertID(true)))
 
 	logger.InfoContext(context.Background(), "test message")
 
@@ -62,8 +62,8 @@ func TestHandler_InjectsAllFields(t *testing.T) {
 
 	entry := entries[0]
 
-	if _, ok := entry["event_id"].(string); !ok {
-		t.Error("event_id missing")
+	if _, ok := entry[sloggcp.FieldInsertID].(string); !ok {
+		t.Error("insertId missing")
 	}
 
 	wantTrace := "projects/my-project/traces/trace-abc"
@@ -80,12 +80,12 @@ func TestHandler_InjectsAllFields(t *testing.T) {
 	}
 }
 
-func TestHandler_EventIDUnique(t *testing.T) {
+func TestHandler_InsertIDUnique(t *testing.T) {
 	t.Parallel()
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "", false), "proj", sloggcp.WithEventID(true)))
+	logger := slog.New(sloggcp.NewHandler(inner, testResolver("t1", "", false), "proj", sloggcp.WithInsertID(true)))
 
 	logger.InfoContext(context.Background(), "first")
 	logger.InfoContext(context.Background(), "second")
@@ -93,8 +93,28 @@ func TestHandler_EventIDUnique(t *testing.T) {
 	entries := sloggcptest.LogEntries(buf)
 	sloggcptest.AssertLogCount(t, entries, 2)
 
-	if entries[0]["event_id"] == entries[1]["event_id"] {
-		t.Error("event_id not unique across lines")
+	if entries[0][sloggcp.FieldInsertID] == entries[1][sloggcp.FieldInsertID] {
+		t.Error("insertId not unique across lines")
+	}
+}
+
+func TestHandler_WithInsertIDKey_Custom(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcptest.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "proj", sloggcp.WithInsertID(true), sloggcp.WithInsertIDKey("event_id")))
+
+	logger.InfoContext(context.Background(), "custom key")
+
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
+
+	if _, ok := entries[0]["event_id"].(string); !ok {
+		t.Error("expected custom event_id key to be present")
+	}
+	if _, ok := entries[0][sloggcp.FieldInsertID]; ok {
+		t.Error("default insertId key should not be present when custom key is specified")
 	}
 }
 
@@ -103,15 +123,15 @@ func TestHandler_NoResolver(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, nil, "proj", sloggcp.WithEventID(true)))
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "proj", sloggcp.WithInsertID(true)))
 
 	logger.InfoContext(context.Background(), "no resolver")
 
 	entries := sloggcptest.LogEntries(buf)
 	sloggcptest.AssertLogCount(t, entries, 1)
 
-	if _, ok := entries[0]["event_id"]; !ok {
-		t.Error("event_id should always be present")
+	if _, ok := entries[0][sloggcp.FieldInsertID]; !ok {
+		t.Error("insertId should always be present")
 	}
 
 	if _, ok := entries[0]["logging.googleapis.com/trace"]; ok {
@@ -119,19 +139,19 @@ func TestHandler_NoResolver(t *testing.T) {
 	}
 }
 
-func TestHandler_WithEventID_Disabled(t *testing.T) {
+func TestHandler_WithInsertID_Disabled(t *testing.T) {
 	t.Parallel()
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	logger := slog.New(sloggcp.NewHandler(inner, nil, "", sloggcp.WithEventID(false)))
+	logger := slog.New(sloggcp.NewHandler(inner, nil, "", sloggcp.WithInsertID(false)))
 
-	logger.InfoContext(context.Background(), "no event id")
+	logger.InfoContext(context.Background(), "no insert id")
 
 	entries := sloggcptest.LogEntries(buf)
 
-	if _, ok := entries[0]["event_id"]; ok {
-		t.Error("event_id should not be present when disabled")
+	if _, ok := entries[0][sloggcp.FieldInsertID]; ok {
+		t.Error("insertId should not be present when disabled")
 	}
 }
 
@@ -230,7 +250,7 @@ func TestHandler_WithAttrs(t *testing.T) {
 
 	buf := &sloggcptest.SyncBuffer{}
 	inner := slog.NewJSONHandler(buf, nil)
-	h := sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj", sloggcp.WithEventID(true))
+	h := sloggcp.NewHandler(inner, testResolver("t1", "s1", false), "proj", sloggcp.WithInsertID(true))
 	wrapped := h.WithAttrs([]slog.Attr{
 		slog.String("service", "test"),
 	})
@@ -244,8 +264,8 @@ func TestHandler_WithAttrs(t *testing.T) {
 		t.Error("pre-set attr not preserved")
 	}
 
-	if _, ok := entries[0]["event_id"]; !ok {
-		t.Error("event_id missing after WithAttrs")
+	if _, ok := entries[0][sloggcp.FieldInsertID]; !ok {
+		t.Error("insertId missing after WithAttrs")
 	}
 }
 
@@ -623,6 +643,32 @@ func TestInitCloudRun_ReturnsHandler(t *testing.T) {
 	}
 }
 
+func TestInitCloudRun_InsertIDOptions(t *testing.T) {
+	t.Setenv("K_SERVICE", "my-service")
+	t.Setenv("LOG_FORMAT", "json")
+
+	t.Run("WithInsertIDEnabled", func(t *testing.T) {
+		h := sloggcp.InitCloudRun(sloggcp.WithInsertIDEnabled(true))
+		if h == nil {
+			t.Fatal("expected handler, got nil")
+		}
+	})
+
+	t.Run("WithCustomInsertIDKey", func(t *testing.T) {
+		h := sloggcp.InitCloudRun(sloggcp.WithInsertIDEnabled(true), sloggcp.WithCustomInsertIDKey("event_id"))
+		if h == nil {
+			t.Fatal("expected handler, got nil")
+		}
+	})
+
+	t.Run("WithEventIDEnabled alias", func(t *testing.T) {
+		h := sloggcp.InitCloudRun(sloggcp.WithEventIDEnabled(true))
+		if h == nil {
+			t.Fatal("expected handler, got nil")
+		}
+	})
+}
+
 // --- Concurrent writes ---.
 
 func TestHandler_ConcurrentWrites(t *testing.T) {
@@ -650,19 +696,19 @@ func TestHandler_ConcurrentWrites(t *testing.T) {
 	entries := sloggcptest.LogEntries(buf)
 	sloggcptest.AssertLogCount(t, entries, goroutines)
 
-	// Verify all event_ids are unique.
+	// Verify all insertIds are unique.
 	seen := make(map[string]bool, goroutines)
 
 	for _, entry := range entries {
-		id, ok := entry["event_id"].(string)
+		id, ok := entry[sloggcp.FieldInsertID].(string)
 		if !ok {
-			t.Error("event_id missing in concurrent entry")
+			t.Error("insertId missing in concurrent entry")
 
 			continue
 		}
 
 		if seen[id] {
-			t.Errorf("duplicate event_id: %s", id)
+			t.Errorf("duplicate insertId: %s", id)
 		}
 
 		seen[id] = true
@@ -958,7 +1004,7 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 	})
 
 	resolver := testResolver("abc123def456", testSpanID, true)
-	h := sloggcp.NewHandler(inner, resolver, "my-gcp-project", sloggcp.WithEventID(true))
+	h := sloggcp.NewHandler(inner, resolver, "my-gcp-project", sloggcp.WithInsertID(true))
 	logger := slog.New(h)
 
 	logger.WarnContext(context.Background(), "sync failed")
@@ -977,8 +1023,8 @@ func TestFullChain_CloudLoggingJSON(t *testing.T) {
 		t.Errorf("severity = %v, want WARNING", entry["severity"])
 	}
 
-	if _, ok := entry["event_id"].(string); !ok {
-		t.Error("event_id missing")
+	if _, ok := entry[sloggcp.FieldInsertID].(string); !ok {
+		t.Error("insertId missing")
 	}
 
 	wantTrace := "projects/my-gcp-project/traces/abc123def456"
