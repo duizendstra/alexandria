@@ -363,8 +363,7 @@ func TestClassify_OAuthRetrieveError(t *testing.T) {
 					retry.IsPermanent(got), tt.wantPermanent, got)
 			}
 
-			var rErr *oauth2.RetrieveError
-			if !errors.As(got, &rErr) {
+			if _, ok := errors.AsType[*oauth2.RetrieveError](got); !ok {
 				t.Errorf("expected classified error to preserve *oauth2.RetrieveError, got %v", got)
 			}
 		})
