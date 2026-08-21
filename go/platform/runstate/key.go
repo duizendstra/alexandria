@@ -24,7 +24,7 @@ func checkSubject(subject string) error {
 	switch {
 	case subject == "", subject == "." || subject == "..":
 		return fmt.Errorf("%q: %w", subject, ErrBadSubject)
-	case strings.ContainsRune(subject, os.PathSeparator), strings.ContainsRune(subject, '/'):
+	case strings.ContainsRune(subject, os.PathSeparator), strings.ContainsRune(subject, '/'), strings.ContainsRune(subject, '\\'):
 		return fmt.Errorf("%q: %w", subject, ErrBadSubject)
 	case strings.Contains(subject, ".."):
 		return fmt.Errorf("%q: %w", subject, ErrBadSubject)

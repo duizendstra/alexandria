@@ -52,6 +52,29 @@ cover-all:
             || printf '%-45s FAIL\n' "$dir")
     done
 
+# Run native Go fuzz testing (fuzztime=2s) across every package with fuzz targets.
+fuzz-all:
+    #!/usr/bin/env sh
+    set -e
+    for file in $(find go -name '*_test.go' | sort); do
+        grep -o '^func Fuzz[A-Za-z0-9_]*' "$file" | sed 's/^func //' | while read -r fn; do
+            [ -z "$fn" ] && continue
+            dir=$(dirname "$file")
+            echo "==> fuzz $dir :: $fn"
+            (cd "$dir" && GOWORK=off go test -fuzz="^${fn}$" -fuzztime=2s .)
+        done
+    done
+
+# Modernize code across every module using go fix.
+modernize:
+    #!/usr/bin/env sh
+    set -e
+    for modfile in $(find go -name go.mod | sort); do
+        dir=$(dirname "$modfile")
+        echo "==> modernize $dir"
+        (cd "$dir" && GOWORK=off go fix ./...)
+    done
+
 # Verify release manifest coverage and README version parity across every module.
 check-versions:
     #!/usr/bin/env sh
@@ -75,6 +98,6 @@ check-versions:
     done
     echo "All Go modules in sync with release manifest and README."
 
-# vet + lint + test + version check — the full pre-push gate.
-check: vet-all lint-all test-all check-versions
+# vet + lint + test + fuzz + version check — the full pre-push gate.
+check: vet-all lint-all test-all fuzz-all check-versions
 

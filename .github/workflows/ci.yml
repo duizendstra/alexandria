@@ -181,6 +181,22 @@ jobs:
           done
           exit $status
 
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+
+      - name: Require modules to be cleanly modernized (go fix)
+        run: |
+          for modfile in $(find go -name go.mod | sort); do
+            dir=$(dirname "$modfile")
+            (cd "$dir" && GOWORK=off go fix ./...)
+          done
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Uncommitted changes detected after running 'go fix ./...'. Run 'just modernize' locally."
+            git diff
+            exit 1
+          fi
+
   contracts:
     name: Contracts (buf)
     runs-on: ubuntu-latest
