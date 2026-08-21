@@ -2,7 +2,9 @@
 //
 // # What
 //
-// A [Writer] interface for logging mutations as structured [Entry] records.
+// A [Writer] interface for logging mutations as structured [Entry] records,
+// along with bidirectional conversion methods to and from compiled Protocol
+// Buffer contracts defined in [auditv1alpha1].
 // Ships with [FileWriter] that writes JSONL (one JSON object per line) with
 // automatic size-based rotation at [DefaultMaxLogSize] (10 MB).
 //

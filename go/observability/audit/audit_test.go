@@ -19,6 +19,8 @@ const (
 	actionView        = "view"
 	actorMCP          = "mcp"
 	actorCLI          = "cli"
+	actorAlice        = "alice"
+	actorBob          = "bob"
 	resourceIdeasABC  = "ideas/abc123"
 )
 
@@ -332,10 +334,10 @@ func TestReadScorecard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = w.Log(context.Background(), audit.Entry{Actor: "alice", Action: actionView, Resource: "r1"})
-	_ = w.Log(context.Background(), audit.Entry{Actor: "alice", Action: actionView, Resource: "r1"})
-	_ = w.Log(context.Background(), audit.Entry{Actor: "bob", Action: "edit", Resource: "r2"})
-	_ = w.Log(context.Background(), audit.Entry{Actor: "bob", Action: actionView, Resource: "r3"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: actorAlice, Action: actionView, Resource: "r1"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: actorAlice, Action: actionView, Resource: "r1"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: actorBob, Action: "edit", Resource: "r2"})
+	_ = w.Log(context.Background(), audit.Entry{Actor: actorBob, Action: actionView, Resource: "r3"})
 	_ = w.Log(context.Background(), audit.Entry{Actor: "charlie", Action: "delete", Resource: "r4"})
 
 	_ = w.Close()
@@ -349,7 +351,7 @@ func TestReadScorecard(t *testing.T) {
 		t.Errorf("expected total 5, got %d", sc.Total)
 	}
 
-	if sc.ByActor["alice"] != 2 || sc.ByActor["bob"] != 2 || sc.ByActor["charlie"] != 1 {
+	if sc.ByActor[actorAlice] != 2 || sc.ByActor[actorBob] != 2 || sc.ByActor["charlie"] != 1 {
 		t.Errorf("unexpected ByActor counts: %+v", sc.ByActor)
 	}
 
@@ -361,4 +363,131 @@ func TestReadScorecard(t *testing.T) {
 	if len(sc.TopResources) == 0 || !strings.HasPrefix(sc.TopResources[0], "r1") {
 		t.Errorf("expected r1 to be top resource, got: %+v", sc.TopResources)
 	}
+}
+
+func TestEntry_Proto_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("populated entry", func(t *testing.T) {
+		t.Parallel()
+
+		original := audit.Entry{
+			Time:     fixedTime(),
+			Actor:    actorMCP,
+			Action:   actionCreateIdeas,
+			Resource: resourceIdeasABC,
+		}
+
+		pb := original.ToProto()
+		if pb == nil {
+			t.Fatal("expected non-nil proto message")
+		}
+		if pb.GetEventTime() == nil || !pb.GetEventTime().AsTime().Equal(fixedTime()) {
+			t.Errorf("unexpected event_time: %v", pb.GetEventTime())
+		}
+		if pb.GetActor() != original.Actor || pb.GetAction() != original.Action || pb.GetResource() != original.Resource {
+			t.Errorf("unexpected proto fields: %+v", pb)
+		}
+
+		got := audit.EntryFromProto(pb)
+		if !got.Time.Equal(original.Time) {
+			t.Errorf("expected time %v, got %v", original.Time, got.Time)
+		}
+		if got.Actor != original.Actor || got.Action != original.Action || got.Resource != original.Resource {
+			t.Errorf("roundtrip mismatch: got %+v, want %+v", got, original)
+		}
+	})
+
+	t.Run("zero time entry", func(t *testing.T) {
+		t.Parallel()
+
+		original := audit.Entry{
+			Actor:    actorCLI,
+			Action:   actionView,
+			Resource: "res1",
+		}
+
+		pb := original.ToProto()
+		if pb.GetEventTime() != nil {
+			t.Errorf("expected nil EventTime for zero time, got %v", pb.GetEventTime())
+		}
+
+		got := audit.EntryFromProto(pb)
+		if !got.Time.IsZero() {
+			t.Errorf("expected zero time, got %v", got.Time)
+		}
+		if got.Actor != original.Actor || got.Action != original.Action || got.Resource != original.Resource {
+			t.Errorf("roundtrip mismatch: got %+v, want %+v", got, original)
+		}
+	})
+
+	t.Run("nil proto", func(t *testing.T) {
+		t.Parallel()
+
+		got := audit.EntryFromProto(nil)
+		if got != (audit.Entry{}) {
+			t.Errorf("expected empty entry, got %+v", got)
+		}
+	})
+}
+
+func TestScorecard_Proto_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	t.Run("populated scorecard", func(t *testing.T) {
+		t.Parallel()
+
+		original := audit.Scorecard{
+			Total: 42,
+			ByActor: map[string]int{
+				actorAlice: 10,
+				actorBob:   32,
+			},
+			ByAction: map[string]int{
+				"read":  30,
+				"write": 12,
+			},
+			TopResources: []string{"res/1 (10)", "res/2 (8)"},
+		}
+
+		pb := original.ToProto()
+		if pb == nil {
+			t.Fatal("expected non-nil proto message")
+		}
+		if int(pb.GetTotal()) != original.Total {
+			t.Errorf("expected total %d, got %d", original.Total, pb.GetTotal())
+		}
+		if len(pb.GetByActor()) != len(original.ByActor) || int(pb.GetByActor()[actorAlice]) != original.ByActor[actorAlice] {
+			t.Errorf("unexpected ByActor: %+v", pb.GetByActor())
+		}
+		if len(pb.GetByAction()) != len(original.ByAction) || int(pb.GetByAction()["write"]) != original.ByAction["write"] {
+			t.Errorf("unexpected ByAction: %+v", pb.GetByAction())
+		}
+		if len(pb.GetTopResources()) != len(original.TopResources) || pb.GetTopResources()[0] != original.TopResources[0] {
+			t.Errorf("unexpected TopResources: %+v", pb.GetTopResources())
+		}
+
+		got := audit.ScorecardFromProto(pb)
+		if got.Total != original.Total {
+			t.Errorf("expected total %d, got %d", original.Total, got.Total)
+		}
+		if len(got.ByActor) != len(original.ByActor) || got.ByActor[actorAlice] != original.ByActor[actorAlice] {
+			t.Errorf("roundtrip ByActor mismatch: %+v", got.ByActor)
+		}
+		if len(got.ByAction) != len(original.ByAction) || got.ByAction["write"] != original.ByAction["write"] {
+			t.Errorf("roundtrip ByAction mismatch: %+v", got.ByAction)
+		}
+		if len(got.TopResources) != len(original.TopResources) || got.TopResources[0] != original.TopResources[0] {
+			t.Errorf("roundtrip TopResources mismatch: %+v", got.TopResources)
+		}
+	})
+
+	t.Run("nil proto", func(t *testing.T) {
+		t.Parallel()
+
+		got := audit.ScorecardFromProto(nil)
+		if got.Total != 0 || len(got.ByActor) != 0 || len(got.ByAction) != 0 || len(got.TopResources) != 0 {
+			t.Errorf("expected empty scorecard, got %+v", got)
+		}
+	})
 }
