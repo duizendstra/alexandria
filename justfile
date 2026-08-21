@@ -52,5 +52,29 @@ cover-all:
             || printf '%-45s FAIL\n' "$dir")
     done
 
-# vet + lint + test everything — the full pre-push gate.
-check: vet-all lint-all test-all
+# Verify release manifest coverage and README version parity across every module.
+check-versions:
+    #!/usr/bin/env sh
+    set -e
+    for modfile in $(find go -name go.mod | sort); do
+        dir=$(dirname "$modfile")
+        if ! jq -e --arg m "$dir" 'has($m)' .release-please-manifest.json > /dev/null; then
+            echo "Missing manifest entry for $dir"
+            exit 1
+        fi
+        if ! jq -e --arg m "$dir" '.packages | has($m)' .release-please-config.json > /dev/null; then
+            echo "Missing packages entry for $dir"
+            exit 1
+        fi
+        manifest_ver=$(jq -r --arg m "$dir" '.[$m]' .release-please-manifest.json)
+        readme_ver=$(grep "\`github.com/duizendstra/alexandria/$dir\`" README.md | awk -F '|' '{print $4}' | tr -d ' v')
+        if [ "$manifest_ver" != "$readme_ver" ]; then
+            echo "Module $dir version mismatch: manifest=$manifest_ver, README=$readme_ver"
+            exit 1
+        fi
+    done
+    echo "All Go modules in sync with release manifest and README."
+
+# vet + lint + test + version check — the full pre-push gate.
+check: vet-all lint-all test-all check-versions
+

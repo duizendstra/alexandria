@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **go/platform/buildstamp**: Build provenance stamping and strict pre-run verification (commit revision, dirty worktree detection, dependency revisions).
 - **go/platform/procrun**: Controlled external command runner isolating PATH, scrubbing parent environment variables, and capturing output safely to logs.
 - **go/platform/runstate**: Repeatable on-disk run state primitives with exclusive per-subject filesystem locking and content/revision leases.
+- **Release Automation**: Adopted Google's `release-please` in manifest mode with `.release-please-manifest.json`, `.release-please-config.json`, `.github/workflows/release.yml`, and module-hygiene version parity enforcement across all 29 Go modules.
 
 ### Changed
 
