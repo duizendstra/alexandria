@@ -26,9 +26,8 @@ func ExampleStatusError() {
 		fmt.Println("rate limited")
 	}
 
-	// Context extraction with errors.As.
-	var se *apierr.StatusError
-	if errors.As(err, &se) {
+	// Context extraction with errors.AsType.
+	if se, ok := errors.AsType[*apierr.StatusError](err); ok {
 		fmt.Printf("status=%d body=%s\n", se.Status, se.Body)
 	}
 	// Output:

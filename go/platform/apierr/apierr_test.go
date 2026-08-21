@@ -141,9 +141,9 @@ func TestStatusError_ErrorsAs(t *testing.T) {
 	original := apierr.NewStatusError(429, "too fast", apierr.ErrRateLimited)
 	wrapped := fmt.Errorf("GET /employees: %w", original)
 
-	var se *apierr.StatusError
-	if !errors.As(wrapped, &se) {
-		t.Fatal("errors.As should extract StatusError")
+	se, ok := errors.AsType[*apierr.StatusError](wrapped)
+	if !ok {
+		t.Fatal("errors.AsType should extract StatusError")
 	}
 
 	if se.Status != 429 {
@@ -185,9 +185,9 @@ func TestStatusError_DoubleWrapped(t *testing.T) {
 		t.Error("double-wrapped StatusError should match sentinel")
 	}
 
-	// errors.As works through the chain.
-	var extracted *apierr.StatusError
-	if !errors.As(pipelineErr, &extracted) {
+	// errors.AsType works through the chain.
+	extracted, ok := errors.AsType[*apierr.StatusError](pipelineErr)
+	if !ok {
 		t.Fatal("double-wrapped StatusError should be extractable")
 	}
 

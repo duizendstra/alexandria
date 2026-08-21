@@ -10,8 +10,7 @@ import (
 // not be delivered. It is returned (wrapped) by Add and Flush whenever the
 // onFlush callback fails, so callers can retry or salvage the batch:
 //
-//	var flushErr *async.FlushError[Event]
-//	if errors.As(err, &flushErr) {
+//	if flushErr, ok := errors.AsType[*async.FlushError[Event]](err); ok {
 //		retryLater(flushErr.Items)
 //	}
 type FlushError[T any] struct {

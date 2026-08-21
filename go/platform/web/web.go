@@ -65,8 +65,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	msg := "An internal server error occurred"
 
-	var se *apierr.StatusError
-	if errors.As(err, &se) {
+	if se, ok := errors.AsType[*apierr.StatusError](err); ok {
 		status = se.Status
 		msg = se.Error()
 	} else {
