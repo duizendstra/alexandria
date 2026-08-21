@@ -2,10 +2,18 @@
 
 `go/google` provides secure, platform-aware Google Workspace authenticator builders and client factory constructors optimized for high-throughput cloud-native Go microservices.
 
+## Packages
+
+- **`auth`**: Platform-aware Google OAuth2, Domain-Wide Delegation (DWD), Service Account Impersonation, and transient HTTP retry transports.
+- **`client`**: Convenience constructor factories for Google Drive, Admin SDK, Reports API, Cloud Resource Manager, and Service Usage.
+- **`resourcemanager`**: GCP Project provisioning, folder/organization hierarchy assignment, and Cloud Billing account association.
+- **`serviceusage`**: Batch GCP service API enablement and status verification.
+- **`workspace/drive`**: High-performance streaming scanner, Shared Drive lifecycle (`CreateSharedDrive`, `FindSharedDriveByName`, `ListSharedDrives`), folder operations (`CreateFolder`, `FindFolder`), safe parent file moving (`MoveFile`), trashing (`TrashFile`), and idempotent membership reconciliation (`EnsureDriveMembership`, `RoleRank`).
+
 ## Features
 
 - **Domain-Wide Delegation (DWD)**: Seamless OAuth2 impersonation of workspace users via target service accounts.
-- **Fail-Fast DWD Validation**: Built-in `DWDValidator` checking access rights immediately on startup.
+- **Fail-Fast DWD Validation**: Built-in `DWDValidator` checking access rights and subject alignment immediately on startup.
 - **Service Account Impersonation**: Direct, secure SA-to-SA credentials configuration.
 - **Interactive Consent Support**: Desktop-oriented consent flow with customizable token caching policies.
 - **HTTP Transport Customization**: Injects custom HTTP clients to control connection limits, timeouts, and mocks.

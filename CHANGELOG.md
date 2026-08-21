@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **go/governance/gate**: Policy evaluation gate engine (`Gate`, `Policy`, `Rule`, `Verdict`, `Status`, `Enforce`) supporting Standard, Strict, and Permissive evaluation, invariant check adapter bridges, and JSON report serialization.
+- **go/google/workspace/drive**: Added Shared Drive lifecycle management (`CreateSharedDrive`, `FindSharedDriveByName`, `GetSharedDrive`, `ListSharedDrives`), folder operations (`CreateFolder`, `FindFolder`, `FindFolderByProperty`), safe file relocation with automatic parent resolution (`MoveFile`, `TrashFile`), and idempotent drive membership reconciliation (`EnsureDriveMembership`, `RoleRank`, `ListDriveMembers`, `ListFilePermissions`, `DeleteDriveMember`, `DeleteFilePermission`).
 - **go/platform/workflow**: Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks (`Workflow`, `Step`, `Hooks`).
 - **go/iac/pulumi/runner**: Programmatic Pulumi CLI automation engine built on `procrun` (`SelectOrCreateStack`, `SetConfig`, `Up`, `Destroy`, `GetOutputs`).
 - **go/google**: Added `resourcemanager` (GCP Project lifecycle, folder/org placement, Cloud Billing linking) and `serviceusage` (API status inspection, batch service enablement) packages with convenience factories in `go/google/client`.
