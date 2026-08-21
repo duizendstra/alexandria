@@ -58,10 +58,11 @@ Therefore, we enforce **path-prefixed multi-module semantic versioning**. Each s
 ```
 
 1.  **Module Discovery** — Dynamically finds every `go.mod` under `go/` so new modules are tested without pipeline edits.
-2.  **Per-Module Vet, Test & Lint** — For each module: `go vet ./...`, `go test -race -count=1 -coverprofile=coverage.out ./...`, and `golangci-lint`. Any failure blocks the merge. Coverage is *collected* but no minimum percentage is enforced.
-3.  **Module Hygiene** (`mod-hygiene`, introduced by PR [#37](https://github.com/duizendstra/alexandria/pull/37)) — Rejects committed `replace` directives, unresolvable `v0.0.0` pins, and modules missing Dependabot coverage.
-4.  **Contracts** (`contracts`, introduced by PR [#38](https://github.com/duizendstra/alexandria/pull/38)) — Runs `buf lint`, `buf breaking` against `main`, and a generated-code drift check so `go/contracts` never goes stale relative to `contracts/proto/`.
+2.  **Per-Module Vet, Test & Lint** — For each module: `go vet ./...`, `go test -race -count=1 -coverprofile=coverage.out ./...`, `govulncheck`, and `golangci-lint`. Any failure blocks the merge. Coverage ratchet is enforced against calibrated module floors in `.github/coverage-baselines.json`.
+3.  **Module Hygiene** (`mod-hygiene`) — Rejects committed `replace` directives, unresolvable `v0.0.0` pins, missing Dependabot coverage, missing coverage baselines, and missing `release-please` manifest/config entries or README version mismatches.
+4.  **Contracts** (`contracts`) — Runs `buf lint`, `buf breaking` against `main`, and a generated-code drift check so `go/contracts` never goes stale relative to `contracts/proto/`.
 5.  **Docs Link Check** — Verifies that relative markdown links across the repository resolve to existing files.
+6.  **Release Please Automation** (`.github/workflows/release.yml`) — On pushes to `main`, executes Google's `release-please` in manifest mode (`.release-please-config.json` and `.release-please-manifest.json`), maintaining release PRs with changelogs and cutting path-prefixed tags (`go/<module>/vX.Y.Z`) on merge.
 
 ## Planned (Not Yet Enforced)
 
@@ -69,25 +70,23 @@ The following checks are design goals. They do **not** run in CI today; do not r
 
 *   **Regression Benchmarks** — Micro-benchmarks on critical hot-paths that fail the build when a PR introduces allocations on designated zero-allocation paths. Today the repository contains a single benchmark (`go/slog-gcp`) and no benchmark job.
 *   **OKF Document Integrity Lint** — Schema validation of OKF frontmatter (duplicate UUIDs, dangling `relations`, required fields). Only the link check above exists today.
-*   **`release-please` Automation** — Parsing Conventional Commits to draft release PRs and changelogs automatically. Changelog and release management are currently manual.
 *   **Publication Validation** — A post-tag dry-run `go list -m` invocation confirming the Go module proxy can resolve the new version.
 
 ---
 
-## Release & Version Tagging (Current Practice)
+## Release & Version Tagging (Automated Practice)
 
-Once a PR is merged into `main`, releases are cut manually:
+Releases are managed via Conventional Commits and automated via `release-please`:
 
-### 1. Changelogs
-`CHANGELOG.md` is maintained by hand using Conventional Commit history as input. (Automation via `release-please` is planned; see above.)
+### 1. Conventional Commits & Release PRs
+`release-please` scans commits landed on `main`. For every affected module directory, it maintains a dedicated Release PR with an updated semver bump and per-module changelog.
 
 ### 2. Path-Prefixed Annotated Tags
-Releases are marked utilizing path-prefixed git tags matching the module subdirectory. The tags must be **annotated** to contain metadata:
-```bash
-# Tagging a retry release
-git tag -a go/retry/v0.1.0 -m "Release go/retry v0.1.0"
-git push origin go/retry/v0.1.0
-```
+Merging a Release PR automatically generates GitHub releases and path-prefixed git tags (`go/<module>/vX.Y.Z`) matching the module subdirectory.
 
 ### 3. Post-Tag Sanity Check
-After tagging, manually verify the Go module proxy resolves the new version (e.g. `GOPROXY=proxy.golang.org go list -m github.com/duizendstra/alexandria/go/retry@v0.1.0`).
+After tagging, verify the Go module proxy resolves the new version:
+```bash
+GOPROXY=proxy.golang.org go list -m github.com/duizendstra/alexandria/go/retry@v0.1.0
+```
+
