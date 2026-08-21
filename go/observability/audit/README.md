@@ -6,9 +6,10 @@
 
 - **Structured Append-Only Logs**: Standardized `Entry` schema that records the timestamp, actor, action, and resource.
 - **Protobuf Contracts Integration**: Bidirectional conversion between domain models (`Entry`, `Scorecard`) and compiled Protocol Buffer contracts (`go/contracts/observability/audit/v1alpha1`).
+- **Streaming Ingestion & Filtering**: Stream-oriented `Reader` and predicate `Filter` to ingest and isolate audit events from JSONL streams without reading entire logs into memory.
+- **Scorecard Aggregation**: Dynamic `AggregateScorecard` function generating actor, action, and resource distribution metrics.
 - **Concurrent FileWriter**: Safe for concurrent write operations across multiple goroutines.
 - **Automatic Log Rotation**: Rotates files when they exceed size limits (defaulting to 10 MB).
-- **Streaming Scorecard Reader**: Non-allocating JSONL stream-decoder to summarize audit logs.
 - **HTTP/RPC Middleware Support**: Identifies actors through the standard `X-Dui-Actor` request header.
 
 ## Installation
