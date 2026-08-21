@@ -18,7 +18,7 @@ const ActorHeader = "X-Dui-Actor"
 // Time is owned by the Writer implementation: Log stamps it with the writer's
 // clock, overwriting any caller-supplied value. On the wire it is encoded as
 // an RFC 3339 string under the "ts" key (see MarshalJSON), so existing JSONL
-//nolint:recvcheck // UnmarshalJSON requires pointer receiver to mutate while MarshalJSON supports value marshaling.
+// log files keep parsing unchanged.
 type Entry struct {
 	Time     time.Time
 	Actor    string
