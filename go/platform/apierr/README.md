@@ -39,7 +39,7 @@ func main() {
 	}
 
 	// 2. Extract HTTP status and raw response body via errors.AsType
-	if se, ok := errors.AsType[*apierr.StatusError](err); ok {
+	if se, ok := errors.AsType[*apierr.StatusError] (err); ok {
 		fmt.Printf("HTTP Status Code: %d\nResponse Body Excerpt: %s\n", se.Status, se.Body)
 	}
 
