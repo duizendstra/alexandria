@@ -68,6 +68,13 @@ var (
 
 	// ErrNoAuthenticationMode is returned when no valid authentication options are provided to the builder.
 	ErrNoAuthenticationMode = errors.New("no Google authentication mode was configured")
+
+	// ErrSubjectMismatch is returned by ValidateAccessAs when the effective user
+	// identity returned by the Google Drive API does not match the expected subject.
+	ErrSubjectMismatch = errors.New("delegated subject mismatch")
+
+	// ErrEmptyUserInfo is returned by ValidateAccessAs when About.Get returns empty user information.
+	ErrEmptyUserInfo = errors.New("about.get returned empty user information")
 )
 
 // defaultTokenPath is where the cached OAuth2 token is stored.
@@ -388,6 +395,42 @@ func (v *DWDValidator) ValidateAccess(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// ValidateAccessAs asserts that the credentials carried by the underlying service
+// belong to the expected user email (case-insensitive) via About.Get, and then
+// verifies Drive root access via ValidateAccess. If the effective user does not
+// match expectedEmail, ErrSubjectMismatch is returned.
+func (v *DWDValidator) ValidateAccessAs(ctx context.Context, expectedEmail string) error {
+	if v == nil || v.service == nil {
+		return fmt.Errorf("DWD validation failed: %w", ErrNilValidator)
+	}
+	if expectedEmail == "" {
+		return fmt.Errorf("DWD validation failed: %w", ErrNoSubjectEmail)
+	}
+
+	var effectiveEmail string
+	err := gcp.WithRetry(ctx, func() error {
+		about, innerErr := v.service.About.Get().Fields("user(emailAddress)").Context(ctx).Do()
+		if innerErr != nil {
+			return fmt.Errorf("about.get: %w", innerErr)
+		}
+		if about == nil || about.User == nil {
+			return ErrEmptyUserInfo
+		}
+		effectiveEmail = about.User.EmailAddress
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("DWD validation failed: %w", err)
+	}
+
+	if !strings.EqualFold(effectiveEmail, expectedEmail) {
+		return fmt.Errorf("effective user %q does not match expected %q: %w", effectiveEmail, expectedEmail, ErrSubjectMismatch)
+	}
+
+	return v.ValidateAccess(ctx)
 }
 
 // Interactive Consent Flow Helpers.

@@ -41,32 +41,50 @@ func fastUniqueID() string {
 // the bridge via this function type.
 type IDResolver func(ctx context.Context) TraceContext
 
-// handler wraps an inner slog.Handler and auto-injects event_id and
+// handler wraps an inner slog.Handler and auto-injects insertId and
 // GCP Cloud Logging trace fields into every log record.
 type handler struct {
 	inner       slog.Handler
 	resolve     IDResolver
 	projectID   string
 	tracePrefix string
-	eventID     bool
+	insertID    bool
+	insertIDKey string
 }
 
 // Option configures [NewHandler].
 type Option func(*handler)
 
-// WithEventID controls whether a unique event_id is generated per log
-// record. Default is false.
-func WithEventID(enabled bool) Option {
+// WithInsertID controls whether a unique insertId is generated per log
+// record for Cloud Logging deduplication. Default is false.
+func WithInsertID(enabled bool) Option {
 	return func(h *handler) {
-		h.eventID = enabled
+		h.insertID = enabled
 	}
 }
 
-// NewHandler wraps an inner [slog.Handler] and auto-injects event_id
+// WithInsertIDKey configures a custom field key used for the insert ID.
+// If not specified or empty, it defaults to [FieldInsertID] ("logging.googleapis.com/insertId").
+func WithInsertIDKey(key string) Option {
+	return func(h *handler) {
+		if key != "" {
+			h.insertIDKey = key
+		}
+	}
+}
+
+// WithEventID is a backward-compatible alias for [WithInsertID].
+// By default it emits under [FieldInsertID] ("logging.googleapis.com/insertId").
+// To preserve legacy "event_id" field names, combine with WithInsertIDKey("event_id").
+func WithEventID(enabled bool) Option {
+	return WithInsertID(enabled)
+}
+
+// NewHandler wraps an inner [slog.Handler] and auto-injects insertId
 // and GCP Cloud Logging trace fields into every log record.
 //
 // The resolve function extracts trace and span IDs from context.
-// Pass nil to disable trace injection (only event_id is added).
+// Pass nil to disable trace injection (only insertId is added).
 // If projectID is empty, it is auto-detected from GCP environment variables.
 //
 //	inner := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
@@ -87,7 +105,8 @@ func NewHandler(inner slog.Handler, resolve IDResolver, projectID string, opts .
 		resolve:     resolve,
 		projectID:   projectID,
 		tracePrefix: "projects/" + projectID + "/traces/",
-		eventID:     false,
+		insertID:    false,
+		insertIDKey: FieldInsertID,
 	}
 
 	for _, opt := range opts {
@@ -102,11 +121,11 @@ func (h *handler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.inner.Enabled(ctx, level)
 }
 
-// Handle injects event_id and GCP trace fields, then delegates to the
+// Handle injects insertId and GCP trace fields, then delegates to the
 // inner handler. The resolver is called once per log line.
 func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:gocritic // slog.Record passed by value per slog.Handler contract.
-	if h.eventID {
-		rec.AddAttrs(slog.String("event_id", fastUniqueID()))
+	if h.insertID {
+		rec.AddAttrs(slog.String(h.insertIDKey, fastUniqueID()))
 	}
 
 	if h.resolve != nil {
@@ -131,7 +150,8 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		resolve:     h.resolve,
 		projectID:   h.projectID,
 		tracePrefix: h.tracePrefix,
-		eventID:     h.eventID,
+		insertID:    h.insertID,
+		insertIDKey: h.insertIDKey,
 	}
 }
 
@@ -142,6 +162,7 @@ func (h *handler) WithGroup(name string) slog.Handler {
 		resolve:     h.resolve,
 		projectID:   h.projectID,
 		tracePrefix: h.tracePrefix,
-		eventID:     h.eventID,
+		insertID:    h.insertID,
+		insertIDKey: h.insertIDKey,
 	}
 }
