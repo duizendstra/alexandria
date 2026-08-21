@@ -110,8 +110,7 @@ func Classify(ctx context.Context, err error, attempt int) error {
 	}
 
 	// 2. Typed API Check.
-	var apiErr *googleapi.Error
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*googleapi.Error](err); ok {
 		return classifyAPIError(apiErr, attempt)
 	}
 
@@ -123,14 +122,12 @@ func Classify(ctx context.Context, err error, attempt int) error {
 	// 4. Structured OAuth2 token endpoint check (RFC 6749). Preferred over
 	// the string heuristics below because it keys on the status code and
 	// error code the endpoint actually returned, surviving SDK rewordings.
-	var oauthErr *oauth2.RetrieveError
-	if errors.As(err, &oauthErr) {
+	if oauthErr, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
 		return classifyOAuthRetrieveError(err, oauthErr, attempt)
 	}
 
 	// 5. Typed Network Check.
-	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[net.Error](err); ok {
 		logger().Warn("Transient network error, will retry",
 			slog.Int("attempt", attempt),
 			slog.String("error", err.Error()))
