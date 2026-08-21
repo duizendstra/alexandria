@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **go/platform/workflow**: Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks (`Workflow`, `Step`, `Hooks`).
+- **go/iac/pulumi/runner**: Programmatic Pulumi CLI automation engine built on `procrun` (`SelectOrCreateStack`, `SetConfig`, `Up`, `Destroy`, `GetOutputs`).
+- **go/google**: Added `resourcemanager` (GCP Project lifecycle, folder/org placement, Cloud Billing linking) and `serviceusage` (API status inspection, batch service enablement) packages with convenience factories in `go/google/client`.
 - **go/google/auth**: Added `ValidateAccessAs(ctx, expectedEmail)` on `*DWDValidator` to verify effective impersonated identity via `About.Get` before root access validation, returning `ErrSubjectMismatch` on identity discrepancy.
 - **go/slog-gcp**: Supported Cloud Logging deduplication using native `logging.googleapis.com/insertId` via `WithInsertID`, `WithInsertIDKey`, and `WithCustomInsertIDKey` options.
 - **go/observability/audit**: Added bidirectional Protocol Buffer contract conversions (`(Entry).ToProto()`, `EntryFromProto()`, `(Scorecard).ToProto()`, `ScorecardFromProto()`) consuming `go/contracts/observability/audit/v1alpha1`.
