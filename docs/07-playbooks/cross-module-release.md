@@ -121,9 +121,7 @@ Repeat up the DAG until every module in the wave is tagged.
 
 ### 4. Keep the module index honest
 
-Update the version column in the root `README.md` module index. The CI parity
-gate checks that every module is *present* in the table, not that its version is
-current — so the version is yours to keep accurate.
+Update the version column in the root `README.md` module index and `.release-please-manifest.json`. The CI `mod-hygiene` parity gate checks that every module is present in the table and that its version exactly matches `.release-please-manifest.json`.
 
 ## Gotchas
 

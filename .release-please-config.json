@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "go",
+  "separate-pull-requests": true,
+  "tag-separator": "/",
+  "packages": {
+    "go/contracts": {
+      "package-name": "go/contracts"
+    },
+    "go/dataquality/datadiff": {
+      "package-name": "go/dataquality/datadiff"
+    },
+    "go/discovery/privacyfilter": {
+      "package-name": "go/discovery/privacyfilter"
+    },
+    "go/discovery/search": {
+      "package-name": "go/discovery/search"
+    },
+    "go/discovery/search/searchtest": {
+      "package-name": "go/discovery/search/searchtest"
+    },
+    "go/google": {
+      "package-name": "go/google"
+    },
+    "go/governance": {
+      "package-name": "go/governance"
+    },
+    "go/iac/delivery": {
+      "package-name": "go/iac/delivery"
+    },
+    "go/iac/finops": {
+      "package-name": "go/iac/finops"
+    },
+    "go/iac/governance": {
+      "package-name": "go/iac/governance"
+    },
+    "go/iac/identity": {
+      "package-name": "go/iac/identity"
+    },
+    "go/iac/observability": {
+      "package-name": "go/iac/observability"
+    },
+    "go/iac/pulumi/gcpinfra": {
+      "package-name": "go/iac/pulumi/gcpinfra"
+    },
+    "go/iac/pulumi/stackref": {
+      "package-name": "go/iac/pulumi/stackref"
+    },
+    "go/iac/workloads": {
+      "package-name": "go/iac/workloads"
+    },
+    "go/observability/audit": {
+      "package-name": "go/observability/audit"
+    },
+    "go/platform/apierr": {
+      "package-name": "go/platform/apierr"
+    },
+    "go/platform/async": {
+      "package-name": "go/platform/async"
+    },
+    "go/platform/buildstamp": {
+      "package-name": "go/platform/buildstamp"
+    },
+    "go/platform/cache": {
+      "package-name": "go/platform/cache"
+    },
+    "go/platform/gcpenv": {
+      "package-name": "go/platform/gcpenv"
+    },
+    "go/platform/passstore": {
+      "package-name": "go/platform/passstore"
+    },
+    "go/platform/procrun": {
+      "package-name": "go/platform/procrun"
+    },
+    "go/platform/runstate": {
+      "package-name": "go/platform/runstate"
+    },
+    "go/platform/web": {
+      "package-name": "go/platform/web"
+    },
+    "go/retry": {
+      "package-name": "go/retry"
+    },
+    "go/retry/gcp": {
+      "package-name": "go/retry/gcp"
+    },
+    "go/slog-gcp": {
+      "package-name": "go/slog-gcp"
+    },
+    "go/slog-gcp/otelgcp": {
+      "package-name": "go/slog-gcp/otelgcp"
+    }
+  }
+}
