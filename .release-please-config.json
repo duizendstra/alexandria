@@ -43,6 +43,9 @@
     "go/iac/pulumi/gcpinfra": {
       "package-name": "go/iac/pulumi/gcpinfra"
     },
+    "go/iac/pulumi/runner": {
+      "package-name": "go/iac/pulumi/runner"
+    },
     "go/iac/pulumi/stackref": {
       "package-name": "go/iac/pulumi/stackref"
     },
@@ -78,6 +81,9 @@
     },
     "go/platform/web": {
       "package-name": "go/platform/web"
+    },
+    "go/platform/workflow": {
+      "package-name": "go/platform/workflow"
     },
     "go/retry": {
       "package-name": "go/retry"

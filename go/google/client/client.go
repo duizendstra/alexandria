@@ -5,10 +5,14 @@ import (
 	"fmt"
 
 	"github.com/duizendstra/alexandria/go/google/auth"
+	"github.com/duizendstra/alexandria/go/google/resourcemanager"
+	"github.com/duizendstra/alexandria/go/google/serviceusage"
 	workspacedrive "github.com/duizendstra/alexandria/go/google/workspace/drive"
 	admin "google.golang.org/api/admin/directory/v1"
 	reports "google.golang.org/api/admin/reports/v1"
+	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/drive/v3"
+	serviceusageapi "google.golang.org/api/serviceusage/v1"
 )
 
 // NewDriveService creates a fully-authenticated Google Drive API client using functional options.
@@ -55,6 +59,36 @@ func NewReportsService(ctx context.Context, opts ...auth.Option) (*reports.Servi
 	srv, err := reports.NewService(ctx, clientOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reports service: %w", err)
+	}
+
+	return srv, nil
+}
+
+// NewResourceManagerService creates a fully-authenticated Resource Manager Service using functional options.
+func NewResourceManagerService(ctx context.Context, cfg resourcemanager.Config, opts ...auth.Option) (*resourcemanager.Service, error) {
+	clientOpts, err := auth.ResolveClient(ctx, []string{cloudresourcemanager.CloudPlatformScope}, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve client: %w", err)
+	}
+
+	srv, err := resourcemanager.New(ctx, cfg, clientOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resourcemanager service: %w", err)
+	}
+
+	return srv, nil
+}
+
+// NewServiceUsageService creates a fully-authenticated Service Usage Service using functional options.
+func NewServiceUsageService(ctx context.Context, cfg serviceusage.Config, opts ...auth.Option) (*serviceusage.Service, error) {
+	clientOpts, err := auth.ResolveClient(ctx, []string{serviceusageapi.CloudPlatformScope}, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve client: %w", err)
+	}
+
+	srv, err := serviceusage.New(ctx, cfg, clientOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create serviceusage service: %w", err)
 	}
 
 	return srv, nil

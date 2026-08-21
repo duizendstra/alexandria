@@ -118,6 +118,15 @@ updates:
           - "*"
 
   - package-ecosystem: "gomod"
+    directory: "/go/iac/pulumi/runner/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gomod"
     directory: "/go/iac/pulumi/stackref/"
     schedule:
       interval: "weekly"
@@ -218,6 +227,15 @@ updates:
 
   - package-ecosystem: "gomod"
     directory: "/go/platform/web/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gomod"
+    directory: "/go/platform/workflow/"
     schedule:
       interval: "weekly"
     groups:
