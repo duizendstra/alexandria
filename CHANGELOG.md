@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **go/google/auth**: Added `ValidateAccessAs(ctx, expectedEmail)` on `*DWDValidator` to verify effective impersonated identity via `About.Get` before root access validation, returning `ErrSubjectMismatch` on identity discrepancy.
 - **go/slog-gcp**: Supported Cloud Logging deduplication using native `logging.googleapis.com/insertId` via `WithInsertID`, `WithInsertIDKey`, and `WithCustomInsertIDKey` options.
+- **go/observability/audit**: Added bidirectional Protocol Buffer contract conversions (`(Entry).ToProto()`, `EntryFromProto()`, `(Scorecard).ToProto()`, `ScorecardFromProto()`) consuming `go/contracts/observability/audit/v1alpha1`.
 - **go/governance/invariant**: Domain invariant rule evaluation engine with typed verdicts (pass, anomaly, fail), ordered execution, and structured notes.
 - **go/platform/buildstamp**: Build provenance stamping and strict pre-run verification (commit revision, dirty worktree detection, dependency revisions).
 - **go/platform/procrun**: Controlled external command runner isolating PATH, scrubbing parent environment variables, and capturing output safely to logs.
