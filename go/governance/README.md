@@ -56,7 +56,29 @@ plan.Plan                    Desired governance state (pure data)
 scope.Scope                  Organization or Folder — determines capabilities
 hierarchy.Config             Folder tree definition
 classification.Dimension     Tag key / label axis
+invariant.Rule / Check       A named rule and its evidence-carrying outcome
 ```
+
+## Verifying that governance holds
+
+`invariant` is the other half of a plan: a plan says what should be true,
+`invariant` records whether it is. Each rule has a name and a number, carries
+the evidence it observed (on success as well as on failure), and can report an
+ANOMALY — "a human should look" — separately from a FAIL. Collapsing those two
+forces a choice between crying wolf and staying silent.
+
+```go
+b := invariant.New("environment-folders-present", 3)
+if missing > 0 {
+    b.Failf("%d environment folders missing", missing)
+} else {
+    b.Notef("all %d environment folders present", want)
+}
+check := b.Done()
+```
+
+Rules collected in a slice make a suite enumerable — countable, listable, and
+checkable for whether every rule has a test of its own.
 
 The `Plan` is the port. This module is pure Go with zero external
 dependencies — provisioning adapters (Pulumi, Terraform, any cloud)

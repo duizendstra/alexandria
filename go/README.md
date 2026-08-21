@@ -21,6 +21,7 @@ Each directory is a standalone Go module with its own `go.mod`.
 | [discovery/search/searchtest](discovery/search/searchtest/) | Reusable contract tests for the `search.Index` port | v0.0.1 |
 | [platform/apierr](platform/apierr/) | General-purpose REST API/gRPC error mapping layer with retryable classification, unified status responses, and error-unwrapping middleware | v0.0.1 |
 | [platform/async](platform/async/) | SRE-hardened panic-resilient bounded asynchronous worker pool | v0.0.1 |
+| [platform/buildstamp](platform/buildstamp/) | Build provenance stamping and strict pre-run verification (commit, dirty tree, dependency revisions) | v0.0.1 |
 
 ## Install
 
