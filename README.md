@@ -38,6 +38,8 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/cache](go/platform/cache/) | `github.com/duizendstra/alexandria/go/platform/cache` | v0.0.1 | Generic, concurrent-safe in-memory TTL cache |
 | [platform/gcpenv](go/platform/gcpenv/) | `github.com/duizendstra/alexandria/go/platform/gcpenv` | v0.1.0 | Canonical GCP project ID resolution (env vars + metadata service) |
 | [platform/passstore](go/platform/passstore/) | `github.com/duizendstra/alexandria/go/platform/passstore` | v0.1.0 | Deploy-time secret retrieval from the local pass store |
+| [platform/procrun](go/platform/procrun/) | `github.com/duizendstra/alexandria/go/platform/procrun` | v0.0.1 | Run external commands under a controlled environment (scrubbed env, fixed PATH, output to file) |
+| [platform/runstate](go/platform/runstate/) | `github.com/duizendstra/alexandria/go/platform/runstate` | v0.0.1 | Per-subject run lock and short-lived, fingerprint-bound leases on disk |
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.0.2 | Project-agnostic HTTP server, client, and response utilities |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.2.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v0.7.0 | Pulumi adapter packages for Google Cloud infrastructure |
