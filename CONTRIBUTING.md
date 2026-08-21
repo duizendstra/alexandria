@@ -108,6 +108,22 @@ across every module.
 
 4. Add a Dependabot entry in `.github/dependabot.yml`.
 
+## Consuming Alexandria Modules in Downstream Projects
+
+External repositories consuming published Alexandria Go modules should follow these
+guidelines (see the [Module Adoption Playbook](docs/07-playbooks/module-adoption.md) for full details):
+
+- **No Committed Replace Directives**: Always remove filesystem `replace` directives pointing to
+  local Alexandria checkouts (e.g. `replace github.com/duizendstra/alexandria/go/... => ../...`).
+  Committed `replace` directives silently mask tagged versions and break reproducible builds.
+- **Local Development via Workspace**: Use an uncommitted `go.work` file in your local workspace
+  to test unreleased changes across repositories without editing `go.mod`.
+- **Dynamic Caller Discovery**: Discover callers using `grep -rl` across your repository rather
+  than assuming static file paths.
+- **Build Stamping**: If your build scripts stamp a consumer-local build-info package, continue
+  stamping that package in `-ldflags`. Alexandria's `buildstamp` module provides parsing and
+  verification logic.
+
 ## Versioning
 
 Each module is versioned independently with path-prefixed tags:
