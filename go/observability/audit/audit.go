@@ -19,8 +19,6 @@ const ActorHeader = "X-Dui-Actor"
 // clock, overwriting any caller-supplied value. On the wire it is encoded as
 // an RFC 3339 string under the "ts" key (see MarshalJSON), so existing JSONL
 // log files keep parsing unchanged.
-//
-//nolint:recvcheck // UnmarshalJSON requires pointer receiver, while MarshalJSON/ToProto use value receivers.
 type Entry struct {
 	Time     time.Time
 	Actor    string
