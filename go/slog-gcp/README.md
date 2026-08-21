@@ -10,7 +10,7 @@ JSON in [Google Cloud Logging](https://cloud.google.com/logging/docs/structured-
 
 - Maps slog levels to GCP severity (DEBUG through EMERGENCY)
 - Injects `logging.googleapis.com/trace`, `spanId`, and `trace_sampled`
-- Auto-generates `event_id` for log correlation
+- Auto-generates `logging.googleapis.com/insertId` for Cloud Logging deduplication
 - Cloud Error Reporting integration via `ErrorAttrs()`
 - HTTP middleware for Cloud Trace header extraction
 - One-call `Setup()` for Cloud Run services
@@ -113,7 +113,7 @@ logger.Info("server started", "port", 8080)
   "logging.googleapis.com/trace": "projects/my-project/traces/abc123",
   "logging.googleapis.com/spanId": "def456",
   "logging.googleapis.com/trace_sampled": true,
-  "event_id": "550e8400-e29b-41d4-a716-446655440000",
+  "logging.googleapis.com/insertId": "1234-1",
   "method": "GET",
   "path": "/"
 }
