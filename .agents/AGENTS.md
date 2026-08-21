@@ -86,3 +86,7 @@ Known pitfalls: `sed -i ''` (macOS-only, use `sed -i.bak`),
 
 ## 15. Isolated Wildcard Compilation & Testing
 In multi-module monorepos, nested subdirectories (such as `go/slog-gcp/otelgcp` nested inside `go/slog-gcp`) cause wildcard expansions (`./...`) to error in workspace mode due to directory prefix overlapping. To perform clean, isolated compilation, testing, or linting of any module, always prepend `GOWORK=off` to the execution command (e.g., `GOWORK=off go test ./...`). This disables workspace resolution and guarantees that the module builds self-sufficiently against its pinned dependencies.
+
+## 16. Standard Library Primacy & AI Self-Correction Loops
+In AI-assisted software engineering, prioritize the Go standard library over third-party dependencies to maximize long-term maintainability and eliminate supply-chain vulnerability surface. When implementing or modifying Go packages, agents must execute fast, deterministic self-correction loops (`GOWORK=off go test -race ./...`, `GOWORK=off golangci-lint run ./...`, and native fuzz tests where available) to verify type correctness, interface compliance, and edge-case invariants before presenting changes or submitting pull requests.
+
