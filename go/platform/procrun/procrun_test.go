@@ -201,8 +201,8 @@ func TestExitCodeIsCarried(t *testing.T) {
 			t.Fatalf("ExitCodeOf = %d, want %d", got, code)
 		}
 
-		var ee *procrun.ExitError
-		if !errors.As(err, &ee) {
+		ee, ok := errors.AsType[*procrun.ExitError](err)
+		if !ok {
 			t.Fatalf("error is not an *ExitError: %T", err)
 		}
 
@@ -233,8 +233,8 @@ func TestTailLines(t *testing.T) {
 
 	err := (&procrun.Runner{TailLines: 1}).Run(t.Context(), &procrun.Call{Name: bin, Output: out})
 
-	var ee *procrun.ExitError
-	if !errors.As(err, &ee) {
+	ee, ok := errors.AsType[*procrun.ExitError](err)
+	if !ok {
 		t.Fatalf("want an *ExitError, got %T", err)
 	}
 
@@ -243,7 +243,8 @@ func TestTailLines(t *testing.T) {
 	}
 
 	err = (&procrun.Runner{TailLines: -1}).Run(t.Context(), &procrun.Call{Name: bin, Output: out})
-	if !errors.As(err, &ee) {
+	ee, ok = errors.AsType[*procrun.ExitError](err)
+	if !ok {
 		t.Fatalf("want an *ExitError, got %T", err)
 	}
 

@@ -95,8 +95,7 @@ func (e *ExitError) Error() string {
 // ExitCodeOf returns the exit code carried by err, or -1 when err is nil or
 // carries none.
 func ExitCodeOf(err error) int {
-	var ee *ExitError
-	if errors.As(err, &ee) {
+	if ee, ok := errors.AsType[*ExitError](err); ok {
 		return ee.Code
 	}
 
@@ -265,8 +264,8 @@ func (r *Runner) command(ctx context.Context, c *Call) (*exec.Cmd, error) {
 // exitError converts an exec failure into an ExitError, or passes through the
 // error of a command that never started.
 func (r *Runner) exitError(c *Call, err error) error {
-	var ee *exec.ExitError
-	if !errors.As(err, &ee) {
+	ee, ok := errors.AsType[*exec.ExitError](err)
+	if !ok {
 		return fmt.Errorf("%s could not run: %w", c.Name, err)
 	}
 
