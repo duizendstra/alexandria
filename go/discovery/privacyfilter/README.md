@@ -5,7 +5,7 @@
 ## Features
 
 - **Pre-Index Filtering**: Skips sensitive files (e.g., `.env`, key/credential files, SSH private keys) based on file name or path.
-- **Line-Level Redaction**: Detects and redacts lines containing keys and tokens (e.g., `GITHUB_TOKEN`, `API_KEY`, `password=`) inside non-sensitive documents.
+- **Line-Level Redaction**: Detects and redacts lines containing keys and tokens (e.g., `GITHUB_TOKEN`, `API_KEY`, `password=`) inside non-sensitive documents. Matching is case-insensitive (`PASSWORD=` and `password=` both redact) and covers the title, the content and every metadata value.
 - **Fast-Path String Verification**: Bypasses costly string manipulation or splitting for clean files.
 - **Low Overhead**: Pure, dependency-free implementation using optimized Go standard libraries.
 
@@ -62,6 +62,6 @@ func main() {
 
 ## SRE & Performance Hardening details
 
-1. **Bypass Allocations for Clean Content**: Scans content using `strings.Contains` to check if a redacting pattern is present. If none are found, the document is returned directly, avoiding any allocation overhead of `strings.Split`.
+1. **Bypass Allocations for Clean Content**: Scans a case-folded copy of each field using `strings.Contains` to check if a redacting pattern is present. If none are found, the field is returned directly, avoiding any allocation overhead of `strings.Split`; the folded copy is only compared, never returned, so clean fields keep their original bytes.
 2. **Early Exclusion logic**: Evaluates file names and path strings before scanning file contents, enabling instant exclusion of known sensitive paths (like `.pem`, `.env`, and SSH private keys) without reading their contents.
 3. **Deterministic Replacement Output**: Replaces matching secret lines with a standardized `[REDACTED — contains PATTERN]` notice, stripping credentials while retaining context.
