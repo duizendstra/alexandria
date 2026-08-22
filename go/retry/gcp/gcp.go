@@ -2,6 +2,8 @@ package gcp
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/duizendstra/alexandria/go/platform/apierr"
@@ -227,7 +230,6 @@ func parseRetryAfter(header string, now time.Time) (time.Duration, bool) {
 
 // Classify determines whether an error should be retried.
 // It returns a permanent error (wrapped via retry.Permanent) for permanent failures, or the original error to allow retrying.
-//
 func Classify(ctx context.Context, err error, attempt int) error {
 	if err == nil {
 		return nil
@@ -260,13 +262,12 @@ func Classify(ctx context.Context, err error, attempt int) error {
 		return classifyOAuthRetrieveError(err, oauthErr, attempt)
 	}
 
-	// 5. Typed Network Check.
-	if _, ok := errors.AsType[net.Error](err); ok {
-		logger().Warn("Transient network error, will retry",
-			slog.Int("attempt", attempt),
-			slog.String("error", err.Error()))
-
-		return err
+	// 5. Typed Network Check. *url.Error satisfies net.Error for every
+	// failure the HTTP client reports — TLS handshake, certificate and
+	// token-fetch errors included — so the match alone proves nothing:
+	// the wrapped cause decides.
+	if netErr, ok := errors.AsType[net.Error](err); ok {
+		return classifyNetError(err, netErr, attempt)
 	}
 
 	// 6. Explicitly retry unexpected network disconnections (UnexpectedEOF).
@@ -287,6 +288,91 @@ func Classify(ctx context.Context, err error, attempt int) error {
 
 	// 7. Everything typed has been ruled out: fall back to string heuristics.
 	return classifyByErrorString(err, attempt)
+}
+
+// classifyNetError decides whether a net.Error is worth retrying. Only a
+// timeout, a connection the peer dropped or refused, an unreachable route,
+// or a resolver failure the net package itself marks temporary is
+// transient. A TLS or certificate failure, and any other cause the
+// transport reports, is permanent — so an HTTP client error no longer
+// burns the whole backoff schedule.
+func classifyNetError(err error, netErr net.Error, attempt int) error {
+	if isTLSError(err) {
+		logger().Error("Permanent TLS error, not retrying",
+			slog.Int("attempt", attempt),
+			slog.String("error", err.Error()))
+
+		//nolint:wrapcheck // retry.Permanent wraps errors internally to mark them as permanent for the retry runner.
+		return retry.Permanent(err)
+	}
+
+	if isTransientNetError(err, netErr) {
+		logger().Warn("Transient network error, will retry",
+			slog.Int("attempt", attempt),
+			slog.String("error", err.Error()))
+
+		return err
+	}
+
+	logger().Error("Permanent network error, not retrying",
+		slog.Int("attempt", attempt),
+		slog.String("error", err.Error()))
+
+	//nolint:wrapcheck // retry.Permanent wraps errors internally to mark them as permanent for the retry runner.
+	return retry.Permanent(err)
+}
+
+// isTLSError reports whether err carries a TLS handshake or certificate
+// verification failure. These name a trust or configuration problem no
+// retry can fix.
+func isTLSError(err error) bool {
+	if _, ok := errors.AsType[*tls.CertificateVerificationError](err); ok {
+		return true
+	}
+	if _, ok := errors.AsType[tls.AlertError](err); ok {
+		return true
+	}
+	if _, ok := errors.AsType[tls.RecordHeaderError](err); ok {
+		return true
+	}
+	if _, ok := errors.AsType[x509.UnknownAuthorityError](err); ok {
+		return true
+	}
+	if _, ok := errors.AsType[x509.HostnameError](err); ok {
+		return true
+	}
+	_, ok := errors.AsType[x509.CertificateInvalidError](err)
+
+	return ok
+}
+
+// isTransientNetError reports whether err is a network failure a retry can
+// plausibly clear: a timeout (including a sub-deadline), a dial or resolver
+// failure the net package marks temporary, a connection the peer closed,
+// reset or refused, or a route that is currently unreachable.
+func isTransientNetError(err error, netErr net.Error) bool {
+	if netErr.Timeout() {
+		return true
+	}
+	if opErr, ok := errors.AsType[*net.OpError](err); ok && (opErr.Timeout() || opErr.Temporary()) {
+		return true
+	}
+	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok && dnsErr.Temporary() {
+		return true
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
+		return true
+	}
+	for _, errno := range []syscall.Errno{
+		syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.ECONNABORTED,
+		syscall.EPIPE, syscall.ETIMEDOUT, syscall.EHOSTUNREACH, syscall.ENETUNREACH,
+	} {
+		if errors.Is(err, errno) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // classifyOAuthRetrieveError classifies a structured *oauth2.RetrieveError
