@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/duizendstra/alexandria/compare/go/retry/gcp/v1.1.0...go/retry/gcp/v1.1.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **retry/gcp:** classify the cause behind a net.Error instead of retrying every match ([#254](https://github.com/duizendstra/alexandria/issues/254)) ([#276](https://github.com/duizendstra/alexandria/issues/276)) ([7ce52a9](https://github.com/duizendstra/alexandria/commit/7ce52a963b821e7999b025aa9193dcc9b1f2641c))
+
 ## [1.1.0](https://github.com/duizendstra/alexandria/compare/go/retry/gcp/v1.0.0...go/retry/gcp/v1.1.0) (2026-08-22)
 
 

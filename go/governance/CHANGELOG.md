@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/duizendstra/alexandria/compare/go/governance/v1.0.0...go/governance/v1.0.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **gate:** block on an unknown or empty policy instead of failing open ([#246](https://github.com/duizendstra/alexandria/issues/246)) ([#273](https://github.com/duizendstra/alexandria/issues/273)) ([9a4d454](https://github.com/duizendstra/alexandria/commit/9a4d4541518c531bb0d4c4a491d258fa2443bfdb))
+
 ## [1.0.0](https://github.com/duizendstra/alexandria/compare/go/governance/v0.4.0...go/governance/v1.0.0) (2026-08-22)
 
 

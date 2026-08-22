@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.2](https://github.com/duizendstra/alexandria/compare/go/google/v0.4.1...go/google/v0.4.2) (2026-08-22)
+
+
+### Bug Fixes
+
+* **google/workspace/drive:** escape backslashes in Drive query literals ([#255](https://github.com/duizendstra/alexandria/issues/255)) ([#280](https://github.com/duizendstra/alexandria/issues/280)) ([ccf81fd](https://github.com/duizendstra/alexandria/commit/ccf81fd6ef7701379af9119b0a691d0c7a1b572c))
+* **sheets:** keep GID-addressed tabs on prune and surface delete errors ([#243](https://github.com/duizendstra/alexandria/issues/243)) ([#278](https://github.com/duizendstra/alexandria/issues/278)) ([c40baa2](https://github.com/duizendstra/alexandria/commit/c40baa260f145eeb91d9900b5d341edceb4de7f0))
+* **sheets:** write a mixed column per cell so text cells never go USER_ENTERED ([#244](https://github.com/duizendstra/alexandria/issues/244)) ([#279](https://github.com/duizendstra/alexandria/issues/279)) ([c3ce465](https://github.com/duizendstra/alexandria/commit/c3ce465ab8648386da0d9a0c06cdec74ee5a2efc))
+
 ## [0.4.1](https://github.com/duizendstra/alexandria/compare/go/google/v0.4.0...go/google/v0.4.1) (2026-08-22)
 
 
