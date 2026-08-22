@@ -166,7 +166,10 @@ func applyBudget(ctx *pulumi.Context, cfg *config.Config, projectName string, pl
 	thresholds := []float64{0.50, 0.75, 0.90, 1.00}
 
 	var customThresholds []float64
-	if err := cfg.TryObject("thresholds", &customThresholds); err == nil && len(customThresholds) > 0 {
+	if err := optionalObject(cfg, "thresholds", &customThresholds); err != nil {
+		return err
+	}
+	if len(customThresholds) > 0 {
 		thresholds = customThresholds
 	}
 
