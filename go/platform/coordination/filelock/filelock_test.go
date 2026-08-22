@@ -477,10 +477,12 @@ func TestContendedAcquireIsNotBornStale(t *testing.T) {
 		// opened stamped it slightly before that instant and links slightly
 		// after — the record is written first and published second, so the
 		// stamp legitimately precedes the opening by however long the create
-		// and the fsync took. Measured at up to ~6ms on this machine under
-		// -race. The failure being pinned puts the stamp a whole contention
-		// (500ms) early, so allowing an attempt in flight costs nothing.
-		inFlight = reclaimAge / 2
+		// and the fsync took. That gap is disk-bound, not package-bound:
+		// ~6ms on a laptop, but 77ms was observed on ubuntu CI under -race.
+		// The failure being pinned puts the stamp a whole contention (500ms)
+		// early, so half a contention still separates a slow staging attempt
+		// from a record stamped at the first attempt.
+		inFlight = contention / 2
 	)
 
 	waiter := newStore(t, filelock.Options{PollMin: time.Millisecond, PollMax: 2 * time.Millisecond})
