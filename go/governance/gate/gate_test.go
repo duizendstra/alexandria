@@ -273,3 +273,76 @@ func FuzzGateEvaluation(f *testing.F) {
 		_, _ = rep.MarshalJSON()
 	})
 }
+
+func TestGate_UnknownPolicyBlocks(t *testing.T) {
+	ctx := context.Background()
+
+	passRule := gate.NewRule("healthy-rule", func(_ context.Context) gate.Result {
+		return gate.Result{Status: gate.StatusPass}
+	})
+
+	cases := []struct {
+		name string
+		gate *gate.Gate
+	}{
+		{name: "zero-valued gate", gate: &gate.Gate{}},
+		{name: "empty policy", gate: gate.New("empty-policy", gate.WithPolicy(gate.Policy("")), gate.WithRules(passRule))},
+		{name: "unknown policy", gate: gate.New("typo-policy", gate.WithPolicy(gate.Policy("LENIENT")), gate.WithRules(passRule))},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rep, err := tc.gate.Enforce(ctx)
+			if err == nil {
+				t.Fatal("expected unknown policy to block, got nil error")
+			}
+			if !errors.Is(err, gate.ErrGateBlocked) {
+				t.Fatalf("expected ErrGateBlocked, got %v", err)
+			}
+			if rep.Verdict != gate.VerdictBlocked {
+				t.Fatalf("expected VerdictBlocked, got %s", rep.Verdict)
+			}
+			if rep.FailedRules != 1 {
+				t.Fatalf("expected the policy failure to be recorded as 1 failed rule, got %d", rep.FailedRules)
+			}
+			if rep.TotalRules != len(rep.Results) {
+				t.Fatalf("expected total_rules %d to match %d results", rep.TotalRules, len(rep.Results))
+			}
+
+			last := rep.Results[len(rep.Results)-1]
+			if last.RuleName != "gate-policy" || last.Status != gate.StatusFail {
+				t.Fatalf("expected a failed gate-policy result, got %+v", last)
+			}
+			if !strings.Contains(last.Reason, "unknown gate policy") {
+				t.Fatalf("expected reason to name the unknown policy, got %q", last.Reason)
+			}
+			if !strings.Contains(rep.Summary(), "gate-policy") {
+				t.Errorf("summary missing policy failure: %s", rep.Summary())
+			}
+
+			if err := tc.gate.Validate(); !errors.Is(err, gate.ErrUnknownPolicy) {
+				t.Fatalf("expected Validate to return ErrUnknownPolicy, got %v", err)
+			}
+		})
+	}
+}
+
+func TestGate_ValidateAcceptsDefinedPolicies(t *testing.T) {
+	for _, p := range []gate.Policy{gate.PolicyStrict, gate.PolicyStandard, gate.PolicyPermissive} {
+		if err := p.Validate(); err != nil {
+			t.Errorf("policy %s: unexpected error %v", p, err)
+		}
+		if err := gate.New("g", gate.WithPolicy(p)).Validate(); err != nil {
+			t.Errorf("gate with policy %s: unexpected error %v", p, err)
+		}
+	}
+
+	// The constructor's default policy is valid.
+	if err := gate.New("default").Validate(); err != nil {
+		t.Errorf("default gate: unexpected error %v", err)
+	}
+
+	if err := gate.Policy("nope").Validate(); !errors.Is(err, gate.ErrUnknownPolicy) {
+		t.Errorf("expected ErrUnknownPolicy, got %v", err)
+	}
+}
