@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/duizendstra/alexandria/go/retry"
 	"golang.org/x/oauth2"
@@ -409,5 +410,150 @@ func TestWithRetry_PermanentOAuthRetrieveError(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Errorf("expected fail-fast on invalid_grant after 1 call, got %d", calls)
+	}
+}
+
+func TestWithRetryVal_Success(t *testing.T) {
+	ctx := context.Background()
+	type Item struct {
+		Name string
+	}
+
+	val, err := WithRetryVal(ctx, func() (*Item, error) {
+		return &Item{Name: "drive-folder-123"}, nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if val == nil || val.Name != "drive-folder-123" {
+		t.Errorf("unexpected value: %+v", val)
+	}
+}
+
+func TestWithRetryVal_TransientRetry(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	apiErr := &googleapi.Error{
+		Code:    http.StatusTooManyRequests,
+		Message: "rate limit exceeded",
+	}
+
+	val, err := WithRetryVal(ctx, func() (int, error) {
+		calls++
+		if calls < 3 {
+			return 0, apiErr
+		}
+		return 999, nil
+	}, WithInitialBackoff(time.Millisecond))
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if val != 999 {
+		t.Errorf("expected 999, got %d", val)
+	}
+	if calls != 3 {
+		t.Errorf("expected 3 calls, got %d", calls)
+	}
+}
+
+func TestWithRetryVal_PermanentFailFast(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	permErr := &googleapi.Error{
+		Code:    http.StatusForbidden,
+		Message: "access denied",
+	}
+
+	val, err := WithRetryVal(ctx, func() (string, error) {
+		calls++
+		return "", permErr
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, permErr) {
+		t.Errorf("expected permErr, got %v", err)
+	}
+	if val != "" {
+		t.Errorf("expected empty string, got %q", val)
+	}
+	if calls != 1 {
+		t.Errorf("expected 1 call, got %d", calls)
+	}
+}
+
+func TestWithRetry_RetryAfterHeader(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	header := http.Header{}
+	header.Set("Retry-After", "0") // 0 seconds so test runs quickly without sleeping.
+
+	apiErr := &googleapi.Error{
+		Code:    http.StatusTooManyRequests,
+		Message: "rate limited with Retry-After header",
+		Header:  header,
+	}
+
+	start := time.Now()
+	err := WithRetry(ctx, func() error {
+		calls++
+		if calls < 2 {
+			return apiErr
+		}
+		return nil
+	}, WithInitialBackoff(time.Millisecond))
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("expected 2 calls, got %d", calls)
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Errorf("unexpected long duration: %v", time.Since(start))
+	}
+}
+
+func TestWithRetry_Options_CustomBackoffAndOnRetry(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	retryHookCalls := 0
+	var lastDelay time.Duration
+
+	apiErr := &googleapi.Error{
+		Code:    http.StatusServiceUnavailable,
+		Message: "backend unavailable",
+	}
+
+	err := WithRetry(ctx, func() error {
+		calls++
+		if calls < 3 {
+			return apiErr
+		}
+		return nil
+	},
+		WithMaxAttempts(5),
+		WithInitialBackoff(10*time.Millisecond),
+		WithMaxBackoff(50*time.Millisecond),
+		WithOnRetry(func(attempt int, delay time.Duration, err error) {
+			retryHookCalls++
+			lastDelay = delay
+		}),
+	)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 3 {
+		t.Errorf("expected 3 calls, got %d", calls)
+	}
+	if retryHookCalls != 2 {
+		t.Errorf("expected OnRetry to be called 2 times, got %d", retryHookCalls)
+	}
+	if lastDelay <= 0 {
+		t.Errorf("expected positive lastDelay, got %v", lastDelay)
 	}
 }

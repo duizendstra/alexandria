@@ -356,12 +356,12 @@ func TestRetryAfterDelay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			delay, ok := retryAfterDelay(tt.header, now)
+			delay, ok := RetryAfterDelay(tt.header, now)
 			if ok != tt.wantOK {
-				t.Fatalf("retryAfterDelay(%q) ok = %v, want %v", tt.header, ok, tt.wantOK)
+				t.Fatalf("RetryAfterDelay(%q) ok = %v, want %v", tt.header, ok, tt.wantOK)
 			}
 			if delay != tt.wantDelay {
-				t.Errorf("retryAfterDelay(%q) delay = %v, want %v", tt.header, delay, tt.wantDelay)
+				t.Errorf("RetryAfterDelay(%q) delay = %v, want %v", tt.header, delay, tt.wantDelay)
 			}
 		})
 	}

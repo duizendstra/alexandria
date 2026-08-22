@@ -55,3 +55,25 @@ func ExampleClassify() {
 	// Output:
 	// Error classified as permanent (fail-fast)
 }
+
+func ExampleWithRetryVal() {
+	ctx := context.Background()
+
+	type DriveFile struct {
+		ID   string
+		Name string
+	}
+
+	file, err := gcp.WithRetryVal(ctx, func() (*DriveFile, error) {
+		return &DriveFile{ID: "file-999", Name: "Quarterly Report.pdf"}, nil
+	})
+	if err != nil {
+		fmt.Printf("failed: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Fetched file: %s (%s)\n", file.Name, file.ID)
+
+	// Output:
+	// Fetched file: Quarterly Report.pdf (file-999)
+}
