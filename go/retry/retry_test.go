@@ -178,3 +178,124 @@ func TestIsPermanent_NestedOverride(t *testing.T) {
 		t.Error("expected wrapped error to be permanent even if inner implements Permanent() bool false")
 	}
 }
+
+func TestBackoffWithConfig(t *testing.T) {
+	t.Run("defaults", func(t *testing.T) {
+		d := BackoffWithConfig(0, 0, 0)
+		if d < 100*time.Millisecond || d > 125*time.Millisecond {
+			t.Errorf("unexpected default backoff: %v", d)
+		}
+	})
+
+	t.Run("custom parameters", func(t *testing.T) {
+		base := 500 * time.Millisecond
+		maxCap := 30 * time.Second
+		d0 := BackoffWithConfig(0, base, maxCap)
+		if d0 < 500*time.Millisecond || d0 > 650*time.Millisecond {
+			t.Errorf("expected attempt 0 around 500ms, got %v", d0)
+		}
+
+		d10 := BackoffWithConfig(10, base, maxCap)
+		if d10 < 30*time.Second || d10 > 37*time.Second {
+			t.Errorf("expected attempt 10 capped around 30s (+jitter), got %v", d10)
+		}
+	})
+}
+
+func TestDoVal_Success(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	val, err := DoVal(ctx, 3, func() (string, error) {
+		calls++
+		return "hello", nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if val != "hello" {
+		t.Errorf("expected val 'hello', got %q", val)
+	}
+	if calls != 1 {
+		t.Errorf("expected 1 call, got %d", calls)
+	}
+}
+
+func TestDoVal_RetrySuccess(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	type result struct {
+		ID int
+	}
+
+	val, err := DoVal(ctx, 5, func() (result, error) {
+		calls++
+		if calls < 3 {
+			return result{}, errors.New("temporary failure")
+		}
+		return result{ID: 42}, nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if val.ID != 42 {
+		t.Errorf("expected val ID 42, got %d", val.ID)
+	}
+	if calls != 3 {
+		t.Errorf("expected 3 calls, got %d", calls)
+	}
+}
+
+func TestDoVal_PermanentError(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	rawErr := errors.New("unauthorized")
+
+	val, err := DoVal(ctx, 5, func() (int, error) {
+		calls++
+		if calls == 2 {
+			return 0, Permanent(rawErr)
+		}
+		return 0, errors.New("transient")
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, rawErr) {
+		t.Errorf("expected %v, got %v", rawErr, err)
+	}
+	if val != 0 {
+		t.Errorf("expected zero value 0, got %d", val)
+	}
+	if calls != 2 {
+		t.Errorf("expected 2 calls, got %d", calls)
+	}
+}
+
+func TestDoVal_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+
+	val, err := DoVal(ctx, 5, func() (string, error) {
+		calls++
+		if calls == 2 {
+			cancel()
+		}
+		return "", errors.New("transient")
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected error wrapping context.Canceled, got %v", err)
+	}
+	if val != "" {
+		t.Errorf("expected zero string, got %q", val)
+	}
+	if calls != 2 {
+		t.Errorf("expected 2 calls, got %d", calls)
+	}
+}

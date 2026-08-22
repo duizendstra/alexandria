@@ -179,7 +179,7 @@ func (t *retryTransport) wait(req *http.Request, attempt int, resp *http.Respons
 // backoff. Otherwise the exponential [Backoff] schedule applies.
 func retryDelay(attempt int, resp *http.Response) time.Duration {
 	if resp != nil && (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable) {
-		if delay, ok := retryAfterDelay(resp.Header.Get("Retry-After"), time.Now()); ok {
+		if delay, ok := RetryAfterDelay(resp.Header.Get("Retry-After"), time.Now()); ok {
 			return min(delay, maxBackoff)
 		}
 	}
@@ -187,11 +187,11 @@ func retryDelay(attempt int, resp *http.Response) time.Duration {
 	return Backoff(attempt)
 }
 
-// retryAfterDelay parses a Retry-After header value in either delta-seconds
+// RetryAfterDelay parses a Retry-After header value in either delta-seconds
 // form ("120") or HTTP-date form ("Fri, 31 Dec 1999 23:59:59 GMT"), relative
 // to now. It reports false for empty, malformed, or negative values; dates
 // in the past yield a zero delay.
-func retryAfterDelay(header string, now time.Time) (time.Duration, bool) {
+func RetryAfterDelay(header string, now time.Time) (time.Duration, bool) {
 	header = strings.TrimSpace(header)
 	if header == "" {
 		return 0, false
