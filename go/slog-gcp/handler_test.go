@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	errInnerHandler  = errors.New("inner handler failed")
+	errInnerHandler    = errors.New("inner handler failed")
 	errSomethingFailed = errors.New("something failed")
 )
 
@@ -33,6 +33,7 @@ const (
 	levelDebugStr   = "DEBUG"
 	levelWarningStr = "WARNING"
 	testHealthURL   = "/api/health"
+	testMethodGET   = "GET"
 )
 
 // testResolver returns a fixed IDResolver for testing.
@@ -284,6 +285,152 @@ func TestHandler_WithGroup(t *testing.T) {
 
 	if _, ok := entries[0]["req"]; !ok {
 		t.Error("group not applied")
+	}
+}
+
+// assertReservedAtRoot checks that the Cloud Logging reserved keys sit at the
+// top level of the entry and are absent from the given nested group object.
+func assertReservedAtRoot(t *testing.T, entry map[string]any, groupPath ...string) {
+	t.Helper()
+
+	reserved := []string{sloggcp.FieldTrace, sloggcp.FieldSpanID, sloggcp.FieldTraceSampled, sloggcp.FieldInsertID}
+
+	for _, key := range reserved {
+		if _, ok := entry[key]; !ok {
+			t.Errorf("%s missing at payload root: %v", key, entry)
+		}
+	}
+
+	nested := entry
+
+	for _, name := range groupPath {
+		next, ok := nested[name].(map[string]any)
+		if !ok {
+			t.Fatalf("group %q missing or not an object: %v", name, entry)
+		}
+
+		for _, key := range reserved {
+			if _, ok := next[key]; ok {
+				t.Errorf("%s nested under group %q; must be at payload root (#256)", key, name)
+			}
+		}
+
+		nested = next
+	}
+}
+
+func TestHandler_WithGroup_ReservedFieldsAtRoot(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcptest.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	h := sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "proj", sloggcp.WithInsertID(true))
+	logger := slog.New(h).WithGroup("req")
+
+	logger.InfoContext(context.Background(), "grouped", "method", testMethodGET) //nolint:sloglint // Test format.
+
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
+	assertReservedAtRoot(t, entries[0], "req")
+
+	req, _ := entries[0]["req"].(map[string]any)
+	if req["method"] != testMethodGET {
+		t.Errorf("record attr not nested under group: %v", entries[0])
+	}
+
+	if got := entries[0][sloggcp.FieldTrace]; got != "projects/proj/traces/trace-abc" {
+		t.Errorf("trace = %v, want projects/proj/traces/trace-abc", got)
+	}
+}
+
+func TestHandler_NestedGroups_ReservedFieldsAtRoot(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcptest.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	h := sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "proj", sloggcp.WithInsertID(true))
+	logger := slog.New(h).
+		With(slog.String("service", "api")).
+		WithGroup("req").
+		With(slog.String("id", "r-1")).
+		WithGroup("client").
+		With(slog.String("ua", "curl"))
+
+	logger.InfoContext(context.Background(), "nested", "ip", "127.0.0.1") //nolint:sloglint // Test format.
+
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
+	assertReservedAtRoot(t, entries[0], "req", "client")
+
+	if entries[0]["service"] != "api" {
+		t.Errorf("ungrouped attr not at root: %v", entries[0])
+	}
+
+	req, _ := entries[0]["req"].(map[string]any)
+	if req["id"] != "r-1" {
+		t.Errorf("attr after first group not nested under req: %v", entries[0])
+	}
+
+	client, _ := req["client"].(map[string]any)
+	if client["ua"] != "curl" || client["ip"] != "127.0.0.1" {
+		t.Errorf("attrs not nested under req.client: %v", entries[0])
+	}
+}
+
+func TestHandler_WithGroup_NoTrace_Unchanged(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcptest.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	h := sloggcp.NewHandler(inner, testResolver("", "", false), "proj")
+	logger := slog.New(h).WithGroup("req")
+
+	logger.InfoContext(context.Background(), "grouped", "method", testMethodGET) //nolint:sloglint // Test format.
+
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 1)
+
+	for _, key := range []string{sloggcp.FieldTrace, sloggcp.FieldSpanID, sloggcp.FieldTraceSampled, sloggcp.FieldInsertID} {
+		if _, ok := entries[0][key]; ok {
+			t.Errorf("%s should not be present without trace or insertId: %v", key, entries[0])
+		}
+	}
+
+	req, _ := entries[0]["req"].(map[string]any)
+	if req["method"] != testMethodGET {
+		t.Errorf("record attr not nested under group: %v", entries[0])
+	}
+}
+
+func TestHandler_NoGroup_OutputUnchanged(t *testing.T) {
+	t.Parallel()
+
+	resolver := testResolver("trace-abc", testSpanID, true)
+	bufA := &sloggcptest.SyncBuffer{}
+	bufB := &sloggcptest.SyncBuffer{}
+	keyFunc := func(groups []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.TimeKey && len(groups) == 0 {
+			return slog.Attr{}
+		}
+
+		return a
+	}
+	opts := &slog.HandlerOptions{ReplaceAttr: keyFunc}
+
+	// Reference: the inner handler alone, with the reserved attrs appended
+	// to the record exactly as the no-group path has always done.
+	ref := slog.New(slog.NewJSONHandler(bufA, opts)).With(slog.String("service", "api"))
+	ref.InfoContext(context.Background(), "plain", "method", testMethodGET, //nolint:sloglint // Test format.
+		sloggcp.FieldTrace, "projects/proj/traces/trace-abc",
+		sloggcp.FieldSpanID, testSpanID,
+		sloggcp.FieldTraceSampled, true,
+	)
+
+	got := slog.New(sloggcp.NewHandler(slog.NewJSONHandler(bufB, opts), resolver, "proj")).With(slog.String("service", "api"))
+	got.InfoContext(context.Background(), "plain", "method", testMethodGET) //nolint:sloglint // Test format.
+
+	if bufA.String() != bufB.String() {
+		t.Errorf("no-group output changed:\nwant %s\ngot  %s", bufA.String(), bufB.String())
 	}
 }
 
@@ -748,6 +895,74 @@ func TestHandler_SlogTestCompliance(t *testing.T) {
 
 	// slogtest.Run tests the handler against the slog.Handler contract.
 	slogtest.Run(t, newHandler, result)
+}
+
+// TestHandler_SlogTestCompliance_ReservedAtRoot runs the slog.Handler
+// contract over the replay path (#256): reserved fields present and groups
+// active on every record.
+func TestHandler_SlogTestCompliance_ReservedAtRoot(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcptest.SyncBuffer{}
+
+	newHandler := func(t *testing.T) slog.Handler {
+		t.Helper()
+
+		buf.Reset()
+
+		return sloggcp.NewHandler(
+			slog.NewJSONHandler(buf, nil),
+			testResolver("trace-abc", testSpanID, true),
+			"test-project",
+			sloggcp.WithInsertID(true),
+		)
+	}
+
+	result := func(t *testing.T) map[string]any {
+		t.Helper()
+
+		entries := sloggcptest.LogEntries(buf)
+		if len(entries) == 0 {
+			return nil
+		}
+
+		entry := entries[len(entries)-1]
+		if _, ok := entry[sloggcp.FieldTrace]; !ok {
+			t.Errorf("trace missing at payload root: %v", entry)
+		}
+
+		return entry
+	}
+
+	slogtest.Run(t, newHandler, result)
+}
+
+func TestHandler_SiblingGroups_DoNotAlias(t *testing.T) {
+	t.Parallel()
+
+	buf := &sloggcptest.SyncBuffer{}
+	inner := slog.NewJSONHandler(buf, nil)
+	h := sloggcp.NewHandler(inner, testResolver("trace-abc", testSpanID, true), "proj", sloggcp.WithInsertID(true))
+	parent := slog.New(h).WithGroup("req")
+	left := parent.WithGroup("left")
+	right := parent.WithGroup("right")
+
+	left.InfoContext(context.Background(), "l", "k", "v")  //nolint:sloglint // Test format.
+	right.InfoContext(context.Background(), "r", "k", "v") //nolint:sloglint // Test format.
+
+	entries := sloggcptest.LogEntries(buf)
+	sloggcptest.AssertLogCount(t, entries, 2)
+
+	for i, want := range []string{"left", "right"} {
+		assertReservedAtRoot(t, entries[i], "req", want)
+
+		req, _ := entries[i]["req"].(map[string]any)
+		for _, other := range []string{"left", "right"} {
+			if _, ok := req[other]; ok != (other == want) {
+				t.Errorf("entry %d: group %q present=%v, want %v: %v", i, other, ok, other == want, entries[i])
+			}
+		}
+	}
 }
 
 // --- ErrorAttrs ---.

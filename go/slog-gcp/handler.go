@@ -43,13 +43,31 @@ type IDResolver func(ctx context.Context) TraceContext
 
 // handler wraps an inner slog.Handler and auto-injects insertId and
 // GCP Cloud Logging trace fields into every log record.
+//
+// Cloud Logging only honours the reserved logging.googleapis.com/* keys at
+// the top level of the entry, so they must never be nested under an active
+// WithGroup. The handler therefore keeps root — the inner handler as it was
+// before the first WithGroup — and replays the group/attr chain recorded in
+// steps on top of root.WithAttrs(reserved) for each record written while a
+// group is active. The no-group path is untouched: reserved attrs are
+// appended to the record and inner handles it directly.
 type handler struct {
 	inner       slog.Handler
+	root        slog.Handler
+	steps       []chainStep
 	resolve     IDResolver
 	projectID   string
 	tracePrefix string
 	insertID    bool
 	insertIDKey string
+}
+
+// chainStep is one WithGroup or WithAttrs call made after the first group
+// was opened, in call order. A step is a group when group is non-empty,
+// otherwise it carries attrs.
+type chainStep struct {
+	group string
+	attrs []slog.Attr
 }
 
 // Option configures [NewHandler].
@@ -102,6 +120,8 @@ func NewHandler(inner slog.Handler, resolve IDResolver, projectID string, opts .
 
 	h := &handler{
 		inner:       inner,
+		root:        inner,
+		steps:       nil,
 		resolve:     resolve,
 		projectID:   projectID,
 		tracePrefix: "projects/" + projectID + "/traces/",
@@ -123,16 +143,78 @@ func (h *handler) Enabled(ctx context.Context, level slog.Level) bool {
 
 // Handle injects insertId and GCP trace fields, then delegates to the
 // inner handler. The resolver is called once per log line.
+//
+// The reserved fields always land at the payload root: without an active
+// group they are appended to the record; with one, they are applied to the
+// ungrouped root handler and the group chain is replayed on top (#256).
 func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:gocritic // slog.Record passed by value per slog.Handler contract.
+	reserved := h.reservedAttrs(ctx)
+
+	if len(reserved) == 0 || len(h.steps) == 0 {
+		rec.AddAttrs(reserved...)
+
+		return h.inner.Handle(ctx, rec) //nolint:wrapcheck // Error context sufficient from caller.
+	}
+
+	target := h.root.WithAttrs(reserved)
+
+	for _, step := range h.steps {
+		if step.group != "" {
+			target = target.WithGroup(step.group)
+		} else {
+			target = target.WithAttrs(step.attrs)
+		}
+	}
+
+	return target.Handle(ctx, rec) //nolint:wrapcheck // Error context sufficient from caller.
+}
+
+// WithAttrs returns a new handler with the given attributes.
+//
+// Before the first group the attrs also extend root, so they stay at the
+// payload root on the replay path; after it they are recorded as a step.
+func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	next := h.clone()
+	next.inner = h.inner.WithAttrs(attrs)
+
+	if len(h.steps) == 0 {
+		next.root = h.root.WithAttrs(attrs)
+	} else {
+		next.steps = append(next.steps, chainStep{group: "", attrs: attrs})
+	}
+
+	return next
+}
+
+// WithGroup returns a new handler with the given group name. An empty
+// name returns the receiver, per the slog.Handler contract.
+func (h *handler) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return h
+	}
+
+	next := h.clone()
+	next.inner = h.inner.WithGroup(name)
+	next.steps = append(next.steps, chainStep{group: name, attrs: nil})
+
+	return next
+}
+
+// reservedAttrs builds the Cloud Logging reserved attrs for one record:
+// the insertId when enabled, and the trace fields when the resolver finds
+// a trace in ctx. It returns nil when there is nothing to inject.
+func (h *handler) reservedAttrs(ctx context.Context) []slog.Attr {
+	var attrs []slog.Attr
+
 	if h.insertID {
-		rec.AddAttrs(slog.String(h.insertIDKey, fastUniqueID()))
+		attrs = append(attrs, slog.String(h.insertIDKey, fastUniqueID()))
 	}
 
 	if h.resolve != nil {
 		tc := h.resolve(ctx)
 
 		if !tc.IsEmpty() {
-			rec.AddAttrs(
+			attrs = append(attrs,
 				slog.String(FieldTrace, h.tracePrefix+tc.TraceID),
 				slog.String(FieldSpanID, tc.SpanID),
 				slog.Bool(FieldTraceSampled, tc.Sampled),
@@ -140,25 +222,19 @@ func (h *handler) Handle(ctx context.Context, rec slog.Record) error { //nolint:
 		}
 	}
 
-	return h.inner.Handle(ctx, rec) //nolint:wrapcheck // Error context sufficient from caller.
+	return attrs
 }
 
-// WithAttrs returns a new handler with the given attributes.
-func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &handler{
-		inner:       h.inner.WithAttrs(attrs),
-		resolve:     h.resolve,
-		projectID:   h.projectID,
-		tracePrefix: h.tracePrefix,
-		insertID:    h.insertID,
-		insertIDKey: h.insertIDKey,
-	}
-}
+// clone returns a copy of h whose steps slice does not alias h.steps, so
+// sibling derived handlers never overwrite each other's chain.
+func (h *handler) clone() *handler {
+	steps := make([]chainStep, len(h.steps), len(h.steps)+1)
+	copy(steps, h.steps)
 
-// WithGroup returns a new handler with the given group name.
-func (h *handler) WithGroup(name string) slog.Handler {
 	return &handler{
-		inner:       h.inner.WithGroup(name),
+		inner:       h.inner,
+		root:        h.root,
+		steps:       steps,
 		resolve:     h.resolve,
 		projectID:   h.projectID,
 		tracePrefix: h.tracePrefix,
