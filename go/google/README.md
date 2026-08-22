@@ -95,6 +95,62 @@ func main() {
 }
 ```
 
+### 3. Declarative Google Sheets Synchronization
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/duizendstra/alexandria/go/google/auth"
+	"github.com/duizendstra/alexandria/go/google/client"
+	"github.com/duizendstra/alexandria/go/google/workspace/sheets"
+)
+
+type MigrationStatus struct {
+	Account   string      `sheets:"Source Account,minWidth=200,maxWidth=350"`
+	Status    string      `sheets:"Status,width=120"`
+	AuditLink sheets.Cell `sheets:"Audit Log,width=250"`
+}
+
+func main() {
+	ctx := context.Background()
+
+	// Build a fully-authenticated Sheets service
+	sheetsSvc, err := client.NewSheetsService(ctx, sheets.Config{},
+		auth.WithDomainWideDelegation("sa@project.gserviceaccount.com", "admin@domain.com"),
+	)
+	if err != nil {
+		log.Fatalf("Failed to initialize Sheets service: %v", err)
+	}
+
+	table, err := sheets.FromStructs([]MigrationStatus{
+		{
+			Account:   "user1@domain.com",
+			Status:    "MIGRATED",
+			AuditLink: sheets.Hyperlink("https://console.cloud.google.com", "View Log"),
+		},
+	})
+	if err != nil {
+		log.Fatalf("Table error: %v", err)
+	}
+
+	result, err := sheetsSvc.ReplaceTab(ctx, "my-spreadsheet-id", sheets.TabSpec{
+		Title: "Wave 1",
+		Theme: sheets.ThemeCorporateNavy(),
+		Data:  table,
+	})
+	if err != nil {
+		log.Fatalf("Sync error: %v", err)
+	}
+
+	fmt.Printf("Tab synchronized: %s (%d rows written)\n", result.Title, result.RowsWritten)
+}
+```
+
 ## SRE & Performance Hardening details
 
 1. **Fail-Fast Verification**: The `DWDValidator` validates authentication scopes and user delegation policies at startup, preventing cascading logical failures inside application hotpaths.
