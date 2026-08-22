@@ -1,3 +1,3 @@
 module github.com/duizendstra/alexandria/go/platform/workflow
 
-go 1.26.5
+go 1.26
