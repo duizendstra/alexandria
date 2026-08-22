@@ -217,7 +217,9 @@ func (s *Service) CreateSpreadsheet(ctx context.Context, spec DocumentSpec) (*Do
 }
 
 // SyncDocument updates an existing spreadsheet (or creates a new one if spreadsheetID is empty).
-// When PruneTabs is true, it removes any old tabs not listed in spec.Tabs.
+// When PruneTabs is true, it removes any old tabs not listed in spec.Tabs: a tab is kept
+// when its title matches a spec's Title or its sheet ID matches a tab synced by this call
+// (so tabs addressed by GID survive). A failed prune is returned as an error.
 //
 //nolint:gocritic // spec by value is intentional for caller immutability
 func (s *Service) SyncDocument(ctx context.Context, spreadsheetID string, spec DocumentSpec) (*DocumentResult, error) {
@@ -253,7 +255,9 @@ func (s *Service) SyncDocument(ctx context.Context, spreadsheetID string, spec D
 	}
 
 	if spec.PruneTabs {
-		s.pruneStaleTabs(ctx, spreadsheetID, sp.Sheets, spec.Tabs)
+		if err := s.pruneStaleTabs(ctx, spreadsheetID, sp.Sheets, spec.Tabs, tabResults); err != nil {
+			return nil, err
+		}
 	}
 
 	return &DocumentResult{
@@ -630,33 +634,55 @@ func (s *Service) relocateToFolder(ctx context.Context, spreadsheetID, folderID 
 	}
 }
 
-func (s *Service) pruneStaleTabs(ctx context.Context, spreadsheetID string, currentSheets []*sheets.Sheet, desiredTabs []TabSpec) {
-	keep := make(map[string]bool)
+// pruneStaleTabs deletes every tab in currentSheets that is neither titled like one of
+// desiredTabs nor identified by the sheet ID of one of syncedTabs. The title rule keeps
+// the long-standing behaviour for title-addressed specs; the sheet-ID rule keeps tabs
+// addressed by GID, which a title-only keep-set would delete in the same sync.
+func (s *Service) pruneStaleTabs(
+	ctx context.Context,
+	spreadsheetID string,
+	currentSheets []*sheets.Sheet,
+	desiredTabs []TabSpec,
+	syncedTabs []TabResult,
+) error {
+	keepTitle := make(map[string]bool, len(desiredTabs))
 	for _, t := range desiredTabs {
-		keep[t.Title] = true
+		keepTitle[t.Title] = true
+	}
+	keepID := make(map[int64]bool, len(syncedTabs))
+	for _, t := range syncedTabs {
+		keepID[t.SheetID] = true
 	}
 
 	var deleteReqs []*sheets.Request
 	for _, sh := range currentSheets {
-		if sh.Properties != nil && !keep[sh.Properties.Title] {
-			deleteReqs = append(deleteReqs, &sheets.Request{
-				DeleteSheet: &sheets.DeleteSheetRequest{
-					SheetId: sh.Properties.SheetId,
-				},
-			})
+		if sh.Properties == nil || keepTitle[sh.Properties.Title] || keepID[sh.Properties.SheetId] {
+			continue
 		}
-	}
-
-	if len(deleteReqs) > 0 {
-		_ = gcp.WithRetry(ctx, func() error {
-			_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
-				Requests: deleteReqs,
-			}).Context(ctx).Do()
-			if e != nil {
-				return fmt.Errorf("sheets api batch update delete: %w", e)
-			}
-
-			return nil
+		deleteReqs = append(deleteReqs, &sheets.Request{
+			DeleteSheet: &sheets.DeleteSheetRequest{
+				SheetId: sh.Properties.SheetId,
+			},
 		})
 	}
+
+	if len(deleteReqs) == 0 {
+		return nil
+	}
+
+	err := gcp.WithRetry(ctx, func() error {
+		_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: deleteReqs,
+		}).Context(ctx).Do()
+		if e != nil {
+			return fmt.Errorf("sheets api batch update delete: %w", e)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("sheets: prune stale tabs in spreadsheet %s: %w", spreadsheetID, err)
+	}
+
+	return nil
 }

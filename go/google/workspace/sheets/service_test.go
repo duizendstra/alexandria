@@ -18,6 +18,9 @@ const (
 	mockSpreadsheetID = "test-sheet-id"
 	mockFolderID      = "folder-xyz-123"
 	mockTabTitle      = "ExistingTab"
+	mockKeepTitle     = "KeepMe"
+	mockStaleTitle    = "OldStaleTab"
+	mockSyncedTitle   = "Synced Doc"
 )
 
 type mockSheetsHandler struct {
@@ -31,6 +34,8 @@ type mockSheetsHandler struct {
 	movedFileID       string
 	parentAdded       string
 	sheets            []*sheets.Sheet
+	deletedSheetIDs   []int64
+	failDeleteSheet   bool
 }
 
 func writeJSON(w http.ResponseWriter, val any) {
@@ -130,6 +135,18 @@ func (m *mockSheetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var bReq sheets.BatchUpdateSpreadsheetRequest
 		_ = json.NewDecoder(r.Body).Decode(&bReq)
 		m.receivedBatchReqs = append(m.receivedBatchReqs, bReq.Requests...)
+
+		for _, req := range bReq.Requests {
+			if req.DeleteSheet == nil {
+				continue
+			}
+			if m.failDeleteSheet {
+				http.Error(w, "delete sheet rejected", http.StatusBadRequest)
+
+				return
+			}
+			m.deletedSheetIDs = append(m.deletedSheetIDs, req.DeleteSheet.SheetId)
+		}
 
 		newSheet := &sheets.Sheet{
 			Properties: &sheets.SheetProperties{
@@ -302,13 +319,13 @@ func TestSyncDocument_WithPruning(t *testing.T) {
 		{
 			Properties: &sheets.SheetProperties{
 				SheetId: 1,
-				Title:   "KeepMe",
+				Title:   mockKeepTitle,
 			},
 		},
 		{
 			Properties: &sheets.SheetProperties{
 				SheetId: 2,
-				Title:   "OldStaleTab",
+				Title:   mockStaleTitle,
 			},
 		},
 	}
@@ -317,11 +334,11 @@ func TestSyncDocument_WithPruning(t *testing.T) {
 	tbl.AddRowValues("Data1")
 
 	spec := DocumentSpec{
-		Title:     "Synced Doc",
+		Title:     mockSyncedTitle,
 		PruneTabs: true,
 		Tabs: []TabSpec{
 			{
-				Title: "KeepMe",
+				Title: mockKeepTitle,
 				Data:  tbl,
 			},
 		},
@@ -337,6 +354,105 @@ func TestSyncDocument_WithPruning(t *testing.T) {
 	}
 	if handler.batchUpdates < 1 {
 		t.Errorf("expected batchUpdates to execute deletion/formatting")
+	}
+	if len(handler.deletedSheetIDs) != 1 || handler.deletedSheetIDs[0] != 2 {
+		t.Errorf("expected only the stale tab (sheet 2) to be deleted, got %v", handler.deletedSheetIDs)
+	}
+}
+
+func TestSyncDocument_PruneKeepsGIDAddressedTab(t *testing.T) {
+	svc, handler := setupTestService(t)
+	ctx := context.Background()
+
+	handler.sheets = []*sheets.Sheet{
+		{
+			Properties: &sheets.SheetProperties{
+				SheetId: 1,
+				Title:   "Report",
+			},
+		},
+		{
+			Properties: &sheets.SheetProperties{
+				SheetId: 2,
+				Title:   mockStaleTitle,
+			},
+		},
+	}
+
+	tbl := NewTable("Header1")
+	tbl.AddRowValues("Data1")
+
+	spec := DocumentSpec{
+		Title:     mockSyncedTitle,
+		PruneTabs: true,
+		Tabs: []TabSpec{
+			{
+				// Addressed by GID; the title differs from the existing tab's title.
+				GID:   1,
+				Title: "Renamed",
+				Data:  tbl,
+			},
+		},
+	}
+
+	res, err := svc.SyncDocument(ctx, mockSpreadsheetID, spec)
+	if err != nil {
+		t.Fatalf("SyncDocument failed: %v", err)
+	}
+
+	if len(res.Tabs) != 1 || res.Tabs[0].SheetID != 1 {
+		t.Fatalf("expected the GID-addressed tab (sheet 1) to be synced, got %+v", res.Tabs)
+	}
+	for _, id := range handler.deletedSheetIDs {
+		if id == 1 {
+			t.Errorf("the tab synced by GID in this call must not be pruned, deleted %v", handler.deletedSheetIDs)
+		}
+	}
+	if len(handler.deletedSheetIDs) != 1 || handler.deletedSheetIDs[0] != 2 {
+		t.Errorf("expected only the stale tab (sheet 2) to be deleted, got %v", handler.deletedSheetIDs)
+	}
+}
+
+func TestSyncDocument_PruneDeleteErrorSurfaces(t *testing.T) {
+	svc, handler := setupTestService(t)
+	ctx := context.Background()
+
+	handler.sheets = []*sheets.Sheet{
+		{
+			Properties: &sheets.SheetProperties{
+				SheetId: 1,
+				Title:   mockKeepTitle,
+			},
+		},
+		{
+			Properties: &sheets.SheetProperties{
+				SheetId: 2,
+				Title:   mockStaleTitle,
+			},
+		},
+	}
+	handler.failDeleteSheet = true
+
+	tbl := NewTable("Header1")
+	tbl.AddRowValues("Data1")
+
+	spec := DocumentSpec{
+		Title:     mockSyncedTitle,
+		PruneTabs: true,
+		Tabs: []TabSpec{
+			{
+				Title: mockKeepTitle,
+				Data:  tbl,
+			},
+		},
+	}
+
+	res, err := svc.SyncDocument(ctx, mockSpreadsheetID, spec)
+	if err == nil {
+		t.Fatalf("expected SyncDocument to surface the failed prune, got result %+v", res)
+	}
+	if !strings.Contains(err.Error(), "prune stale tabs") {
+		t.Errorf("expected prune context in error, got %q", err.Error())
 	}
 }
 
