@@ -3,7 +3,7 @@
 // chains, and database or infrastructure provisioning workflows.
 //
 // Workflows execute an ordered sequence of named Steps. Features include:
-//   - Context cancellation checks before and during step execution
+//   - Context cancellation is checked before each step; a running step is not interrupted — steps must honour the ctx they are given
 //   - Per-step panic recovery with error wrapping and stack safety
 //   - Conditional step skipping via Skip predicates
 //   - Configurable lifecycle hooks (OnStepStart, OnStepDone, OnStepFail, OnStepSkip)
