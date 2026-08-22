@@ -15,6 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release-please
         with:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - uses: actions/checkout@v5
+        if: ${{ steps.release-please.outputs.prs_created == 'true' }}
+        with:
+          ref: ${{ fromJSON(steps.release-please.outputs.pr).headBranchName }}
+
+      - name: Sync README module-index versions into the release PR
+        if: ${{ steps.release-please.outputs.prs_created == 'true' }}
+        run: |
+          python3 scripts/sync-readme-versions.py
+          if ! git diff --quiet -- README.md; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: sync README module-index versions" -- README.md
+            git push
+          fi
