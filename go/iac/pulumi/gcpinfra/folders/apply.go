@@ -15,6 +15,12 @@ import (
 // folders/ resource path. Test for it with [errors.Is].
 var ErrInvalidParent = errors.New(`folders: parent must start with "organizations/" or "folders/"`)
 
+// ErrDuplicateFolder means a child folder carries the root folder's name.
+// Root and children are the same resource type, and the name is the Pulumi
+// logical name, so the repeat would collide URNs. Test for it with
+// [errors.Is]. (Duplicate children are hierarchy.ErrDuplicateChild.)
+var ErrDuplicateFolder = errors.New("folders: duplicate folder name")
+
 // Outputs holds the created folder references.
 type Outputs struct {
 	// RootFolderID is the numeric ID of the root folder.
@@ -47,8 +53,9 @@ func OrgID(parent string) string {
 // Protected from accidental deletion at both GCP and Pulumi level.
 //
 // Only well-formedness is validated here (parent, root name, child
-// uniqueness). Whether children are required at all is tier policy owned
-// by the plan package — a Starter hierarchy legitimately has none.
+// uniqueness, no child named like the root). Whether children are required
+// at all is tier policy owned by the plan package — a Starter hierarchy
+// legitimately has none.
 func Apply(ctx *pulumi.Context, cfg hierarchy.Config) (*Outputs, error) {
 	if err := cfg.ValidateBase(); err != nil {
 		return nil, fmt.Errorf("folders: %w", err)
@@ -56,6 +63,14 @@ func Apply(ctx *pulumi.Context, cfg hierarchy.Config) (*Outputs, error) {
 
 	if err := cfg.ValidateChildren(); err != nil {
 		return nil, fmt.Errorf("folders: %w", err)
+	}
+
+	// Root and children share one resource type, so a child named like the
+	// root is a URN collision even though the children themselves are unique.
+	for _, child := range cfg.Children {
+		if child == cfg.RootName {
+			return nil, fmt.Errorf("%w %q: a child cannot share the root folder's name", ErrDuplicateFolder, child)
+		}
 	}
 
 	// GCP-specific: validate parent format.

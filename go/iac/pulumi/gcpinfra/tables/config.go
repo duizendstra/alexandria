@@ -13,6 +13,12 @@ var (
 	ErrSourceFormatRequired = errors.New("tables: external SourceFormat is required")
 	// ErrSourceURIsRequired means the external table has no source URIs.
 	ErrSourceURIsRequired = errors.New("tables: external SourceURIs is required")
+	// ErrDuplicateName means two tables in one Apply call share a Name. The
+	// name is the Pulumi logical name, so a repeat would collide URNs.
+	ErrDuplicateName = errors.New("tables: duplicate table name")
+	// ErrDuplicateExternalName means two external tables in one
+	// ApplyExternal call share a Name.
+	ErrDuplicateExternalName = errors.New("tables: duplicate external table name")
 )
 
 // Config defines a BigQuery table to be provisioned.

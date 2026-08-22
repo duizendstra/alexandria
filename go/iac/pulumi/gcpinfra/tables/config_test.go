@@ -32,7 +32,7 @@ func TestExternalValidateValid(t *testing.T) {
 	c := tables.ExternalConfig{
 		Name:         tableForecast,
 		SourceFormat: formatSheets,
-		SourceURIs:   []string{"https://docs.google.com/spreadsheets/d/example"},
+		SourceURIs:   []string{sheetURI},
 	}
 	if err := c.Validate(); err != nil {
 		t.Errorf("unexpected error: %v", err)

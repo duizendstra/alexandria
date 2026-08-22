@@ -10,6 +10,7 @@ import (
 const (
 	collectionConfig = "config"
 	docConnectorA    = "connector-a"
+	fieldsEnabled    = `{"enabled":{"booleanValue":true}}`
 )
 
 func TestDatabaseValidateValid(t *testing.T) {
@@ -34,7 +35,7 @@ func TestDatabaseValidateMissingRegion(t *testing.T) {
 }
 
 func TestDocumentValidateValid(t *testing.T) {
-	c := firestore.DocumentConfig{Collection: collectionConfig, DocumentID: docConnectorA, Fields: `{"enabled":{"booleanValue":true}}`}
+	c := firestore.DocumentConfig{Collection: collectionConfig, DocumentID: docConnectorA, Fields: fieldsEnabled}
 	if err := c.Validate(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

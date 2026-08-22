@@ -1,6 +1,7 @@
 package budgets_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/budgets"
@@ -48,5 +49,15 @@ func TestValidateMissingAlertEmails(t *testing.T) {
 	}
 	if err := c.Validate(); err == nil {
 		t.Error("expected error for missing alert emails")
+	}
+}
+
+func TestValidateDuplicateAlertEmail(t *testing.T) {
+	c := budgets.Config{
+		DisplayName: "x", Amount: 1, BillingAccount: "x",
+		Scope: "x", Thresholds: []float64{1}, AlertEmails: []string{"a", "b", "a"},
+	}
+	if err := c.Validate(); !errors.Is(err, budgets.ErrDuplicateAlertEmail) {
+		t.Errorf("expected ErrDuplicateAlertEmail, got %v", err)
 	}
 }

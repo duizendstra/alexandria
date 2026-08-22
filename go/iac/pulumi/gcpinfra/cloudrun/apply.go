@@ -29,6 +29,9 @@ type ServiceOutputs struct {
 // serviceAccountEmail and envs are separate params because they are dynamic
 // Pulumi outputs (e.g. from NewAccount or other resource outputs).
 // Container image changes are ignored — deploys happen via CI/CD.
+// cfg.Name is the Pulumi logical name as well as the service name: a stack
+// that applies several services must give each a distinct Name, or the
+// engine rejects the repeat as a duplicate URN.
 func ApplyService(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
@@ -95,6 +98,9 @@ type JobOutputs struct {
 // ApplyJob creates a Cloud Run v2 job.
 // serviceAccountEmail and envs are separate params because they are dynamic.
 // Container image changes are ignored — deploys happen via CI/CD.
+// cfg.Name is the Pulumi logical name as well as the job name: a stack that
+// applies several jobs must give each a distinct Name, or the engine
+// rejects the repeat as a duplicate URN.
 func ApplyJob(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
