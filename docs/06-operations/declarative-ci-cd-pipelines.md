@@ -58,7 +58,7 @@ Therefore, we enforce **path-prefixed multi-module semantic versioning**. Each s
 ```
 
 1.  **Module Discovery** — Dynamically finds every `go.mod` under `go/` so new modules are tested without pipeline edits.
-2.  **Per-Module Vet, Test & Lint** — For each module: `go vet ./...`, `go test -race -count=1 -coverprofile=coverage.out ./...`, `govulncheck`, and `golangci-lint`. Any failure blocks the merge. Coverage ratchet is enforced against calibrated module floors in `.github/coverage-baselines.json`.
+2.  **Per-Module Format, Vet, Test & Lint** — For each module: `gofmt -l .` (must print nothing), `go vet ./...`, `GOOS=windows GOARCH=amd64 go vet ./...` (the library is consumed on macOS and native Windows), `go test -race -count=1 -coverprofile=coverage.out ./...`, `govulncheck`, and `golangci-lint`. Any failure blocks the merge. Coverage ratchet is enforced against calibrated module floors in `.github/coverage-baselines.json`.
 3.  **Module Hygiene** (`mod-hygiene`) — Rejects committed `replace` directives, unresolvable `v0.0.0` pins, missing Dependabot coverage, missing coverage baselines, and missing `release-please` manifest/config entries or README version mismatches.
 4.  **Contracts** (`contracts`) — Runs `buf lint`, `buf breaking` against `main`, and a generated-code drift check so `go/contracts` never goes stale relative to `contracts/proto/`.
 5.  **Docs Link Check** — Verifies that relative markdown links across the repository resolve to existing files.

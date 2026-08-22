@@ -330,4 +330,3 @@ func estimateColumnContentWidth(data *Table, colIdx int) int64 {
 
 	return max(estimated, minEstWidth)
 }
-
