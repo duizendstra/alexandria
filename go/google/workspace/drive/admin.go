@@ -54,11 +54,22 @@ func (s *Service) CreateSharedDrive(ctx context.Context, name, requestID string,
 	return created, nil
 }
 
+// EscapeQueryValue escapes s for use inside a single-quoted string literal of a
+// Drive search query (the "q" parameter). Backslashes are doubled first and then
+// single quotes are backslash-escaped, so the result always reads as the literal
+// value of s: a trailing backslash cannot swallow the closing quote and a
+// backslash-quote sequence cannot terminate the literal early. The surrounding
+// quotes are not added; callers wrap the result as '...'.
+func EscapeQueryValue(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+
+	return strings.ReplaceAll(s, "'", `\'`)
+}
+
 // FindSharedDriveByName searches for a Shared Drive with an exact name match using domain admin access.
 // If not found, returns ErrNotFound.
 func (s *Service) FindSharedDriveByName(ctx context.Context, name string) (*drive.Drive, error) {
-	escapedName := strings.ReplaceAll(name, "'", "\\'")
-	q := fmt.Sprintf("name = '%s'", escapedName)
+	q := fmt.Sprintf("name = '%s'", EscapeQueryValue(name))
 
 	call := s.drive.Drives.List().
 		UseDomainAdminAccess(true).
@@ -164,8 +175,10 @@ func (s *Service) CreateFolder(ctx context.Context, parentID, name string, appPr
 // FindFolder searches for a non-trashed folder by name inside a parent.
 // Returns the folder ID or an empty string if absent.
 func (s *Service) FindFolder(ctx context.Context, parentID, name string) (string, error) {
-	escapedName := strings.ReplaceAll(name, "'", "\\'")
-	q := fmt.Sprintf("name = '%s' and mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false", escapedName, parentID)
+	q := fmt.Sprintf(
+		"name = '%s' and mimeType = 'application/vnd.google-apps.folder' and '%s' in parents and trashed = false",
+		EscapeQueryValue(name), EscapeQueryValue(parentID),
+	)
 
 	res, err := s.drive.Files.List().
 		Q(q).
@@ -188,9 +201,10 @@ func (s *Service) FindFolder(ctx context.Context, parentID, name string) (string
 
 // FindFolderByProperty searches for a non-trashed folder containing matching appProperties anywhere in accessible drives.
 func (s *Service) FindFolderByProperty(ctx context.Context, key, value string) (string, error) {
-	escKey := strings.ReplaceAll(key, "'", "\\'")
-	escVal := strings.ReplaceAll(value, "'", "\\'")
-	q := fmt.Sprintf("appProperties has { key='%s' and value='%s' } and mimeType = 'application/vnd.google-apps.folder' and trashed = false", escKey, escVal)
+	q := fmt.Sprintf(
+		"appProperties has { key='%s' and value='%s' } and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+		EscapeQueryValue(key), EscapeQueryValue(value),
+	)
 
 	res, err := s.drive.Files.List().
 		Q(q).
