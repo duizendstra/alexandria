@@ -285,11 +285,6 @@ func fieldValueToCell(v reflect.Value, forceFormula bool) Cell {
 		return Cell{RawVal: "", IsFormula: false}
 	}
 
-	// Direct Cell type support.
-	if c, ok := v.Interface().(Cell); ok {
-		return c
-	}
-
 	for v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface {
 		if v.IsNil() {
 			return Cell{RawVal: "", IsFormula: false}
