@@ -13,6 +13,19 @@ import (
 // keySinkExtraLogNames is the config key under test throughout this file.
 const keySinkExtraLogNames = "sinkExtraLogNames"
 
+// keyDisplayName and keyStackRef are the uptimeTargets entry keys the
+// StackReference tests set.
+const (
+	keyDisplayName = "displayName"
+	keyStackRef    = "stackRef"
+)
+
+// sharedStack is the stack two uptime targets reference in the shared-read test.
+const sharedStack = "org/frontend/dev"
+
+// frontendTarget is the display name of the uptime target on sharedStack.
+const frontendTarget = "frontend"
+
 // requiredConfig is the minimal placement config Apply needs when no
 // Params and no governanceStack are supplied.
 var requiredConfig = map[string]any{
@@ -149,5 +162,108 @@ func TestApply_PercentEncodedQuoteBreakingExtraLogNameEntryFailsClosed(t *testin
 	})
 	if err == nil {
 		t.Fatal("Apply with a percent-encoded quote-breaking sinkExtraLogNames entry: want error, got nil")
+	}
+}
+
+// stackRefMocks extends sinkFilterMocks with a countable StackReference
+// read: every "pulumi:pulumi:StackReference" registration is tallied, and
+// the read answers with a stack output map carrying the default URL key so
+// the uptime target's host derivation has a value to transform.
+type stackRefMocks struct {
+	sinkFilterMocks
+	stackRefs *int
+}
+
+//nolint:gocritic // signature is fixed by pulumi.MockResourceMonitor.
+func (m stackRefMocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
+	if args.TypeToken != "pulumi:pulumi:StackReference" {
+		return m.sinkFilterMocks.NewResource(args)
+	}
+
+	*m.stackRefs++
+	outputs := args.Inputs.Copy()
+	outputs["outputs"] = resource.NewObjectProperty(resource.PropertyMap{
+		"frontendUrl": resource.NewStringProperty("https://app.example.com/"),
+	})
+
+	return args.Name, outputs, nil
+}
+
+// runApplyCountingStackRefs runs observability.Apply(ctx, nil) under mocks
+// with the given uptime targets plus any extra config and returns how many
+// StackReference resources the program registered, plus Apply's error.
+func runApplyCountingStackRefs(t *testing.T, targets []map[string]any, extraConfig map[string]any) (int, error) {
+	t.Helper()
+
+	cfg := make(map[string]any, len(requiredConfig)+len(extraConfig)+1)
+	maps.Copy(cfg, requiredConfig)
+	maps.Copy(cfg, extraConfig)
+	cfg["uptimeTargets"] = targets
+	setConfig(t, cfg)
+
+	var (
+		filter    string
+		stackRefs int
+	)
+	mocks := stackRefMocks{
+		sinkFilterMocks: sinkFilterMocks{filter: &filter},
+		stackRefs:       &stackRefs,
+	}
+
+	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+		return observability.Apply(ctx, nil)
+	}, pulumi.WithMocks("project", "stack", mocks))
+
+	return stackRefs, err
+}
+
+func TestApply_SingleUptimeTargetReadsItsStackOnce(t *testing.T) {
+	got, err := runApplyCountingStackRefs(t, []map[string]any{
+		{keyDisplayName: frontendTarget, keyStackRef: sharedStack},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got != 1 {
+		t.Errorf("StackReference registrations for one uptime target = %d, want 1", got)
+	}
+}
+
+// TestApply_UptimeTargetsSharingAStackReadItOnce guards the URN-uniqueness
+// rule the SDK mocks do not enforce: a StackReference's logical name is the
+// stack name, so two targets on the same stack must share one read — a
+// second registration under the same name makes the real engine abort the
+// whole update with a duplicate URN.
+func TestApply_UptimeTargetsSharingAStackReadItOnce(t *testing.T) {
+	got, err := runApplyCountingStackRefs(t, []map[string]any{
+		{keyDisplayName: frontendTarget, keyStackRef: sharedStack},
+		{keyDisplayName: "frontend api", keyStackRef: sharedStack, "urlOutputKey": "frontendUrl"},
+		{keyDisplayName: "backend", keyStackRef: "org/backend/dev"},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got != 2 {
+		t.Errorf("StackReference registrations for three targets over two stacks = %d, want 2 (one per distinct stack)", got)
+	}
+}
+
+// TestApply_GovernanceStackUsedAsUptimeTargetIsReadOnce extends the
+// URN-uniqueness guard to the governance stack: placement resolution and
+// an uptime target that name the same stack must share the one
+// StackReference, otherwise the governance read and the target's read
+// register the same name twice. The mock answers the governance read with
+// no placement outputs, so placement falls back to the required config.
+func TestApply_GovernanceStackUsedAsUptimeTargetIsReadOnce(t *testing.T) {
+	got, err := runApplyCountingStackRefs(t, []map[string]any{
+		{keyDisplayName: frontendTarget, keyStackRef: sharedStack},
+	}, map[string]any{
+		"governanceStack": sharedStack,
+	})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got != 1 {
+		t.Errorf("StackReference registrations for the governance stack also used as an uptime target = %d, want 1 (shared)", got)
 	}
 }
