@@ -23,6 +23,9 @@ const (
 // sharedStack is the stack two uptime targets reference in the shared-read test.
 const sharedStack = "org/frontend/dev"
 
+// frontendTarget is the display name of the uptime target on sharedStack.
+const frontendTarget = "frontend"
+
 // requiredConfig is the minimal placement config Apply needs when no
 // Params and no governanceStack are supplied.
 var requiredConfig = map[string]any{
@@ -187,13 +190,14 @@ func (m stackRefMocks) NewResource(args pulumi.MockResourceArgs) (string, resour
 }
 
 // runApplyCountingStackRefs runs observability.Apply(ctx, nil) under mocks
-// with the given uptime targets and returns how many StackReference
-// resources the program registered, plus Apply's error.
-func runApplyCountingStackRefs(t *testing.T, targets []map[string]any) (int, error) {
+// with the given uptime targets plus any extra config and returns how many
+// StackReference resources the program registered, plus Apply's error.
+func runApplyCountingStackRefs(t *testing.T, targets []map[string]any, extraConfig map[string]any) (int, error) {
 	t.Helper()
 
-	cfg := make(map[string]any, len(requiredConfig)+1)
+	cfg := make(map[string]any, len(requiredConfig)+len(extraConfig)+1)
 	maps.Copy(cfg, requiredConfig)
+	maps.Copy(cfg, extraConfig)
 	cfg["uptimeTargets"] = targets
 	setConfig(t, cfg)
 
@@ -215,8 +219,8 @@ func runApplyCountingStackRefs(t *testing.T, targets []map[string]any) (int, err
 
 func TestApply_SingleUptimeTargetReadsItsStackOnce(t *testing.T) {
 	got, err := runApplyCountingStackRefs(t, []map[string]any{
-		{keyDisplayName: "frontend", keyStackRef: sharedStack},
-	})
+		{keyDisplayName: frontendTarget, keyStackRef: sharedStack},
+	}, nil)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -232,14 +236,34 @@ func TestApply_SingleUptimeTargetReadsItsStackOnce(t *testing.T) {
 // whole update with a duplicate URN.
 func TestApply_UptimeTargetsSharingAStackReadItOnce(t *testing.T) {
 	got, err := runApplyCountingStackRefs(t, []map[string]any{
-		{keyDisplayName: "frontend", keyStackRef: sharedStack},
+		{keyDisplayName: frontendTarget, keyStackRef: sharedStack},
 		{keyDisplayName: "frontend api", keyStackRef: sharedStack, "urlOutputKey": "frontendUrl"},
 		{keyDisplayName: "backend", keyStackRef: "org/backend/dev"},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 	if got != 2 {
 		t.Errorf("StackReference registrations for three targets over two stacks = %d, want 2 (one per distinct stack)", got)
+	}
+}
+
+// TestApply_GovernanceStackUsedAsUptimeTargetIsReadOnce extends the
+// URN-uniqueness guard to the governance stack: placement resolution and
+// an uptime target that name the same stack must share the one
+// StackReference, otherwise the governance read and the target's read
+// register the same name twice. The mock answers the governance read with
+// no placement outputs, so placement falls back to the required config.
+func TestApply_GovernanceStackUsedAsUptimeTargetIsReadOnce(t *testing.T) {
+	got, err := runApplyCountingStackRefs(t, []map[string]any{
+		{keyDisplayName: frontendTarget, keyStackRef: sharedStack},
+	}, map[string]any{
+		"governanceStack": sharedStack,
+	})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got != 1 {
+		t.Errorf("StackReference registrations for the governance stack also used as an uptime target = %d, want 1 (shared)", got)
 	}
 }
