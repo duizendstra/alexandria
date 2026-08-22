@@ -10,7 +10,7 @@ owner: "@duizendstra"
 summary: How Alexandria uses and extends the Open Knowledge Format (OKF) for its documentation vault.
 uuid: 2766d6ff-0830-4010-a0b8-313da19f21ad
 created_at: "2026-06-28T11:41:03Z"
-updated_at: "2026-07-19T12:00:00Z"
+updated_at: "2026-08-22T16:02:30Z"
 tags: [ "okf", "frontmatter", "reference" ]
 relations: []
 ---
@@ -19,7 +19,7 @@ relations: []
 
 Alexandria's `docs/` directory is an [OKF](https://okf.md) knowledge bundle — a
 directory tree of markdown files with YAML frontmatter, as defined by the
-[Open Knowledge Format v0.1 specification](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md).
+[Open Knowledge Format v0.2 specification](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md).
 
 This document describes how Alexandria applies and extends the OKF spec.
 
@@ -33,7 +33,7 @@ representing knowledge as markdown files. The core rules are minimal:
 3. `index.md` and `log.md` are reserved filenames (directory listing and
    update history, respectively).
 
-Full spec: [GoogleCloudPlatform/knowledge-catalog — SPEC.md](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+Full spec: [GoogleCloudPlatform/open-knowledge-format — SPEC.md](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)
 
 ## Alexandria Extensions
 
@@ -108,6 +108,10 @@ One of the four [Diátaxis](https://diataxis.fr/) documentation types:
 | `explanation` | Understanding-oriented | ADRs, architecture rationale |
 
 #### `status`
+
+Upstream OKF v0.2 also defines a `status` key (`draft | stable | deprecated`);
+Alexandria's `status` predates it and uses its own lifecycle enum below. Within
+this vault the Alexandria values are authoritative.
 
 | Value | Meaning |
 |---|---|
