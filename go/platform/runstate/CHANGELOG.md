@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/duizendstra/alexandria/compare/go/platform/runstate/v0.3.1...go/platform/runstate/v0.4.0) (2026-08-22)
+
+
+### Features
+
+* **runstate:** TryAcquire(coordination.Subject), ErrLocked is the coordination sentinel, coordination v0.2.0, Windows-safe signal re-raise ([#251](https://github.com/duizendstra/alexandria/issues/251)) ([#262](https://github.com/duizendstra/alexandria/issues/262)) ([41e978b](https://github.com/duizendstra/alexandria/commit/41e978bf8e9619e05e0db87f581b60ce93b32d75))
+
 ## [0.3.1](https://github.com/duizendstra/alexandria/compare/go/platform/runstate/v0.3.0...go/platform/runstate/v0.3.1) (2026-08-22)
 
 
