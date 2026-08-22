@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/google/workspace/drive"
@@ -143,7 +144,7 @@ func TestService_FolderAndFileOperations(t *testing.T) {
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":       "folder-new-1",
-				fieldName: body[fieldName],
+				fieldName:  body[fieldName],
 				"mimeType": "application/vnd.google-apps.folder",
 			})
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/files/"+fileToMoveID):
@@ -269,5 +270,81 @@ func TestService_FolderAndFileOperations(t *testing.T) {
 	}
 	if !trashed {
 		t.Errorf("expected trashed=true, got false")
+	}
+}
+
+// TestEscapeQueryValue proves the helper doubles backslashes before escaping
+// quotes, so every input reads back as a literal inside a '...' query term.
+func TestEscapeQueryValue(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "plain", in: "Quarterly Report", want: "Quarterly Report"},
+		{name: "single quote", in: "Valentine's Day", want: `Valentine\'s Day`},
+		{name: "trailing backslash", in: `archive\`, want: `archive\\`},
+		{name: "backslash quote", in: `it\'s`, want: `it\\\'s`},
+		{name: "empty", in: "", want: ""},
+		{name: "unicode", in: "Résumé – 日本語 'ok'", want: `Résumé – 日本語 \'ok\'`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := drive.EscapeQueryValue(tc.in); got != tc.want {
+				t.Errorf("EscapeQueryValue(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestService_QueryValuesAreEscaped proves the public lookups send a "q"
+// parameter whose string literals are fully escaped — a trailing backslash or
+// a backslash-quote in a caller-supplied value must not change the query.
+func TestService_QueryValuesAreEscaped(t *testing.T) {
+	ctx := context.Background()
+
+	var mu sync.Mutex
+	var queries []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		queries = append(queries, r.URL.Query().Get("q"))
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{fieldDrives: []any{}, fieldFiles: []any{}})
+	}))
+	defer ts.Close()
+
+	svc := newRetryingService(t, ctx, ts.URL)
+
+	const hostile = `it\'s a trap\`
+
+	if _, err := svc.FindSharedDriveByName(ctx, hostile); err != nil && !errors.Is(err, drive.ErrNotFound) {
+		t.Fatalf("FindSharedDriveByName: %v", err)
+	}
+	if _, err := svc.FindFolder(ctx, "parent-1", hostile); err != nil {
+		t.Fatalf("FindFolder: %v", err)
+	}
+	if _, err := svc.FindFolderByProperty(ctx, hostile, hostile); err != nil {
+		t.Fatalf("FindFolderByProperty: %v", err)
+	}
+
+	const escaped = `it\\\'s a trap\\`
+	want := []string{
+		`name = '` + escaped + `'`,
+		`name = '` + escaped + `' and mimeType = 'application/vnd.google-apps.folder' and 'parent-1' in parents and trashed = false`,
+		`appProperties has { key='` + escaped + `' and value='` + escaped + `' } and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(queries) != len(want) {
+		t.Fatalf("expected %d queries, got %d: %q", len(want), len(queries), queries)
+	}
+	for i := range want {
+		if queries[i] != want[i] {
+			t.Errorf("query %d:\n got %s\nwant %s", i, queries[i], want[i])
+		}
 	}
 }
