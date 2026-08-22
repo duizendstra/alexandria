@@ -305,7 +305,9 @@ func applySecretAccessor(ctx *pulumi.Context, oauthSecret string, projectOutputs
 // build triggers.
 func applyRepos(ctx *pulumi.Context, cfg *config.Config, region string, projectOutputs *projects.Outputs, connOutputs *connections.Outputs) error {
 	var repos []RepoConfig
-	_ = cfg.TryObject("repositories", &repos)
+	if err := optionalObject(cfg, "repositories", &repos); err != nil {
+		return err
+	}
 
 	triggerSA := pulumi.Sprintf("projects/%s/serviceAccounts/%s-compute@developer.gserviceaccount.com",
 		projectOutputs.ProjectID, projectOutputs.ProjectNumber)
@@ -341,7 +343,9 @@ func applyRepos(ctx *pulumi.Context, cfg *config.Config, region string, projectO
 // compute concern's number is read from every configured stack.
 func applyConsumerGrants(ctx *pulumi.Context, cfg *config.Config, region string, projectOutputs *projects.Outputs, arOutputs *registries.Outputs) error {
 	var consumerWorkloadStacks []string
-	_ = cfg.TryObject("consumerWorkloadStacks", &consumerWorkloadStacks)
+	if err := optionalObject(cfg, "consumerWorkloadStacks", &consumerWorkloadStacks); err != nil {
+		return err
+	}
 
 	for i, stackRef := range consumerWorkloadStacks {
 		ref, err := pulumi.NewStackReference(ctx, stackRef, nil)

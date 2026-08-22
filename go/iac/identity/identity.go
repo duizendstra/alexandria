@@ -163,7 +163,9 @@ func applySecrets(ctx *pulumi.Context, cfg *config.Config, projectID pulumi.Stri
 		Name string `json:"name"`
 		Ref  string `json:"ref"`
 	}
-	_ = cfg.TryObject("secrets", &secretDefs)
+	if err := optionalObject(cfg, "secrets", &secretDefs); err != nil {
+		return err
+	}
 
 	if len(secretDefs) == 0 {
 		return nil
@@ -213,7 +215,9 @@ func applyConsumerAccess(ctx *pulumi.Context, cfg *config.Config, projectName st
 // accounts are configured.
 func applyServiceAccounts(ctx *pulumi.Context, cfg *config.Config, projectID pulumi.StringOutput, projectName string) error {
 	var accountDefs []serviceaccounts.Account
-	_ = cfg.TryObject("serviceAccounts", &accountDefs)
+	if err := optionalObject(cfg, "serviceAccounts", &accountDefs); err != nil {
+		return err
+	}
 
 	if len(accountDefs) == 0 {
 		return nil
@@ -237,7 +241,9 @@ func applyServiceAccounts(ctx *pulumi.Context, cfg *config.Config, projectID pul
 // Scheduler). No-op when no impersonators are configured.
 func applyImpersonators(ctx *pulumi.Context, cfg *config.Config, projectName string, accountDefs []serviceaccounts.Account) error {
 	var impersonators []string
-	_ = cfg.TryObject("impersonators", &impersonators)
+	if err := optionalObject(cfg, "impersonators", &impersonators); err != nil {
+		return err
+	}
 
 	if len(impersonators) == 0 {
 		return nil

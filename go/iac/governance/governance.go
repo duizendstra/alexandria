@@ -43,14 +43,7 @@ func Apply(ctx *pulumi.Context) error {
 		p, err = plan.NewStarter(s, parent, rootFolder, orgID)
 
 	case "enterprise":
-		var children []string
-		cfg.RequireObject("environments", &children)
-
-		var dims []classification.Dimension
-		_ = cfg.TryObject("tagKeys", &dims)
-
-		p, err = plan.NewEnterprise(parent, rootFolder, children, dims,
-			cfg.Get("billingAccount"), orgID)
+		p, err = enterprisePlan(cfg, parent, rootFolder, orgID)
 
 	default: // "standard" or unset — backward compatible default.
 		var children []string
@@ -104,6 +97,26 @@ func Apply(ctx *pulumi.Context) error {
 	}
 
 	return nil
+}
+
+// enterprisePlan builds the Enterprise-tier plan from config. The
+// tagKeys block is optional, but one that is present and malformed is
+// fatal rather than read as "no dimensions".
+func enterprisePlan(cfg *config.Config, parent, rootFolder, orgID string) (*plan.Plan, error) {
+	var children []string
+	cfg.RequireObject("environments", &children)
+
+	var dims []classification.Dimension
+	if err := optionalObject(cfg, "tagKeys", &dims); err != nil {
+		return nil, err
+	}
+
+	p, err := plan.NewEnterprise(parent, rootFolder, children, dims, cfg.Get("billingAccount"), orgID)
+	if err != nil {
+		return nil, fmt.Errorf("enterprise plan: %w", err)
+	}
+
+	return p, nil
 }
 
 // Governance runs governance as a standalone Pulumi program.
