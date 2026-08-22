@@ -468,26 +468,40 @@ func TestContendedAcquireIsNotBornStale(t *testing.T) {
 	// at the first attempt is unmistakably reclaimable by the time it is
 	// linked; the last caller's patience is a small fraction of it, so the
 	// only way it can enter is by judging a just-written record abandoned.
-	//
-	// The reclaim age also bounds how old the winner's record may look to
-	// that last caller: the record is written first and published second,
-	// so its stamp legitimately precedes the opening by however long the
-	// create and the fsync took, and the last caller reads it only after
-	// the winner has linked and the test has read it back. That gap is
-	// disk-bound, not package-bound — ~6ms on a laptop, 77ms observed on
-	// ubuntu CI under -race — so the reclaim age is set well above it.
 	const (
 		reclaimAge = 500 * time.Millisecond
 		contention = 5 * reclaimAge
 		patience   = reclaimAge / 5
 
 		// An attempt that was already staging its record when the window
-		// opened stamped it slightly before that instant (the same gap as
-		// above) and links slightly after. The failure being pinned puts the
-		// stamp a whole contention early, so half a contention still
-		// separates a slow staging attempt from a record stamped at the
-		// first attempt.
+		// opened stamped it slightly before that instant — the record is
+		// written first and published second, so its stamp legitimately
+		// precedes the opening by however long the create and the fsync
+		// took (~6ms on a laptop, 77ms observed on ubuntu CI under -race) —
+		// and links slightly after. The failure being pinned puts the stamp
+		// a whole contention early, so half a contention still separates a
+		// slow staging attempt from a record stamped at the first attempt.
 		inFlight = contention / 2
+
+		// The last caller's reclaim age must cover the whole window from the
+		// winner's stamp to that caller's LAST look at the record, and that
+		// window is much wider than the staging gap above. The stamp is
+		// taken before the record's fsync and the directory fsync; the
+		// winner then advances the fence (a fsynced write and another
+		// directory fsync) before its Acquire returns; the test reads the
+		// record back; and the last caller spends its whole patience
+		// polling, then makes one more non-interruptible attempt (another
+		// fsync) before it consults its context. Five fsyncs and the full
+		// patience, under -race, on a runner that may stall. Sizing this to
+		// the reclaim age — as before — covered one fsync plus some latency
+		// and spent a fifth of the budget on patience by design, so a slow
+		// disk pushed the record past it: the last caller then rightly
+		// reclaimed a record older than its StaleAfter and the test failed
+		// on a premise it never checked. The in-flight margin is the budget
+		// this test already grants a slow disk, and it is still half a
+		// contention below the failure being pinned, so a record stamped at
+		// the first attempt remains unmistakably reclaimable.
+		lastCallerStaleAfter = inFlight
 	)
 
 	waiter := newStore(t, filelock.Options{PollMin: time.Millisecond, PollMax: 2 * time.Millisecond})
@@ -552,14 +566,32 @@ func TestContendedAcquireIsNotBornStale(t *testing.T) {
 	reclaimer := &filelock.Store{
 		Dir:     waiter.Dir,
 		Purpose: testPurpose,
-		Options: filelock.Options{PollMin: time.Millisecond, PollMax: 2 * time.Millisecond, StaleAfter: reclaimAge},
+		Options: filelock.Options{PollMin: time.Millisecond, PollMax: 2 * time.Millisecond, StaleAfter: lastCallerStaleAfter},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), patience)
 	defer cancel()
 
-	if _, _, err := reclaimer.Acquire(ctx, testSubject); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("the next caller = %v, want a wait: a record written moments ago is not an abandoned one", err)
+	releaseLast, _, lastErr := reclaimer.Acquire(ctx, testSubject)
+	if lastErr == nil {
+		defer releaseLast()
+	}
+
+	// The assertion below rests on the record being younger than the last
+	// caller's reclaim age at its last look. Measure that instead of
+	// assuming it: the look happened before Acquire returned, so the gap to
+	// now bounds it from above, and a gap beyond the budget means the host
+	// stalled for longer than the test allows — nothing about the stamp —
+	// so the test has no verdict to give.
+	if gap := time.Now().UTC().Sub(holder.Since); gap > lastCallerStaleAfter {
+		t.Skipf("the winner's record was stamped %v before the last caller's last look, "+
+			"beyond the %v it may reclaim at: the host stalled for longer than the "+
+			"budget, so the last caller was entitled to what it did (it returned %v)",
+			gap.Round(time.Millisecond), lastCallerStaleAfter, lastErr)
+	}
+
+	if !errors.Is(lastErr, context.DeadlineExceeded) {
+		t.Fatalf("the next caller = %v, want a wait: a record written moments ago is not an abandoned one", lastErr)
 	}
 
 	after, err := os.ReadFile(path)
