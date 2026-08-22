@@ -20,10 +20,13 @@ const (
 	keyRootFolder = "rootFolder"
 	keyTier       = "tier"
 	keyEnvs       = "environments"
+	keyBilling    = "billingAccount"
 
 	orgParent    = "organizations/123456"
 	rootPlatform = "platform"
 	tierStarter  = "starter"
+	tierEnt      = "enterprise"
+	billingAcct  = "01ABCD-234567-89EFGH"
 	envDev       = "dev"
 	envProd      = "prod"
 )
@@ -128,12 +131,12 @@ func TestApply_EnterpriseTier(t *testing.T) {
 	setConfig(t, map[string]any{
 		keyParent:     orgParent,
 		keyRootFolder: rootPlatform,
-		keyTier:       "enterprise",
+		keyTier:       tierEnt,
 		keyEnvs:       []string{envDev, "test", envProd},
 		"tagKeys": []map[string]string{
 			{"shortName": "environment", "description": "Deployment environment"},
 		},
-		"billingAccount": "01ABCD-234567-89EFGH",
+		keyBilling: billingAcct,
 	})
 
 	if err := run(t); err != nil {
@@ -151,6 +154,44 @@ func TestApply_InvalidParentFails(t *testing.T) {
 	err := run(t)
 	if err == nil {
 		t.Fatal("Apply with invalid parent: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), "governance:") {
+		t.Fatalf("error %v not wrapped with governance: prefix", err)
+	}
+}
+
+func TestApply_EnterpriseTierWithoutTagKeys(t *testing.T) {
+	setConfig(t, map[string]any{
+		keyParent:     orgParent,
+		keyRootFolder: rootPlatform,
+		keyTier:       tierEnt,
+		keyEnvs:       []string{envDev, envProd},
+		keyBilling:    billingAcct,
+	})
+
+	if err := run(t); err != nil {
+		t.Fatalf("Apply (enterprise, tagKeys absent): %v", err)
+	}
+}
+
+// A tagKeys block that is present but does not parse must abort the
+// update: read as empty it would retire every tag key it had declared.
+func TestApply_EnterpriseTierMalformedTagKeysFails(t *testing.T) {
+	setConfig(t, map[string]any{
+		keyParent:     orgParent,
+		keyRootFolder: rootPlatform,
+		keyTier:       tierEnt,
+		keyEnvs:       []string{envDev, envProd},
+		"tagKeys":     `[{"shortName": "environment"`,
+		keyBilling:    billingAcct,
+	})
+
+	err := run(t)
+	if err == nil {
+		t.Fatal("Apply with malformed tagKeys: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), `config key "tagKeys"`) {
+		t.Fatalf("error %v does not name the tagKeys config key", err)
 	}
 	if !strings.Contains(err.Error(), "governance:") {
 		t.Fatalf("error %v not wrapped with governance: prefix", err)
