@@ -134,3 +134,56 @@ func TestTable_SetColumnWidthByName(t *testing.T) {
 	}
 }
 
+type ConstrainedItem struct {
+	Title string `sheets:"Title,minWidth=100,maxWidth=400"`
+	Code  string `sheets:"Code,width=80"`
+	Notes string `sheets:"Notes,max=300"`
+}
+
+func TestFromStructs_ColumnConstraints(t *testing.T) {
+	items := []ConstrainedItem{
+		{Title: "Large Migration Document", Code: "MIG-01", Notes: "Some long note here"},
+	}
+
+	tbl, err := FromStructs(items)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Col 0: Title (min 100, max 400).
+	c0 := tbl.ColumnConstraints[0]
+	if c0.MinWidth != 100 || c0.MaxWidth != 400 {
+		t.Errorf("col 0 constraints: got %+v, want min=100 max=400", c0)
+	}
+
+	// Col 1: Code (fixed width 80).
+	c1 := tbl.ColumnConstraints[1]
+	if c1.Width != 80 {
+		t.Errorf("col 1 constraints: got %+v, want width=80", c1)
+	}
+
+	// Col 2: Notes (max 300).
+	c2 := tbl.ColumnConstraints[2]
+	if c2.MaxWidth != 300 {
+		t.Errorf("col 2 constraints: got %+v, want max=300", c2)
+	}
+}
+
+func TestTable_SetColumnBoundsByName(t *testing.T) {
+	tbl := NewTable("Topic", "Summary")
+	tbl.SetColumnBoundsByName("Topic", 120, 300)
+	tbl.SetColumnMaxWidthByName("Summary", 500)
+	tbl.SetColumnMinWidthByName("Summary", 150)
+
+	c0 := tbl.ColumnConstraints[0]
+	if c0.MinWidth != 120 || c0.MaxWidth != 300 {
+		t.Errorf("col 0: got %+v, want min=120 max=300", c0)
+	}
+
+	c1 := tbl.ColumnConstraints[1]
+	if c1.MinWidth != 150 || c1.MaxWidth != 500 {
+		t.Errorf("col 1: got %+v, want min=150 max=500", c1)
+	}
+}
+
+

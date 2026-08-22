@@ -1,7 +1,7 @@
 package sheets
 
 import (
-	"maps"
+	"fmt"
 
 	"google.golang.org/api/sheets/v4"
 )
@@ -127,6 +127,13 @@ func buildBandingRequest(sheetID, frozenRows, totalRows, totalCols int64, theme 
 	}
 }
 
+const (
+	defaultEstWidth     int64 = 100
+	minEstWidth         int64 = 60
+	charPixelEstimate   int64 = 8
+	cellPaddingEstimate int64 = 30
+)
+
 func buildColumnDimensionRequests(sheetID, totalCols int64, spec TabSpec, theme *Theme) []*sheets.Request {
 	var reqs []*sheets.Request
 
@@ -143,12 +150,12 @@ func buildColumnDimensionRequests(sheetID, totalCols int64, spec TabSpec, theme 
 		})
 	}
 
-	widths := collectColumnWidths(theme, spec.Data)
-	for colIdx, width := range widths {
-		if width <= 0 {
+	widths := resolveFinalColumnWidths(totalCols, spec.Data, theme)
+	for c := range totalCols {
+		width, ok := widths[int(c)]
+		if !ok || width <= 0 {
 			continue
 		}
-		c := int64(colIdx)
 		reqs = append(reqs, &sheets.Request{
 			UpdateDimensionProperties: &sheets.UpdateDimensionPropertiesRequest{
 				Range: &sheets.DimensionRange{
@@ -168,14 +175,94 @@ func buildColumnDimensionRequests(sheetID, totalCols int64, spec TabSpec, theme 
 	return reqs
 }
 
-func collectColumnWidths(theme *Theme, data *Table) map[int]int64 {
-	widths := make(map[int]int64)
-	if theme != nil {
-		maps.Copy(widths, theme.ColumnWidths)
-	}
-	if data != nil {
-		maps.Copy(widths, data.ColumnWidths)
+func resolveFinalColumnWidths(totalCols int64, data *Table, theme *Theme) map[int]int64 {
+	resolved := make(map[int]int64)
+	if data == nil && theme == nil {
+		return resolved
 	}
 
-	return widths
+	for colIdx := range int(totalCols) {
+		w := computeColumnWidth(colIdx, data, theme)
+		if w > 0 {
+			resolved[colIdx] = w
+		}
+	}
+
+	return resolved
 }
+
+func resolveColumnConstraint(colIdx int, data *Table, theme *Theme) ColumnConstraint {
+	var constraint ColumnConstraint
+	if data != nil && data.ColumnConstraints != nil {
+		constraint = data.ColumnConstraints[colIdx]
+	}
+	if constraint.Width == 0 && data != nil && data.ColumnWidths != nil {
+		constraint.Width = data.ColumnWidths[colIdx]
+	}
+	if constraint.Width == 0 && theme != nil && theme.ColumnWidths != nil {
+		constraint.Width = theme.ColumnWidths[colIdx]
+	}
+
+	if constraint.MinWidth <= 0 && theme != nil {
+		constraint.MinWidth = theme.MinColumnWidth
+	}
+	if constraint.MaxWidth <= 0 && theme != nil {
+		constraint.MaxWidth = theme.MaxColumnWidth
+	}
+
+	return constraint
+}
+
+func computeColumnWidth(colIdx int, data *Table, theme *Theme) int64 {
+	c := resolveColumnConstraint(colIdx, data, theme)
+
+	if c.Width > 0 {
+		return clampWidth(c.Width, c.MinWidth, c.MaxWidth)
+	}
+
+	if c.MinWidth > 0 || c.MaxWidth > 0 {
+		estimated := estimateColumnContentWidth(data, colIdx)
+
+		return clampWidth(estimated, c.MinWidth, c.MaxWidth)
+	}
+
+	return 0
+}
+
+func clampWidth(w, minW, maxW int64) int64 {
+	if minW > 0 {
+		w = max(w, minW)
+	}
+	if maxW > 0 {
+		w = min(w, maxW)
+	}
+
+	return w
+}
+
+func estimateColumnContentWidth(data *Table, colIdx int) int64 {
+	if data == nil {
+		return defaultEstWidth
+	}
+
+	maxChars := 0
+	if colIdx < len(data.Headers) {
+		maxChars = len(data.Headers[colIdx])
+	}
+
+	for _, row := range data.Rows {
+		if colIdx >= len(row) {
+			continue
+		}
+		c := row[colIdx]
+		s := fmt.Sprint(c.RawVal)
+		if len(s) > maxChars {
+			maxChars = len(s)
+		}
+	}
+
+	estimated := int64(maxChars)*charPixelEstimate + cellPaddingEstimate
+
+	return max(estimated, minEstWidth)
+}
+

@@ -94,14 +94,26 @@ func Time(t time.Time, layout ...string) Cell {
 	return Cell{RawVal: t.Format(l), IsFormula: false}
 }
 
+// ColumnConstraint defines sizing rules, fixed widths, or min/max bounds for a spreadsheet column.
+type ColumnConstraint struct {
+	// Width is an exact fixed pixel width. If > 0, it takes precedence over MinWidth/MaxWidth and AutoFit.
+	Width int64
+	// MinWidth is the minimum pixel width for the column (e.g. 80).
+	MinWidth int64
+	// MaxWidth is the maximum pixel width for the column (e.g. 400).
+	MaxWidth int64
+}
+
 // Table represents a two-dimensional structured dataset with headers and typed cells.
 type Table struct {
 	// Headers is the top header row.
 	Headers []string
 	// Rows contains the data rows.
 	Rows [][]Cell
-	// ColumnWidths specifies custom pixel widths per column index (0-based).
+	// ColumnWidths specifies custom fixed pixel widths per column index (0-based).
 	ColumnWidths map[int]int64
+	// ColumnConstraints specifies layout constraints (Width, MinWidth, MaxWidth) per column index (0-based).
+	ColumnConstraints map[int]ColumnConstraint
 }
 
 // Color represents an RGBA color with normalized 0.0 - 1.0 float values.
@@ -172,6 +184,10 @@ type Theme struct {
 	ZebraSecondBand Color
 	// AutoFitColumns enables auto-resizing column widths to content width.
 	AutoFitColumns bool
+	// MinColumnWidth specifies the default minimum pixel width across all columns (if > 0).
+	MinColumnWidth int64
+	// MaxColumnWidth specifies the default maximum pixel width across all columns (if > 0).
+	MaxColumnWidth int64
 	// ColumnWidths specifies default pixel widths for specific column indices.
 	ColumnWidths map[int]int64
 }

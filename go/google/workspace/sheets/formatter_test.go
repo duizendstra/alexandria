@@ -2,6 +2,8 @@ package sheets
 
 import (
 	"testing"
+
+	googlesheets "google.golang.org/api/sheets/v4"
 )
 
 func TestBuildFormatRequests_ThemeCorporateNavy(t *testing.T) {
@@ -86,4 +88,48 @@ func TestBuildFormatRequests_DeleteExistingBanding(t *testing.T) {
 		t.Errorf("expected DeleteBanding for id 102, got %+v", reqs[1].DeleteBanding)
 	}
 }
+
+func TestBuildFormatRequests_ColumnBoundsAndMax(t *testing.T) {
+	tbl := NewTable("LongColumn", "ShortColumn", "FixedBounded")
+	// Col 0 has very long text (over 100 chars).
+	tbl.AddRowValues("https://example.com/very/long/url/path/with/lots/of/parameters?query=value&another=something_extremely_verbose", "hi", "normal")
+	tbl.SetColumnBounds(0, 50, 220) // Col 0: bounded to max 220px.
+	tbl.SetColumnBounds(1, 140, 500) // Col 1: bounded to min 140px.
+	tbl.SetColumnWidth(2, 400) // Col 2: fixed 400.
+	tbl.SetColumnBounds(2, 0, 250) // Col 2: max 250 (should clamp the 400 down to 250).
+
+	spec := TabSpec{
+		Title: "BoundedTab",
+		Data:  tbl,
+	}
+
+	reqs := buildFormatRequests(111, nil, spec, 2, 3)
+
+	var colUpdates []*googlesheets.UpdateDimensionPropertiesRequest
+	for _, r := range reqs {
+		if r.UpdateDimensionProperties != nil {
+			colUpdates = append(colUpdates, r.UpdateDimensionProperties)
+		}
+	}
+
+	if len(colUpdates) != 3 {
+		t.Fatalf("expected 3 column updates, got %d", len(colUpdates))
+	}
+
+	// Col 0: clamped to max 220.
+	if colUpdates[0].Properties.PixelSize != 220 {
+		t.Errorf("col 0: got %d, want 220", colUpdates[0].Properties.PixelSize)
+	}
+
+	// Col 1: clamped to min 140.
+	if colUpdates[1].Properties.PixelSize != 140 {
+		t.Errorf("col 1: got %d, want 140", colUpdates[1].Properties.PixelSize)
+	}
+
+	// Col 2: fixed 400 clamped to max 250.
+	if colUpdates[2].Properties.PixelSize != 250 {
+		t.Errorf("col 2: got %d, want 250", colUpdates[2].Properties.PixelSize)
+	}
+}
+
 

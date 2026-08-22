@@ -11,9 +11,10 @@ import (
 // NewTable initializes an empty Table with the given headers.
 func NewTable(headers ...string) *Table {
 	return &Table{
-		Headers:      headers,
-		Rows:         make([][]Cell, 0),
-		ColumnWidths: make(map[int]int64),
+		Headers:           headers,
+		Rows:              make([][]Cell, 0),
+		ColumnWidths:      make(map[int]int64),
+		ColumnConstraints: make(map[int]ColumnConstraint),
 	}
 }
 
@@ -42,7 +43,13 @@ func (t *Table) SetColumnWidth(colIdx int, pixelSize int64) *Table {
 	if t.ColumnWidths == nil {
 		t.ColumnWidths = make(map[int]int64)
 	}
+	if t.ColumnConstraints == nil {
+		t.ColumnConstraints = make(map[int]ColumnConstraint)
+	}
 	t.ColumnWidths[colIdx] = pixelSize
+	c := t.ColumnConstraints[colIdx]
+	c.Width = pixelSize
+	t.ColumnConstraints[colIdx] = c
 
 	return t
 }
@@ -56,6 +63,45 @@ func (t *Table) SetColumnWidthByName(header string, pixelSize int64) *Table {
 	}
 
 	return t
+}
+
+// SetColumnBounds configures minimum and maximum pixel bounds for a specific column index (0-based).
+// If minWidth > 0, it sets or updates the minimum bound. If maxWidth > 0, it sets or updates the maximum bound.
+func (t *Table) SetColumnBounds(colIdx int, minWidth, maxWidth int64) *Table {
+	if t.ColumnConstraints == nil {
+		t.ColumnConstraints = make(map[int]ColumnConstraint)
+	}
+	c := t.ColumnConstraints[colIdx]
+	if minWidth > 0 {
+		c.MinWidth = minWidth
+	}
+	if maxWidth > 0 {
+		c.MaxWidth = maxWidth
+	}
+	t.ColumnConstraints[colIdx] = c
+
+	return t
+}
+
+// SetColumnBoundsByName configures minimum and maximum pixel bounds for the column matching the header name (case-insensitive).
+func (t *Table) SetColumnBoundsByName(header string, minWidth, maxWidth int64) *Table {
+	for i, h := range t.Headers {
+		if strings.EqualFold(h, header) {
+			return t.SetColumnBounds(i, minWidth, maxWidth)
+		}
+	}
+
+	return t
+}
+
+// SetColumnMaxWidthByName configures a maximum pixel bound for the column matching the header name (case-insensitive).
+func (t *Table) SetColumnMaxWidthByName(header string, maxWidth int64) *Table {
+	return t.SetColumnBoundsByName(header, 0, maxWidth)
+}
+
+// SetColumnMinWidthByName configures a minimum pixel bound for the column matching the header name (case-insensitive).
+func (t *Table) SetColumnMinWidthByName(header string, minWidth int64) *Table {
+	return t.SetColumnBoundsByName(header, minWidth, 0)
 }
 
 // RowCount returns the number of data rows (excluding headers).
@@ -80,6 +126,8 @@ type structFieldSpec struct {
 	fieldIndex int
 	header     string
 	width      int64
+	minWidth   int64
+	maxWidth   int64
 	isFormula  bool
 }
 
@@ -88,7 +136,7 @@ type structFieldSpec struct {
 //
 //	type Employee struct {
 //	    ID       string `sheets:"Employee ID,width=120"`
-//	    Name     string `sheets:"Full Name,width=200"`
+//	    Name     string `sheets:"Full Name,maxWidth=250"`
 //	    Active   bool   `sheets:"Is Active"`
 //	    Profile  string `sheets:"Profile Link,formula"` // evaluated as formula
 //	    Internal string `sheets:"-"`                    // omitted from sheet
@@ -109,18 +157,28 @@ func FromStructs[T any](items []T) (*Table, error) {
 	specs := parseStructFields(tType)
 	headers := make([]string, len(specs))
 	widths := make(map[int]int64)
+	constraints := make(map[int]ColumnConstraint)
 
 	for i, spec := range specs {
 		headers[i] = spec.header
+		c := ColumnConstraint{
+			Width:    spec.width,
+			MinWidth: spec.minWidth,
+			MaxWidth: spec.maxWidth,
+		}
+		if c.Width > 0 || c.MinWidth > 0 || c.MaxWidth > 0 {
+			constraints[i] = c
+		}
 		if spec.width > 0 {
 			widths[i] = spec.width
 		}
 	}
 
 	tbl := &Table{
-		Headers:      headers,
-		Rows:         make([][]Cell, 0, len(items)),
-		ColumnWidths: widths,
+		Headers:           headers,
+		Rows:              make([][]Cell, 0, len(items)),
+		ColumnWidths:      widths,
+		ColumnConstraints: constraints,
 	}
 
 	for _, item := range items {
@@ -176,17 +234,50 @@ func parseFieldTag(fieldIndex int, defaultName, tag string) structFieldSpec {
 		spec.header = strings.TrimSpace(parts[0])
 	}
 	for _, opt := range parts[1:] {
-		opt = strings.TrimSpace(opt)
-		if opt == "formula" {
-			spec.isFormula = true
-		} else if rest, ok := strings.CutPrefix(opt, "width="); ok {
-			if w, err := strconv.ParseInt(rest, 10, 64); err == nil {
-				spec.width = w
-			}
-		}
+		parseTagOption(&spec, strings.TrimSpace(opt))
 	}
 
 	return spec
+}
+
+func parseTagOption(spec *structFieldSpec, opt string) {
+	if opt == "formula" {
+		spec.isFormula = true
+
+		return
+	}
+
+	if rest, ok := cutAnyPrefix(opt, "width="); ok {
+		if w, err := strconv.ParseInt(rest, 10, 64); err == nil {
+			spec.width = w
+		}
+
+		return
+	}
+
+	if rest, ok := cutAnyPrefix(opt, "maxWidth=", "max="); ok {
+		if w, err := strconv.ParseInt(rest, 10, 64); err == nil {
+			spec.maxWidth = w
+		}
+
+		return
+	}
+
+	if rest, ok := cutAnyPrefix(opt, "minWidth=", "min="); ok {
+		if w, err := strconv.ParseInt(rest, 10, 64); err == nil {
+			spec.minWidth = w
+		}
+	}
+}
+
+func cutAnyPrefix(s string, prefixes ...string) (string, bool) {
+	for _, p := range prefixes {
+		if rest, ok := strings.CutPrefix(s, p); ok {
+			return rest, true
+		}
+	}
+
+	return "", false
 }
 
 func fieldValueToCell(v reflect.Value, forceFormula bool) Cell {
