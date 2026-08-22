@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -81,10 +82,65 @@ func TestWriteError(t *testing.T) {
 
 	t.Run("StatusError formatting", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		WriteError(w, apierr.NewStatusError(http.StatusConflict, "already exists", apierr.ErrConflict))
+		WriteError(w, apierr.NewStatusError(http.StatusConflict, "", apierr.ErrConflict))
 
 		assert.Equal(t, http.StatusConflict, w.Code)
-		assert.JSONEq(t, `{"error":"conflict: 409 already exists"}`, w.Body.String())
+		assert.JSONEq(t, `{"error":"conflict: 409"}`, w.Body.String())
+	})
+
+	t.Run("StatusError body stays server-side", func(t *testing.T) {
+		const upstream = "secret-upstream-text"
+
+		w := httptest.NewRecorder()
+		WriteError(w, apierr.NewStatusError(http.StatusBadGateway, upstream, apierr.ErrServerError))
+
+		assert.Equal(t, http.StatusBadGateway, w.Code)
+		assert.NotContains(t, w.Body.String(), upstream)
+		assert.JSONEq(t, `{"error":"server error: 502"}`, w.Body.String())
+	})
+
+	t.Run("StatusError with a 3xx status is passed through", func(t *testing.T) {
+		const upstream = "secret-upstream-text"
+
+		for _, status := range []int{http.StatusMovedPermanently, http.StatusNotModified} {
+			t.Run(strconv.Itoa(status), func(t *testing.T) {
+				w := httptest.NewRecorder()
+				WriteError(w, apierr.NewStatusError(status, upstream, apierr.ErrUnexpectedStatus))
+
+				assert.Equal(t, status, w.Code)
+				assert.NotContains(t, w.Body.String(), upstream)
+				assert.JSONEq(t, `{"error":"unexpected status: `+strconv.Itoa(status)+`"}`, w.Body.String())
+			})
+		}
+	})
+
+	t.Run("StatusError with an unhonoured status falls back to 500", func(t *testing.T) {
+		const upstream = "secret-upstream-text"
+
+		for _, status := range []int{-1, 0, 99, http.StatusContinue, http.StatusOK, http.StatusNoContent, 600, 999, 1000, 1234} {
+			t.Run(strconv.Itoa(status), func(t *testing.T) {
+				w := httptest.NewRecorder()
+
+				assert.NotPanics(t, func() {
+					WriteError(w, apierr.NewStatusError(status, upstream, apierr.ErrUnexpectedStatus))
+				})
+
+				assert.Equal(t, http.StatusInternalServerError, w.Code)
+				assert.NotContains(t, w.Body.String(), upstream)
+				assert.JSONEq(t, `{"error":"An internal server error occurred"}`, w.Body.String())
+			})
+		}
+	})
+
+	t.Run("StatusError honours every 3xx, 4xx and 5xx status", func(t *testing.T) {
+		const lastHonouredStatus = 599
+
+		for status := http.StatusMultipleChoices; status <= lastHonouredStatus; status++ {
+			w := httptest.NewRecorder()
+			WriteError(w, apierr.NewStatusError(status, "", apierr.ErrUnexpectedStatus))
+
+			assert.Equal(t, status, w.Code, "status %d", status)
+		}
 	})
 }
 

@@ -60,14 +60,34 @@ func DecodeJSON[T any](w http.ResponseWriter, r *http.Request, maxSize int64) (T
 	return v, nil
 }
 
+// Statuses WriteError honours from an [apierr.StatusError]: the 3xx, 4xx and
+// 5xx range, passed through as-is. Anything else — 0, 1xx, 2xx, or an
+// out-of-range upstream code — degrades to the generic 500:
+// [http.ResponseWriter.WriteHeader] panics outside 100–999, and a JSON error
+// body on an informational or success status is meaningless.
+const (
+	minHonouredStatus = http.StatusMultipleChoices
+	maxHonouredStatus = 599
+)
+
 // WriteError writes a standardized JSON error response mapped from the given error.
+//
+// An [apierr.StatusError] sets the response status only when its Status is a
+// 3xx, 4xx or 5xx code (300–599), written as-is; any other Status falls back
+// to 500 instead of panicking in WriteHeader. The client sees the sentinel and
+// status alone — the upstream response excerpt in StatusError.Body never
+// reaches the response, so log the full error server-side before calling
+// WriteError.
 func WriteError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	msg := "An internal server error occurred"
 
 	if se, ok := errors.AsType[*apierr.StatusError](err); ok {
-		status = se.Status
-		msg = se.Error()
+		if isHonouredStatus(se.Status) {
+			status = se.Status
+			// apierr's own status-only wording, without the body.
+			msg = (&apierr.StatusError{Status: se.Status, Err: se.Err}).Error()
+		}
 	} else {
 		// Map standard sentinels.
 		switch {
@@ -96,6 +116,11 @@ func WriteError(w http.ResponseWriter, err error) {
 	}
 
 	EncodeJSON(w, status, map[string]string{"error": msg})
+}
+
+// isHonouredStatus reports whether status is a 3xx, 4xx or 5xx code.
+func isHonouredStatus(status int) bool {
+	return status >= minHonouredStatus && status <= maxHonouredStatus
 }
 
 // RecoveryMiddleware catches panics, logs them, and returns a 500 status.
