@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Documentation & Playbooks**: Added [`docs/07-playbooks/adding-a-module.md`](docs/07-playbooks/adding-a-module.md) — the "Adding a New Module" how-to the playbooks index advertised but never shipped (scaffold, zero-rot authoring, CI wiring triplet, local verification, release) — and refreshed the [OKF profile](docs/08-reference/okf-profile.md) to the upstream v0.2 specification at its new canonical home, `GoogleCloudPlatform/open-knowledge-format`.
 - **go/platform/workflow**: Added comprehensive documentation, runnable example tests, SRE hardening guidance, and minor Go version alignment.
 - **go/dataquality/datadiff**: Added in-memory set and map parity comparison engine (`SetDiff[T]`, `MapDiff[K, V]`) and 3-way migration reconciler (`ThreeWayDiff[T]`) proving the mathematical equation `baseline ∖ leftovers == target`.
 - **go/observability/audit**: Added streaming JSONL `Reader`, predicate `Filter`, and summary `AggregateScorecard` calculation for audit trail event processing.

@@ -34,7 +34,7 @@ relations: []
 
 ## Conventions
 
-- **[OKF](https://okf.md)** — This vault is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) bundle. See the [Alexandria OKF Profile](08-reference/okf-profile.md) for how we extend the spec.
+- **[OKF](https://okf.md)** — This vault is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) bundle. See the [Alexandria OKF Profile](08-reference/okf-profile.md) for how we extend the spec.
 - **Numbered prefixes** enforce consistent directory ordering across tools and IDEs.
 - **`index.md`** in each directory maps folder-local documents (OKF reserved filename).
 - **YAML frontmatter** on every document ensures machine-readability for agentic consumption.
