@@ -26,9 +26,9 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v1.1.0 | GCP/Google API error classification and retry utilities |
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.1.0 | `slog.Handler` decorator for GCP Cloud Logging (trace URLs, error reporting) |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.1.0 | OpenTelemetry trace-context bridge for slog-gcp |
-| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.4.0 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
+| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.4.1 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
 | [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.3.0 | Proves two datasets equivalent through layered comparison |
-| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v2.0.0 | Structured append-only audit logging |
+| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v1.1.0 | Structured append-only audit logging |
 | [contracts](go/contracts/) | `github.com/duizendstra/alexandria/go/contracts` | v1.0.0 | Compiled Protocol Buffer messages and ConnectRPC services |
 | [discovery/privacyfilter](go/discovery/privacyfilter/) | `github.com/duizendstra/alexandria/go/discovery/privacyfilter` | v0.1.0 | Content filtering before indexing |
 | [discovery/search](go/discovery/search/) | `github.com/duizendstra/alexandria/go/discovery/search` | v0.2.0 | Core types and port interfaces for the Discovery bounded context |
@@ -37,7 +37,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/async](go/platform/async/) | `github.com/duizendstra/alexandria/go/platform/async` | v0.1.1 | In-memory async task runner with lifecycle states |
 | [platform/buildstamp](go/platform/buildstamp/) | `github.com/duizendstra/alexandria/go/platform/buildstamp` | v0.3.0 | Build provenance stamping and strict pre-run verification (commit, dirty tree, dependency revisions) |
 | [platform/cache](go/platform/cache/) | `github.com/duizendstra/alexandria/go/platform/cache` | v0.0.2 | Generic, concurrent-safe in-memory TTL cache |
-| [platform/coordination](go/platform/coordination/) | `github.com/duizendstra/alexandria/go/platform/coordination` | v0.1.0 | Interfaces and primitives for process and workload mutual exclusion and coordination |
+| [platform/coordination](go/platform/coordination/) | `github.com/duizendstra/alexandria/go/platform/coordination` | v0.2.0 | Interfaces and primitives for process and workload mutual exclusion and coordination |
 | [platform/gcpenv](go/platform/gcpenv/) | `github.com/duizendstra/alexandria/go/platform/gcpenv` | v0.1.0 | Canonical GCP project ID resolution (env vars + metadata service) |
 | [platform/passstore](go/platform/passstore/) | `github.com/duizendstra/alexandria/go/platform/passstore` | v0.1.0 | Deploy-time secret retrieval from the local pass store |
 | [platform/procrun](go/platform/procrun/) | `github.com/duizendstra/alexandria/go/platform/procrun` | v0.3.0 | Run external commands under a controlled environment (scrubbed env, fixed PATH, output to file) |

@@ -468,19 +468,26 @@ func TestContendedAcquireIsNotBornStale(t *testing.T) {
 	// at the first attempt is unmistakably reclaimable by the time it is
 	// linked; the last caller's patience is a small fraction of it, so the
 	// only way it can enter is by judging a just-written record abandoned.
+	//
+	// The reclaim age also bounds how old the winner's record may look to
+	// that last caller: the record is written first and published second,
+	// so its stamp legitimately precedes the opening by however long the
+	// create and the fsync took, and the last caller reads it only after
+	// the winner has linked and the test has read it back. That gap is
+	// disk-bound, not package-bound — ~6ms on a laptop, 77ms observed on
+	// ubuntu CI under -race — so the reclaim age is set well above it.
 	const (
-		reclaimAge = 100 * time.Millisecond
+		reclaimAge = 500 * time.Millisecond
 		contention = 5 * reclaimAge
 		patience   = reclaimAge / 5
 
 		// An attempt that was already staging its record when the window
-		// opened stamped it slightly before that instant and links slightly
-		// after — the record is written first and published second, so the
-		// stamp legitimately precedes the opening by however long the create
-		// and the fsync took. Measured at up to ~6ms on this machine under
-		// -race. The failure being pinned puts the stamp a whole contention
-		// (500ms) early, so allowing an attempt in flight costs nothing.
-		inFlight = reclaimAge / 2
+		// opened stamped it slightly before that instant (the same gap as
+		// above) and links slightly after. The failure being pinned puts the
+		// stamp a whole contention early, so half a contention still
+		// separates a slow staging attempt from a record stamped at the
+		// first attempt.
+		inFlight = contention / 2
 	)
 
 	waiter := newStore(t, filelock.Options{PollMin: time.Millisecond, PollMax: 2 * time.Millisecond})
