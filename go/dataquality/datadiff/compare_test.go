@@ -3,6 +3,7 @@ package datadiff_test
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/dataquality/datadiff"
@@ -164,6 +165,60 @@ func TestCompare_StatsTolerance(t *testing.T) {
 	}
 	if !result.Stats.Match {
 		t.Error("stats should match with 1%% tolerance")
+	}
+}
+
+// TestCompare_StatsToleranceNonFinite proves a NaN or Inf on either side of a
+// stat diff is always reported, never dropped as "within tolerance" (#247).
+func TestCompare_StatsToleranceNonFinite(t *testing.T) {
+	nan := math.NaN()
+	inf := math.Inf(1)
+
+	cases := []struct {
+		name string
+		diff datadiff.StatDiff
+		want bool // want the diff reported after the tolerance filter.
+	}{
+		{name: "nan left", diff: datadiff.StatDiff{Left: nan, Right: 1, Delta: nan}, want: true},
+		{name: "nan right", diff: datadiff.StatDiff{Left: 1, Right: nan, Delta: nan}, want: true},
+		{name: "+inf left", diff: datadiff.StatDiff{Left: inf, Right: 1, Delta: -inf}, want: true},
+		{name: "+inf right", diff: datadiff.StatDiff{Left: 1, Right: inf, Delta: inf}, want: true},
+		{name: "-inf left", diff: datadiff.StatDiff{Left: -inf, Right: 1, Delta: inf}, want: true},
+		{name: "-inf right", diff: datadiff.StatDiff{Left: 1, Right: -inf, Delta: -inf}, want: true},
+		{name: "inf vs inf", diff: datadiff.StatDiff{Left: inf, Right: inf, Delta: nan}, want: true},
+		{name: "inf vs -inf", diff: datadiff.StatDiff{Left: inf, Right: -inf, Delta: -inf}, want: true},
+		{name: "nan vs nan", diff: datadiff.StatDiff{Left: nan, Right: nan, Delta: nan}, want: true},
+		// Controls: the finite path is unchanged.
+		{name: "finite within tolerance", diff: datadiff.StatDiff{Left: 1000, Right: 1005, Delta: 5}, want: false},
+		{name: "finite beyond tolerance", diff: datadiff.StatDiff{Left: 1000, Right: 1100, Delta: 100}, want: true},
+		{name: "zero vs zero", diff: datadiff.StatDiff{Left: 0, Right: 0, Delta: 0}, want: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.diff.Column = "amount"
+			tc.diff.Field = "Sum"
+			cmp := &stubComparator{
+				schema:  datadiff.SchemaResult{Match: true},
+				volume:  datadiff.VolumeResult{Match: true, LeftCount: 1, RightCount: 1},
+				content: datadiff.ContentResult{Match: true, Matched: 1},
+				stats:   datadiff.StatsResult{Match: false, Diffs: []datadiff.StatDiff{tc.diff}},
+			}
+
+			result, err := datadiff.NewReconciler(cmp).Compare(context.Background(),
+				datadiff.Config{Key: "id"}, datadiff.WithStatsTolerance(0.01))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got := len(result.Stats.Diffs) == 1
+			if got != tc.want {
+				t.Errorf("reported = %v, want %v (diffs=%+v)", got, tc.want, result.Stats.Diffs)
+			}
+			if result.Stats.Match != !tc.want {
+				t.Errorf("Stats.Match = %v, want %v", result.Stats.Match, !tc.want)
+			}
+		})
 	}
 }
 

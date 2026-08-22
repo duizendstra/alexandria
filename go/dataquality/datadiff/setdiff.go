@@ -146,10 +146,10 @@ func MapDiff[K comparable, V any](left, right map[K]V, equals func(V, V) bool) M
 // ThreeWayResult holds the outcome of a 3-angle migration verification:
 // comparing pre-migration baseline, post-migration target, and leftover source items.
 type ThreeWayResult[T comparable] struct {
-	Moved              []T
-	Leftovers          []T
-	MissingFromTarget  []T
-	UnaccountedTarget  []T
+	Moved             []T
+	Leftovers         []T
+	MissingFromTarget []T
+	UnaccountedTarget []T
 }
 
 // Passed returns true if all baseline items were cleanly moved, zero items were left behind,
