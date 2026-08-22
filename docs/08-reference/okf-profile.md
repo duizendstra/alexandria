@@ -109,6 +109,10 @@ One of the four [Diátaxis](https://diataxis.fr/) documentation types:
 
 #### `status`
 
+Upstream OKF v0.2 also defines a `status` key (`draft | stable | deprecated`);
+Alexandria's `status` predates it and uses its own lifecycle enum below. Within
+this vault the Alexandria values are authoritative.
+
 | Value | Meaning |
 |---|---|
 | `active` | Current and maintained |
