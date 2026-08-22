@@ -9,6 +9,7 @@
 - **`resourcemanager`**: GCP Project provisioning, folder/organization hierarchy assignment, and Cloud Billing account association.
 - **`serviceusage`**: Batch GCP service API enablement and status verification.
 - **`workspace/drive`**: High-performance streaming scanner, Shared Drive lifecycle (`CreateSharedDrive`, `FindSharedDriveByName`, `ListSharedDrives`), folder operations (`CreateFolder`, `FindFolder`), safe parent file moving (`MoveFile`), trashing (`TrashFile`), and idempotent membership reconciliation (`EnsureDriveMembership`, `RoleRank`).
+- **`workspace/sheets`**: Declarative Google Sheets synchronization and creation engine featuring formula injection protection, typed cell constructors, declarative corporate themes (`ThemeCorporateNavy`, `ThemeModernSlate`, `ThemeEmeraldForest`, `ThemeCleanMinimal`), idempotent tab sync (`ReplaceTab`), struct reflection (`FromStructs`), and Google Drive folder placement.
 
 ## Features
 
@@ -91,6 +92,62 @@ func main() {
 	}
 
 	fmt.Println("DWD access verified successfully")
+}
+```
+
+### 3. Declarative Google Sheets Synchronization
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/duizendstra/alexandria/go/google/auth"
+	"github.com/duizendstra/alexandria/go/google/client"
+	"github.com/duizendstra/alexandria/go/google/workspace/sheets"
+)
+
+type MigrationStatus struct {
+	Account   string      `sheets:"Source Account,minWidth=200,maxWidth=350"`
+	Status    string      `sheets:"Status,width=120"`
+	AuditLink sheets.Cell `sheets:"Audit Log,width=250"`
+}
+
+func main() {
+	ctx := context.Background()
+
+	// Build a fully-authenticated Sheets service
+	sheetsSvc, err := client.NewSheetsService(ctx, sheets.Config{},
+		auth.WithDomainWideDelegation("sa@project.gserviceaccount.com", "admin@domain.com"),
+	)
+	if err != nil {
+		log.Fatalf("Failed to initialize Sheets service: %v", err)
+	}
+
+	table, err := sheets.FromStructs([]MigrationStatus{
+		{
+			Account:   "user1@domain.com",
+			Status:    "MIGRATED",
+			AuditLink: sheets.Hyperlink("https://console.cloud.google.com", "View Log"),
+		},
+	})
+	if err != nil {
+		log.Fatalf("Table error: %v", err)
+	}
+
+	result, err := sheetsSvc.ReplaceTab(ctx, "my-spreadsheet-id", sheets.TabSpec{
+		Title: "Wave 1",
+		Theme: sheets.ThemeCorporateNavy(),
+		Data:  table,
+	})
+	if err != nil {
+		log.Fatalf("Sync error: %v", err)
+	}
+
+	fmt.Printf("Tab synchronized: %s (%d rows written)\n", result.Title, result.RowsWritten)
 }
 ```
 
