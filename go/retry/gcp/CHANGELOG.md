@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/duizendstra/alexandria/compare/go/retry/gcp/v1.0.0...go/retry/gcp/v1.1.0) (2026-08-22)
+
+
+### Features
+
+* **retry:** add DoVal generics, custom backoff, and WithRetryVal options ([#234](https://github.com/duizendstra/alexandria/issues/234)) ([c185a19](https://github.com/duizendstra/alexandria/commit/c185a19a4cdda8fc41dc62da3157aa74a4052e06))
+
 ## [1.0.0](https://github.com/duizendstra/alexandria/compare/go/retry/gcp/v0.1.0...go/retry/gcp/v1.0.0) (2026-08-21)
 
 
