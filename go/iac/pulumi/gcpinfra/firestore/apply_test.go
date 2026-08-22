@@ -2,6 +2,7 @@ package firestore_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/firestore"
@@ -57,7 +58,7 @@ func TestApplyDatabaseInvalidConfig(t *testing.T) {
 func TestApplyDocumentsSeeds(t *testing.T) {
 	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
 		return firestore.ApplyDocuments(ctx, pulumi.String("proj").ToStringOutput(), "appdb", []firestore.DocumentConfig{
-			{Collection: collectionConfig, DocumentID: docConnectorA, Fields: `{"enabled":{"booleanValue":true}}`},
+			{Collection: collectionConfig, DocumentID: docConnectorA, Fields: fieldsEnabled},
 			{Collection: collectionConfig, DocumentID: "connector-b", Fields: `{"enabled":{"booleanValue":false}}`},
 		}, nil)
 	}, pulumi.WithMocks("example", "stack", mocks(0)))
@@ -73,6 +74,29 @@ func TestApplyDocumentsInvalidConfig(t *testing.T) {
 		}, nil)
 		if !errors.Is(err, firestore.ErrCollectionRequired) {
 			t.Errorf("expected ErrCollectionRequired, got %v", err)
+		}
+
+		return nil
+	}, pulumi.WithMocks("example", "stack", mocks(0)))
+	if err != nil {
+		t.Fatalf("pulumi run: %v", err)
+	}
+}
+
+// TestApplyDocumentsDuplicateDocumentID pins #248: the DocumentID is the
+// Pulumi logical name, so the same ID in two collections is still one URN.
+// The SDK mocks let the repeat through, so ApplyDocuments must reject it.
+func TestApplyDocumentsDuplicateDocumentID(t *testing.T) {
+	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+		err := firestore.ApplyDocuments(ctx, pulumi.String("proj").ToStringOutput(), "appdb", []firestore.DocumentConfig{
+			{Collection: collectionConfig, DocumentID: docConnectorA, Fields: fieldsEnabled},
+			{Collection: "other", DocumentID: docConnectorA, Fields: `{"enabled":{"booleanValue":false}}`},
+		}, nil)
+		if !errors.Is(err, firestore.ErrDuplicateDocumentID) {
+			t.Errorf("expected ErrDuplicateDocumentID, got %v", err)
+		}
+		if err == nil || !strings.Contains(err.Error(), `"`+docConnectorA+`"`) {
+			t.Errorf("error should name the duplicate %q, got %v", docConnectorA, err)
 		}
 
 		return nil

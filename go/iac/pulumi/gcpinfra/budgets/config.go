@@ -1,6 +1,11 @@
 package budgets
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/internal/names"
+)
 
 var (
 	// ErrDisplayNameRequired means the budget has no display name.
@@ -15,6 +20,10 @@ var (
 	ErrThresholdsRequired = errors.New("budgets: at least one threshold is required")
 	// ErrAlertEmailsRequired means the budget has no notification recipients.
 	ErrAlertEmailsRequired = errors.New("budgets: at least one alert email is required")
+	// ErrDuplicateAlertEmail means an alert email is listed twice. Each email
+	// becomes the Pulumi logical name of its notification channel, so a
+	// repeat would collide URNs.
+	ErrDuplicateAlertEmail = errors.New("budgets: duplicate alert email")
 )
 
 // Config defines a budget with alert thresholds.
@@ -55,6 +64,9 @@ func (c *Config) Validate() error {
 	}
 	if len(c.AlertEmails) == 0 {
 		return ErrAlertEmailsRequired
+	}
+	if email, dup := names.Duplicate(c.AlertEmails, func(s *string) string { return *s }); dup {
+		return fmt.Errorf("%w %q", ErrDuplicateAlertEmail, email)
 	}
 
 	return nil

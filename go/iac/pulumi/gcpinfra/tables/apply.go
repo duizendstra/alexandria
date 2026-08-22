@@ -3,17 +3,28 @@ package tables
 import (
 	"fmt"
 
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/internal/names"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/bigquery"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Apply creates BigQuery tables with schema in the given dataset.
+//
+// Every Name in tt must be unique: it is the Pulumi logical name, and a
+// repeat is rejected with ErrDuplicateName before any table is created.
 func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []Config, deps []pulumi.Resource) error {
 	for i := range tt {
-		t := &tt[i]
-		if err := t.Validate(); err != nil {
+		if err := tt[i].Validate(); err != nil {
 			return err
 		}
+	}
+
+	if name, dup := names.Duplicate(tt, func(t *Config) string { return t.Name }); dup {
+		return fmt.Errorf("%w %q", ErrDuplicateName, name)
+	}
+
+	for i := range tt {
+		t := &tt[i]
 
 		labels := make(pulumi.StringMap)
 		for k, v := range t.Labels {
@@ -46,12 +57,23 @@ func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []C
 }
 
 // ApplyExternal creates BigQuery external tables (e.g. Google Sheets).
+//
+// Every Name in tt must be unique: it is the Pulumi logical name, and a
+// repeat is rejected with ErrDuplicateExternalName before any table is
+// created.
 func ApplyExternal(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []ExternalConfig, deps []pulumi.Resource) error {
 	for i := range tt {
-		t := &tt[i]
-		if err := t.Validate(); err != nil {
+		if err := tt[i].Validate(); err != nil {
 			return err
 		}
+	}
+
+	if name, dup := names.Duplicate(tt, func(t *ExternalConfig) string { return t.Name }); dup {
+		return fmt.Errorf("%w %q", ErrDuplicateExternalName, name)
+	}
+
+	for i := range tt {
+		t := &tt[i]
 
 		labels := make(pulumi.StringMap)
 		for k, v := range t.Labels {

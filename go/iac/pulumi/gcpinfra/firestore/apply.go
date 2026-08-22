@@ -3,6 +3,7 @@ package firestore
 import (
 	"fmt"
 
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/internal/names"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/firestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -37,12 +38,22 @@ func ApplyDatabase(ctx *pulumi.Context, projectID pulumi.StringOutput, cfg Datab
 
 // ApplyDocuments seeds Firestore documents. Field changes are ignored after
 // initial creation — the application manages config at runtime.
+//
+// Every DocumentID in docs must be unique, even across collections: it is
+// the Pulumi logical name, and a repeat is rejected with
+// ErrDuplicateDocumentID before any document is created.
 func ApplyDocuments(ctx *pulumi.Context, projectID pulumi.StringOutput, dbName string, docs []DocumentConfig, deps []pulumi.Resource) error {
-	for _, doc := range docs {
-		if err := doc.Validate(); err != nil {
+	for i := range docs {
+		if err := docs[i].Validate(); err != nil {
 			return err
 		}
+	}
 
+	if id, dup := names.Duplicate(docs, func(d *DocumentConfig) string { return d.DocumentID }); dup {
+		return fmt.Errorf("%w %q", ErrDuplicateDocumentID, id)
+	}
+
+	for _, doc := range docs {
 		_, err := firestore.NewDocument(ctx, "doc-"+doc.DocumentID, &firestore.DocumentArgs{
 			Project:    projectID,
 			Database:   pulumi.String(dbName),
