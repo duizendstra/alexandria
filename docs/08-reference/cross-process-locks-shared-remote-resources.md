@@ -8,12 +8,13 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-08-22T09:00:00Z"
-updated_at: "2026-08-22T09:00:00Z"
+updated_at: "2026-08-22T14:30:00Z"
 summary: >
   A per-process mutex does not protect a remote resource that several
   processes (or subprocess fan-out) mutate concurrently; use an advisory
-  file lock around the mutating window and treat the remote API's conflict
-  response as transient.
+  file lock around the mutating window, and treat the remote API's conflict
+  response as transient only when the mutation is idempotent and the
+  conflict is contention, not a genuine data conflict.
 audience: [public]
 tags: [ "concurrency", "locking", "distributed-systems", "retry", "lessons-learned" ]
 relations: []
@@ -55,9 +56,17 @@ so nothing in the code actually serializes the two writers.
 2. Until the lock is proven in place, run the mutating workload strictly
    sequentially (one process at a time against the shared resource) rather
    than trusting parallelism.
-3. Treat the remote API's conflict response as a transient condition, not
-   a permanent failure — retry with backoff before giving up, and only
-   classify as permanent after retries are exhausted.
+3. Treat the remote API's conflict response as a transient condition —
+   retry with backoff before giving up, and only classify as permanent
+   after retries are exhausted — **only when both hold**: the per-item
+   mutation is idempotent/safe to replay, and the conflict stems from two
+   writers racing on overlapping edits of the *same* object (what the
+   file lock in step 1 is meant to prevent). A conflict response that
+   instead reflects a genuine data conflict — a stale version/ETag the
+   caller already knew about, a duplicate-resource rejection, a business
+   rule violation — is not transient: retrying it does not change the
+   outcome, and it must still fail (and be surfaced) rather than be
+   swallowed by a retry loop.
 
 ## How to Test for It
 
@@ -70,5 +79,8 @@ so nothing in the code actually serializes the two writers.
   into the retry path and asserts the operation succeeds after backoff
   rather than surfacing as a permanent failure.
 - Audit failure classification code for this API: a conflict/409 response
-  should route through the transient-retry path, never straight to
-  permanent-failure handling.
+  caused by overlapping writes to the same object should route through the
+  transient-retry path, but a conflict response carrying a stale-version,
+  duplicate-resource, or business-rule-violation signal must still route
+  to permanent-failure handling — add a test asserting each of the two
+  classes lands on the correct path.
