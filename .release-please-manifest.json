@@ -20,7 +20,7 @@
   "go/platform/async": "0.1.1",
   "go/platform/buildstamp": "0.3.0",
   "go/platform/cache": "0.0.2",
-  "go/platform/coordination": "0.1.0",
+  "go/platform/coordination": "0.2.0",
   "go/platform/gcpenv": "0.1.0",
   "go/platform/passstore": "0.1.0",
   "go/platform/procrun": "0.3.0",
