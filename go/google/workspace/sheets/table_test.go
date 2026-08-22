@@ -116,3 +116,21 @@ func TestHyperlinkQuoteEscaping(t *testing.T) {
 		t.Errorf("got %q, want %q", link.RawVal, want)
 	}
 }
+
+func TestTable_SetColumnWidthByName(t *testing.T) {
+	tbl := NewTable("First Name", "Last Name", "Email Address")
+	tbl.SetColumnWidthByName("Last Name", 160)
+	tbl.SetColumnWidthByName("email address", 250) // test case-insensitivity.
+	tbl.SetColumnWidthByName("NonExistent", 300)
+
+	if tbl.ColumnWidths[1] != 160 {
+		t.Errorf("expected col 1 width 160, got %d", tbl.ColumnWidths[1])
+	}
+	if tbl.ColumnWidths[2] != 250 {
+		t.Errorf("expected col 2 width 250, got %d", tbl.ColumnWidths[2])
+	}
+	if _, ok := tbl.ColumnWidths[3]; ok {
+		t.Errorf("expected non-existent header not to be added to widths")
+	}
+}
+

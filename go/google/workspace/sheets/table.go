@@ -47,6 +47,17 @@ func (t *Table) SetColumnWidth(colIdx int, pixelSize int64) *Table {
 	return t
 }
 
+// SetColumnWidthByName configures a fixed pixel width for the column matching the header name (case-insensitive).
+func (t *Table) SetColumnWidthByName(header string, pixelSize int64) *Table {
+	for i, h := range t.Headers {
+		if strings.EqualFold(h, header) {
+			return t.SetColumnWidth(i, pixelSize)
+		}
+	}
+
+	return t
+}
+
 // RowCount returns the number of data rows (excluding headers).
 func (t *Table) RowCount() int {
 	return len(t.Rows)
