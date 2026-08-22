@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/duizendstra/alexandria/go/platform/coordination"
 )
 
 // ErrLocked reports that another run already holds the lock for a subject.
@@ -36,6 +38,9 @@ type Locker struct {
 	// shut down in its own way.
 	OnSignal func(os.Signal)
 }
+
+// Compile-time interface assertion.
+var _ coordination.Excluder = (*Locker)(nil)
 
 // Acquire takes the lock for a subject. The returned release is safe to call
 // more than once. It returns ErrLocked when the lock is already held.
