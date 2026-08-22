@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/duizendstra/alexandria/compare/go/platform/runstate/v0.3.0...go/platform/runstate/v0.3.1) (2026-08-22)
+
+
+### Features
+
+* **platform/runstate:** assert coordination.Excluder interface compatibility on Locker
+
 ## [0.3.0](https://github.com/duizendstra/alexandria/compare/go/platform/runstate/v0.2.0...go/platform/runstate/v0.3.0) (2026-08-22)
 
 
