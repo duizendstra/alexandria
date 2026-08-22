@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **CI Tooling**: Pinned `golangci-lint` to `v2.13.1` in CI matrix, added `govulncheck` vulnerability scanning step across Go modules, added CI module hygiene enforcement requiring coverage baselines for every Go module, and calibrated coverage floors across all 28 library and blueprint modules.
 - **Housekeeping**: Added Dependabot update grouping across all module ecosystems to consolidate weekly PR volume, added Review-Skill Selection Guide in `skills/README.md`, and aligned contracts overview documentation.
 - **Dependencies**: Upgraded Pulumi SDK to `3.258.0`, Google Auth to `0.23.1`, Testify to `1.12.1`, and Pulumi GCP provider to `9.34.1` across all `go/iac` modules.
+- **CI Tooling**: The per-module `go` job now fails on files that are not `gofmt`-clean (`gofmt -l .` must print nothing) and runs `GOOS=windows GOARCH=amd64 go vet ./...` so every module keeps compiling on native Windows, not just Linux and macOS.
 
 ## 2026-07-21 — observability config-driven uptime checks
 
