@@ -99,10 +99,25 @@ func TestWriteError(t *testing.T) {
 		assert.JSONEq(t, `{"error":"server error: 502"}`, w.Body.String())
 	})
 
-	t.Run("StatusError with a non-error status falls back to 500", func(t *testing.T) {
+	t.Run("StatusError with a 3xx status is passed through", func(t *testing.T) {
 		const upstream = "secret-upstream-text"
 
-		for _, status := range []int{-1, 0, 99, http.StatusContinue, http.StatusOK, http.StatusFound, 600, 999, 1234} {
+		for _, status := range []int{http.StatusMovedPermanently, http.StatusNotModified} {
+			t.Run(strconv.Itoa(status), func(t *testing.T) {
+				w := httptest.NewRecorder()
+				WriteError(w, apierr.NewStatusError(status, upstream, apierr.ErrUnexpectedStatus))
+
+				assert.Equal(t, status, w.Code)
+				assert.NotContains(t, w.Body.String(), upstream)
+				assert.JSONEq(t, `{"error":"unexpected status: `+strconv.Itoa(status)+`"}`, w.Body.String())
+			})
+		}
+	})
+
+	t.Run("StatusError with an unhonoured status falls back to 500", func(t *testing.T) {
+		const upstream = "secret-upstream-text"
+
+		for _, status := range []int{-1, 0, 99, http.StatusContinue, http.StatusOK, http.StatusNoContent, 600, 999, 1000, 1234} {
 			t.Run(strconv.Itoa(status), func(t *testing.T) {
 				w := httptest.NewRecorder()
 
@@ -117,10 +132,10 @@ func TestWriteError(t *testing.T) {
 		}
 	})
 
-	t.Run("StatusError honours every 4xx and 5xx status", func(t *testing.T) {
-		const lastErrorStatus = 599
+	t.Run("StatusError honours every 3xx, 4xx and 5xx status", func(t *testing.T) {
+		const lastHonouredStatus = 599
 
-		for status := http.StatusBadRequest; status <= lastErrorStatus; status++ {
+		for status := http.StatusMultipleChoices; status <= lastHonouredStatus; status++ {
 			w := httptest.NewRecorder()
 			WriteError(w, apierr.NewStatusError(status, "", apierr.ErrUnexpectedStatus))
 
