@@ -12,7 +12,9 @@ import (
 )
 
 // ErrLocked reports that another run already holds the lock for a subject.
-var ErrLocked = errors.New("another run already holds this lock")
+// It is the coordination sentinel itself, so errors.Is matches it under
+// either name.
+var ErrLocked = coordination.ErrLocked
 
 // DefaultLockPrefix is the file-name prefix a Locker uses when Prefix is empty.
 const DefaultLockPrefix = "lock."
@@ -21,6 +23,9 @@ const DefaultLockPrefix = "lock."
 // with O_CREATE|O_EXCL. The lock is released when the returned function is
 // called, and also when the process is interrupted — a lock left behind by a
 // Ctrl-C would block the next run for no reason.
+//
+// Locker is a [coordination.Excluder]: [Locker.TryAcquire] is the contract's
+// method, and [Locker.Acquire] is the same operation on a plain string.
 type Locker struct {
 	// Dir holds the lock files. It is created if missing.
 	Dir string
@@ -41,6 +46,19 @@ type Locker struct {
 
 // Compile-time interface assertion.
 var _ coordination.Excluder = (*Locker)(nil)
+
+// TryAcquire takes the lock for a subject and refuses, with an error wrapping
+// ErrLocked, when another run holds it — the [coordination.Excluder]
+// contract. The subject is validated first; one that cannot be part of a
+// path is refused with an error wrapping ErrBadSubject. The returned release
+// is safe to call more than once.
+func (l *Locker) TryAcquire(subject coordination.Subject) (func(), error) {
+	if err := subject.Validate(); err != nil {
+		return nil, fmt.Errorf("subject: %w", err)
+	}
+
+	return l.Acquire(string(subject))
+}
 
 // Acquire takes the lock for a subject. The returned release is safe to call
 // more than once. It returns ErrLocked when the lock is already held.
@@ -88,11 +106,7 @@ func (l *Locker) Acquire(subject string) (func(), error) {
 		}
 
 		signal.Stop(sig)
-
-		// Re-raise, so the shell still sees the usual 128+n exit code.
-		if nr, ok := s.(syscall.Signal); ok {
-			_ = syscall.Kill(os.Getpid(), nr)
-		}
+		reraise(s)
 	}()
 
 	var stopOnce sync.Once
