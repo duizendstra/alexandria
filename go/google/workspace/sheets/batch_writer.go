@@ -45,7 +45,9 @@ func EscapeSheetTitle(title string) string {
 // It guarantees that:
 // 1. If no cells contain formulas, the entire table (headers + data) is emitted as a single RAW update.
 // 2. If formulas exist, headers and non-formula columns are emitted as RAW, while formula columns
-// are emitted as USER_ENTERED. Untrusted strings cannot trigger formula execution.
+// are emitted as USER_ENTERED. A column holding both kinds of cell is split into runs of rows
+// so that only its formula cells go USER_ENTERED (#244). Untrusted strings cannot trigger
+// formula execution.
 func prepareValueUpdates(tabTitle string, table *Table) []valueUpdateBatch {
 	if table == nil || (len(table.Headers) == 0 && len(table.Rows) == 0) {
 		return nil
@@ -106,10 +108,23 @@ func buildAllRawBatch(escapedTitle string, table *Table) []valueUpdateBatch {
 	}
 }
 
+// colKind classifies how a data column is written.
+type colKind uint8
+
+const (
+	// colRaw has no formula cells: the column is written RAW as one block.
+	colRaw colKind = iota
+	// colFormula has nothing but formula cells: the column is written USER_ENTERED as one block.
+	colFormula
+	// colMixed holds both formula and non-formula cells: it is written per run of rows, so the
+	// value-input option is chosen per cell and text cells keep their formula-injection immunity.
+	colMixed
+)
+
 type colSlice struct {
-	startCol  int
-	endCol    int
-	isFormula bool
+	startCol int
+	endCol   int
+	kind     colKind
 }
 
 func buildMixedModeBatches(escapedTitle string, table *Table, numCols int) []valueUpdateBatch {
@@ -137,9 +152,15 @@ func buildMixedModeBatches(escapedTitle string, table *Table, numCols int) []val
 	endDataRow := startDataRow + len(table.Rows) - 1
 
 	for _, s := range slices {
+		if s.kind == colMixed {
+			batches = append(batches, buildMixedColumnBatches(escapedTitle, table, s.startCol, startDataRow)...)
+
+			continue
+		}
+
 		sliceValues := extractSliceValues(table, s)
 		opt := InputOptionRaw
-		if s.isFormula {
+		if s.kind == colFormula {
 			opt = InputOptionUserEntered
 		}
 
@@ -156,38 +177,103 @@ func buildMixedModeBatches(escapedTitle string, table *Table, numCols int) []val
 	return batches
 }
 
+// buildMixedColumnBatches splits one mixed column into runs of contiguous rows that share
+// the same value-input option: formula cells go USER_ENTERED, everything else — including
+// cells a short row leaves missing — goes RAW, exactly as a pure text column would.
+func buildMixedColumnBatches(escapedTitle string, table *Table, colIdx, startDataRow int) []valueUpdateBatch {
+	var batches []valueUpdateBatch
+	colA1 := ColIndexToA1(colIdx)
+
+	flush := func(runStart, runEnd int, isFormula bool) {
+		values := make([][]any, 0, runEnd-runStart+1)
+		for r := runStart; r <= runEnd; r++ {
+			values = append(values, []any{cellValueAt(table.Rows[r], colIdx)})
+		}
+		opt := InputOptionRaw
+		if isFormula {
+			opt = InputOptionUserEntered
+		}
+		batches = append(batches, valueUpdateBatch{
+			Range:            fmt.Sprintf("%s!%s%d:%s%d", escapedTitle, colA1, startDataRow+runStart, colA1, startDataRow+runEnd),
+			ValueInputOption: opt,
+			Values:           values,
+		})
+	}
+
+	runStart := 0
+	runFormula := cellIsFormulaAt(table.Rows[0], colIdx)
+	for r := 1; r < len(table.Rows); r++ {
+		if f := cellIsFormulaAt(table.Rows[r], colIdx); f != runFormula {
+			flush(runStart, r-1, runFormula)
+			runStart, runFormula = r, f
+		}
+	}
+	flush(runStart, len(table.Rows)-1, runFormula)
+
+	return batches
+}
+
+// cellIsFormulaAt reports whether row has a formula cell at colIdx; a missing cell is not a formula.
+func cellIsFormulaAt(row []Cell, colIdx int) bool {
+	return colIdx < len(row) && row[colIdx].IsFormula
+}
+
+// cellValueAt returns the raw value at colIdx, or "" when the row is too short.
+func cellValueAt(row []Cell, colIdx int) any {
+	if colIdx < len(row) {
+		return row[colIdx].RawVal
+	}
+
+	return ""
+}
+
+// partitionColumns classifies every data column and groups adjacent columns of the same
+// kind into one slice. A mixed column never merges with a neighbour: it is written per cell.
 func partitionColumns(table *Table, numCols int) []colSlice {
-	colHasFormula := make([]bool, numCols)
+	kinds := classifyColumns(table, numCols)
+
+	var slices []colSlice
+	currStart := 0
+
+	for c := 1; c < numCols; c++ {
+		if kinds[c] != kinds[currStart] || kinds[c] == colMixed {
+			slices = append(slices, colSlice{startCol: currStart, endCol: c - 1, kind: kinds[currStart]})
+			currStart = c
+		}
+	}
+	slices = append(slices, colSlice{startCol: currStart, endCol: numCols - 1, kind: kinds[currStart]})
+
+	return slices
+}
+
+// classifyColumns decides each column's kind from the cells that are present; a cell a short
+// row leaves missing counts for neither side, so such gaps are padded as they always were.
+func classifyColumns(table *Table, numCols int) []colKind {
+	formulaCells := make([]int, numCols)
+	otherCells := make([]int, numCols)
 	for _, r := range table.Rows {
 		for colIdx := 0; colIdx < len(r) && colIdx < numCols; colIdx++ {
 			if r[colIdx].IsFormula {
-				colHasFormula[colIdx] = true
+				formulaCells[colIdx]++
+			} else {
+				otherCells[colIdx]++
 			}
 		}
 	}
 
-	var slices []colSlice
-	currStart := 0
-	currFormula := colHasFormula[0]
-
-	for c := 1; c < numCols; c++ {
-		if colHasFormula[c] != currFormula {
-			slices = append(slices, colSlice{
-				startCol:  currStart,
-				endCol:    c - 1,
-				isFormula: currFormula,
-			})
-			currStart = c
-			currFormula = colHasFormula[c]
+	kinds := make([]colKind, numCols)
+	for c := range numCols {
+		switch {
+		case formulaCells[c] == 0:
+			kinds[c] = colRaw
+		case otherCells[c] == 0:
+			kinds[c] = colFormula
+		default:
+			kinds[c] = colMixed
 		}
 	}
-	slices = append(slices, colSlice{
-		startCol:  currStart,
-		endCol:    numCols - 1,
-		isFormula: currFormula,
-	})
 
-	return slices
+	return kinds
 }
 
 func extractSliceValues(table *Table, s colSlice) [][]any {
@@ -197,12 +283,7 @@ func extractSliceValues(table *Table, s colSlice) [][]any {
 	for rIdx, r := range table.Rows {
 		rowVals := make([]any, width)
 		for offset := range width {
-			cIdx := s.startCol + offset
-			if cIdx < len(r) {
-				rowVals[offset] = r[cIdx].RawVal
-			} else {
-				rowVals[offset] = ""
-			}
+			rowVals[offset] = cellValueAt(r, s.startCol+offset)
 		}
 		sliceValues[rIdx] = rowVals
 	}
