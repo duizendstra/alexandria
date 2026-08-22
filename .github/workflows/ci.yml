@@ -52,9 +52,23 @@ jobs:
             ${{ matrix.module }}/go.sum
             ${{ matrix.module }}/go.mod
 
+      - name: Format check
+        working-directory: ${{ matrix.module }}
+        run: |
+          unformatted=$(GOWORK=off gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            echo "::error::Files are not gofmt-clean in ${{ matrix.module }}. Run 'gofmt -w .' in the module and commit the result."
+            exit 1
+          fi
+
       - name: Vet
         working-directory: ${{ matrix.module }}
         run: GOWORK=off go vet ./...
+
+      - name: Vet (windows/amd64)
+        working-directory: ${{ matrix.module }}
+        run: GOWORK=off GOOS=windows GOARCH=amd64 go vet ./...
 
       - name: Test
         working-directory: ${{ matrix.module }}
