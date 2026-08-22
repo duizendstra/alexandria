@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/duizendstra/alexandria/compare/go/dataquality/datadiff/v0.3.0...go/dataquality/datadiff/v0.3.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **datadiff:** report NaN/Inf stat diffs as differences ([#247](https://github.com/duizendstra/alexandria/issues/247)) ([#270](https://github.com/duizendstra/alexandria/issues/270)) ([9bda607](https://github.com/duizendstra/alexandria/commit/9bda6074a4a36eb76eadbe8414c4090f3a5ba62b))
+
 ## [0.3.0](https://github.com/duizendstra/alexandria/compare/go/dataquality/datadiff/v0.2.0...go/dataquality/datadiff/v0.3.0) (2026-08-22)
 
 

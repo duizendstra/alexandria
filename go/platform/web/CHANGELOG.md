@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/duizendstra/alexandria/compare/go/platform/web/v0.1.0...go/platform/web/v0.1.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **web:** WriteError validates the StatusError status and keeps the upstream body server-side ([#250](https://github.com/duizendstra/alexandria/issues/250)) ([#271](https://github.com/duizendstra/alexandria/issues/271)) ([24d3240](https://github.com/duizendstra/alexandria/commit/24d3240830d32d93d78f690a24b34034cf28722c))
+
 ## [0.1.0](https://github.com/duizendstra/alexandria/compare/go/platform/web/v0.0.2...go/platform/web/v0.1.0) (2026-08-21)
 
 
