@@ -4,7 +4,7 @@
   "go/discovery/privacyfilter": "0.1.0",
   "go/discovery/search": "0.2.0",
   "go/discovery/search/searchtest": "0.0.2",
-  "go/google": "0.4.0",
+  "go/google": "0.4.1",
   "go/governance": "1.0.0",
   "go/iac/delivery": "0.1.1",
   "go/iac/finops": "0.1.0",

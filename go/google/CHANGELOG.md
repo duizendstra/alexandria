@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/duizendstra/alexandria/compare/go/google/v0.4.0...go/google/v0.4.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **workspace/sheets:** order formatting before rich links and return errors ([#242](https://github.com/duizendstra/alexandria/issues/242)) ([0482cec](https://github.com/duizendstra/alexandria/commit/0482cecf1d53bf74d7dfc825e3cc216bbcbdfb3d))
+
 ## [0.3.0](https://github.com/duizendstra/alexandria/compare/go/google/v0.2.0...go/google/v0.3.0) (2026-08-22)
 
 
