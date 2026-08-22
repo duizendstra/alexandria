@@ -14,6 +14,11 @@ import (
 // ErrGateBlocked is returned by Enforce when one or more rules violate the gate policy.
 var ErrGateBlocked = errors.New("governance: gate verification failed")
 
+// ErrUnknownPolicy is returned by Policy.Validate and Gate.Validate when the
+// policy is not one of PolicyStrict, PolicyStandard or PolicyPermissive.
+// A Gate with an unknown policy always evaluates to VerdictBlocked.
+var ErrUnknownPolicy = errors.New("governance: unknown gate policy")
+
 // Status is the evaluation outcome of an individual rule.
 type Status string
 
@@ -55,6 +60,18 @@ const (
 	// PolicyPermissive never blocks execution, recording all findings for audit.
 	PolicyPermissive Policy = "PERMISSIVE"
 )
+
+// Validate reports ErrUnknownPolicy unless p is one of the defined policies.
+// The empty Policy (the zero value) is unknown.
+func (p Policy) Validate() error {
+	switch p {
+	case PolicyStrict, PolicyStandard, PolicyPermissive:
+		return nil
+	default:
+		return fmt.Errorf("%w: %q (expected one of %s, %s, %s)",
+			ErrUnknownPolicy, string(p), PolicyStrict, PolicyStandard, PolicyPermissive)
+	}
+}
 
 // Result captures the evaluation output of a single rule.
 type Result struct {
@@ -150,17 +167,17 @@ type Report struct {
 
 // reportJSON provides formatted serialization for Report.
 type reportJSON struct {
-	GateName     string    `json:"gate_name"`
-	EvaluatedAt  string    `json:"evaluated_at"`
-	Policy       string    `json:"policy"`
-	Verdict      string    `json:"verdict"`
-	TotalRules   int       `json:"total_rules"`
-	PassedRules  int       `json:"passed_rules"`
-	FailedRules  int       `json:"failed_rules"`
-	AnomalyRules int       `json:"anomaly_rules"`
-	SkippedRules int       `json:"skipped_rules"`
-	Results      []Result  `json:"results"`
-	DurationMs   int64     `json:"duration_ms"`
+	GateName     string   `json:"gate_name"`
+	EvaluatedAt  string   `json:"evaluated_at"`
+	Policy       string   `json:"policy"`
+	Verdict      string   `json:"verdict"`
+	TotalRules   int      `json:"total_rules"`
+	PassedRules  int      `json:"passed_rules"`
+	FailedRules  int      `json:"failed_rules"`
+	AnomalyRules int      `json:"anomaly_rules"`
+	SkippedRules int      `json:"skipped_rules"`
+	Results      []Result `json:"results"`
+	DurationMs   int64    `json:"duration_ms"`
 }
 
 // MarshalJSON encodes Report into formatted JSON.
@@ -245,6 +262,14 @@ func New(name string, opts ...Option) *Gate {
 	return g
 }
 
+// Validate reports ErrUnknownPolicy when the gate's policy is not one of the
+// defined policies. Call it at construction time to reject a misconfigured
+// gate before it is evaluated; Evaluate itself never fails open on an unknown
+// policy, it blocks.
+func (g *Gate) Validate() error {
+	return g.policy.Validate()
+}
+
 // AddRule appends a single rule to the gate.
 func (g *Gate) AddRule(r Rule) *Gate {
 	if r != nil {
@@ -314,20 +339,7 @@ func (g *Gate) Evaluate(ctx context.Context) *Report {
 	}
 
 	report.Duration = time.Since(start)
-
-	// Determine overall verdict based on policy.
-	switch g.policy {
-	case PolicyStrict:
-		if report.FailedRules > 0 || report.AnomalyRules > 0 {
-			report.Verdict = VerdictBlocked
-		}
-	case PolicyStandard:
-		if report.FailedRules > 0 {
-			report.Verdict = VerdictBlocked
-		}
-	case PolicyPermissive:
-		report.Verdict = VerdictPass
-	}
+	g.applyVerdict(report)
 
 	return report
 }
@@ -341,4 +353,33 @@ func (g *Gate) Enforce(ctx context.Context) (*Report, error) {
 	}
 
 	return report, nil
+}
+
+// applyVerdict sets the report's overall Verdict from its rule counts under
+// the gate's policy.
+func (g *Gate) applyVerdict(report *Report) {
+	switch g.policy {
+	case PolicyStrict:
+		if report.FailedRules > 0 || report.AnomalyRules > 0 {
+			report.Verdict = VerdictBlocked
+		}
+	case PolicyStandard:
+		if report.FailedRules > 0 {
+			report.Verdict = VerdictBlocked
+		}
+	case PolicyPermissive:
+		report.Verdict = VerdictPass
+	default:
+		// An unknown or empty policy (including a zero-valued Gate) must not
+		// fail open: block, and record why as a failed result so the report
+		// and its Summary explain the verdict.
+		report.Results = append(report.Results, Result{
+			RuleName: "gate-policy",
+			Status:   StatusFail,
+			Reason:   g.policy.Validate().Error(),
+		})
+		report.TotalRules++
+		report.FailedRules++
+		report.Verdict = VerdictBlocked
+	}
 }
