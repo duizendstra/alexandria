@@ -7,12 +7,14 @@ Project scaffolding templates for bootstrapping new repositories.
 | Blueprint | Description |
 |---|---|
 | [service/.ko.yaml](service/.ko.yaml) | Golden ko build config for Go Cloud Run services |
+| [google-addon/](google-addon/) | Scaffolding for Google Calendar Add-ons: Level 1 (Apps Script) and Level 2 (Go Alternate Runtime on Cloud Run) |
 | [githooks/](githooks/) | Golden git hooks for Go repos — conventional commits, staged-content gofmt + secret scan, pre-push quality gate |
 | [golangci/](golangci/) | Golden golangci-lint profiles — one quality bar, library and consumer dependency postures |
 | [workstation/](workstation/) | Workstation bootstrap for the pass + GPG secrets workflow — non-interactive agent unlock, .secrets.yaml → env exports |
 
 ## Categories
 
+- **google-addon/** — Google Workspace Add-on scaffolding (Apps Script and Go Alternate Runtime)
 - **service/** — Go Cloud Run service scaffolding
 - **githooks/** — repository git hooks (opt-in via `core.hooksPath`)
 - **golangci/** — lint configuration profiles

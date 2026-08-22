@@ -1,0 +1,12 @@
+github.com/duizendstra/alexandria/go/platform/apierr v0.1.0 h1:95BCKw+xFfs5Be5sPVQorm2YwtY70tp4mWbeBxEplx0=
+github.com/duizendstra/alexandria/go/platform/apierr v0.1.0/go.mod h1:TakPbhzfY6SOW3iY75DL5z9Booq8EtVuf7hu6RavD1A=
+github.com/duizendstra/alexandria/go/platform/gcpenv v0.1.0 h1:epwVgSKwhwIQsvOgQxiQYUKOw+u/WGJgj8ugDBNOCmY=
+github.com/duizendstra/alexandria/go/platform/gcpenv v0.1.0/go.mod h1:0K1phm1TSkHTl1vCA5LKna2D+wIobKH5cIMgfRcm/TA=
+github.com/duizendstra/alexandria/go/platform/web v0.1.0 h1:OeSviOuWe25X41BkE6uY1asOTg9+tEgU0uQN8hJIpgI=
+github.com/duizendstra/alexandria/go/platform/web v0.1.0/go.mod h1:dfq81sYsiuoPfnkiEp8WgLaO8svUzPsjvHX8YWpOaFo=
+github.com/duizendstra/alexandria/go/slog-gcp v0.1.0 h1:9Qv4C9xaIgM7h6jKLp2z9tYd+3pdFrOrr5DVMv7g1CQ=
+github.com/duizendstra/alexandria/go/slog-gcp v0.1.0/go.mod h1:NsNu4I0tOdo3SBTZE2BYCBEBCd/LzSGCKvSMdUOJL54=
+github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
+github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
+go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
+go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
