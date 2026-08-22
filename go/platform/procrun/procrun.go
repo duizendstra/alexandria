@@ -192,7 +192,9 @@ func (r *Runner) Environ(callEnv map[string]string) []string {
 
 // LookPath resolves a command name against the Runner's fixed Path. A name
 // that already carries a path separator is returned unchanged, and an empty
-// Path falls back to the parent's PATH.
+// Path falls back to the parent's PATH. What counts as executable is
+// per-platform: any execute bit on Unix; on Windows a PATHEXT extension,
+// appended to a bare name the way cmd.exe resolves commands.
 func (r *Runner) LookPath(name string) (string, error) {
 	if strings.ContainsRune(name, os.PathSeparator) {
 		return name, nil
@@ -212,19 +214,12 @@ func (r *Runner) LookPath(name string) (string, error) {
 			continue
 		}
 
-		candidate := filepath.Join(dir, name)
-		if executable(candidate) {
-			return candidate, nil
+		if found, ok := findExecutable(dir, name); ok {
+			return found, nil
 		}
 	}
 
 	return "", fmt.Errorf("%s: %w (%s)", name, ErrNotOnPath, r.Path)
-}
-
-func executable(path string) bool {
-	fi, err := os.Stat(path)
-
-	return err == nil && !fi.IsDir() && fi.Mode().Perm()&0o111 != 0
 }
 
 // tail returns the last n lines of a file, for an error message.
