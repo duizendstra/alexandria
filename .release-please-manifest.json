@@ -1,6 +1,6 @@
 {
   "go/contracts": "1.0.0",
-  "go/dataquality/datadiff": "0.3.0",
+  "go/dataquality/datadiff": "0.3.1",
   "go/discovery/privacyfilter": "0.1.0",
   "go/discovery/search": "0.2.0",
   "go/discovery/search/searchtest": "0.0.2",
@@ -25,7 +25,7 @@
   "go/platform/passstore": "0.1.0",
   "go/platform/procrun": "0.3.1",
   "go/platform/runstate": "0.4.0",
-  "go/platform/web": "0.1.0",
+  "go/platform/web": "0.1.1",
   "go/platform/workflow": "0.2.0",
   "go/retry": "1.1.0",
   "go/retry/gcp": "1.1.0",
