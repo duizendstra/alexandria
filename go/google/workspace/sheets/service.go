@@ -123,8 +123,6 @@ func (s *Service) ReplaceTab(ctx context.Context, spreadsheetID string, spec Tab
 		return nil, err
 	}
 
-	s.applyRichLinks(ctx, spreadsheetID, tab.Properties.SheetId, spec.Data)
-
 	if !spec.SkipFormatting {
 		var bandedIDs []int64
 		for _, br := range tab.BandedRanges {
@@ -133,7 +131,13 @@ func (s *Service) ReplaceTab(ctx context.Context, spreadsheetID string, spec Tab
 			}
 		}
 
-		s.applyTabFormatting(ctx, spreadsheetID, tab.Properties.SheetId, bandedIDs, spec)
+		if err := s.applyTabFormatting(ctx, spreadsheetID, tab.Properties.SheetId, bandedIDs, spec); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := s.applyRichLinks(ctx, spreadsheetID, tab.Properties.SheetId, spec.Data); err != nil {
+		return nil, err
 	}
 
 	s.log.InfoContext(ctx, "sheet tab synchronized",
@@ -506,13 +510,13 @@ func (s *Service) writeTabBatches(ctx context.Context, spreadsheetID, tabTitle s
 	return data.RowCount(), nil
 }
 
-func (s *Service) applyRichLinks(ctx context.Context, spreadsheetID string, sheetID int64, table *Table) {
+func (s *Service) applyRichLinks(ctx context.Context, spreadsheetID string, sheetID int64, table *Table) error {
 	linkReqs := buildRichLinkRequests(sheetID, table)
 	if len(linkReqs) == 0 {
-		return
+		return nil
 	}
 
-	_ = gcp.WithRetry(ctx, func() error {
+	err := gcp.WithRetry(ctx, func() error {
 		_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
 			Requests: linkReqs,
 		}).Context(ctx).Do()
@@ -522,9 +526,14 @@ func (s *Service) applyRichLinks(ctx context.Context, spreadsheetID string, shee
 
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("sheets: apply rich links on sheet %d: %w", sheetID, err)
+	}
+
+	return nil
 }
 
-func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, sheetID int64, bandedIDs []int64, spec TabSpec) {
+func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, sheetID int64, bandedIDs []int64, spec TabSpec) error {
 	totalDataRows := int64(1)
 	colsCount := int64(0)
 	if spec.Data != nil {
@@ -533,7 +542,7 @@ func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, 
 	}
 	formatReqs := buildFormatRequests(sheetID, bandedIDs, spec, totalDataRows, colsCount)
 	if len(formatReqs) > 0 {
-		_ = gcp.WithRetry(ctx, func() error {
+		err := gcp.WithRetry(ctx, func() error {
 			_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
 				Requests: formatReqs,
 			}).Context(ctx).Do()
@@ -543,7 +552,12 @@ func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, 
 
 			return nil
 		})
+		if err != nil {
+			return fmt.Errorf("sheets: apply tab formatting on sheet %d: %w", sheetID, err)
+		}
 	}
+
+	return nil
 }
 
 func buildInitialSheets(tabs []TabSpec) []*sheets.Sheet {
