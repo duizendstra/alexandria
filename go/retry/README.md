@@ -47,7 +47,40 @@ func main() {
 }
 ```
 
-### 2. HTTP Client Decorator with Connection Protection
+### 2. Type-Safe Function Execution with Return Values (`DoVal`)
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/duizendstra/alexandria/go/retry"
+)
+
+type User struct {
+	ID   string
+	Name string
+}
+
+func main() {
+	ctx := context.Background()
+
+	user, err := retry.DoVal(ctx, 3, func() (*User, error) {
+		// Clean type-safe return without external closure variable allocations
+		return &User{ID: "usr-123", Name: "Alex"}, nil
+	})
+	if err != nil {
+		fmt.Printf("Failed to fetch user: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Fetched user: %s (%s)\n", user.Name, user.ID)
+}
+```
+
+### 3. HTTP Client Decorator with Connection Protection
 
 ```go
 package main

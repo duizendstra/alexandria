@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/duizendstra/alexandria/go/platform/apierr"
 	"github.com/duizendstra/alexandria/go/retry"
@@ -21,6 +24,10 @@ import (
 const (
 	// defaultMaxAttempts is the default maximum execution attempts.
 	defaultMaxAttempts = 10
+	defaultBaseDelay   = 100 * time.Millisecond
+	defaultMaxCap      = 5 * time.Second
+	maxAttemptShift    = 30
+	jitterDivisor      = 5
 )
 
 //nolint:gochecknoglobals // defaultLogger allows configuring package-level logging.
@@ -45,11 +52,14 @@ func logger() *slog.Logger {
 	return slog.Default()
 }
 
-// Option configures behavior for WithRetry.
+// Option configures behavior for WithRetry and WithRetryVal.
 type Option func(*config)
 
 type config struct {
-	maxAttempts int
+	maxAttempts    int
+	initialBackoff time.Duration
+	maxBackoff     time.Duration
+	onRetry        func(attempt int, delay time.Duration, err error)
 }
 
 // WithMaxAttempts configures the maximum attempts.
@@ -61,34 +71,158 @@ func WithMaxAttempts(attempts int) Option {
 	}
 }
 
+// WithInitialBackoff configures the initial base delay for exponential backoff (e.g. 500ms).
+func WithInitialBackoff(d time.Duration) Option {
+	return func(c *config) {
+		if d > 0 {
+			c.initialBackoff = d
+		}
+	}
+}
+
+// WithMaxBackoff configures the maximum backoff duration ceiling (e.g. 32s for Drive batch operations).
+func WithMaxBackoff(d time.Duration) Option {
+	return func(c *config) {
+		if d > 0 {
+			c.maxBackoff = d
+		}
+	}
+}
+
+// WithOnRetry registers an observability callback invoked before each retry sleep.
+func WithOnRetry(fn func(attempt int, delay time.Duration, err error)) Option {
+	return func(c *config) {
+		c.onRetry = fn
+	}
+}
+
 // WithRetry executes an operation callback function with exponential backoff and GCP-specific error classification.
 // It fails fast on permanent failures (like OAuth/impersonation issues) and retries on transient errors.
 func WithRetry(ctx context.Context, operation func() error, opts ...Option) error {
-	cfg := config{maxAttempts: defaultMaxAttempts}
+	_, err := WithRetryVal(ctx, func() (struct{}, error) {
+		return struct{}{}, operation()
+	}, opts...)
+
+	return err
+}
+
+// WithRetryVal executes an operation callback function with exponential backoff,
+// GCP-specific error classification, Retry-After adherence, and returns the result.
+func WithRetryVal[T any](ctx context.Context, operation func() (T, error), opts ...Option) (T, error) {
+	var zero T
+	cfg := config{
+		maxAttempts: defaultMaxAttempts,
+	}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
 	attempt := 0
-	op := func() error {
+	var timer *time.Timer
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
+
+	for {
 		if err := ctx.Err(); err != nil {
-			return retry.Permanent(ctx.Err())
+			return zero, fmt.Errorf("gcp operation failed: %w", err)
 		}
 
 		attempt++
-		err := operation()
-		if err == nil {
-			return nil
+		val, opErr := operation()
+		if opErr == nil {
+			return val, nil
 		}
 
-		return Classify(ctx, err, attempt)
+		classifiedErr := Classify(ctx, opErr, attempt)
+		if retry.IsPermanent(classifiedErr) {
+			return zero, fmt.Errorf("gcp operation failed after %d attempts: %w", attempt, classifiedErr)
+		}
+
+		if attempt >= cfg.maxAttempts {
+			return zero, fmt.Errorf("gcp operation failed after %d attempts: %w", attempt, classifiedErr)
+		}
+
+		delay := calculateDelay(classifiedErr, attempt-1, &cfg, time.Now())
+		if cfg.onRetry != nil {
+			cfg.onRetry(attempt, delay, classifiedErr)
+		}
+
+		if timer == nil {
+			timer = time.NewTimer(delay)
+		} else {
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(delay)
+		}
+
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return zero, fmt.Errorf("gcp operation failed: %w", ctx.Err())
+		}
+	}
+}
+
+func calculateDelay(err error, attempt int, cfg *config, now time.Time) time.Duration {
+	var delay time.Duration
+	if cfg.initialBackoff > 0 || cfg.maxBackoff > 0 {
+		base := cfg.initialBackoff
+		if base <= 0 {
+			base = defaultBaseDelay
+		}
+		maxCap := cfg.maxBackoff
+		if maxCap <= 0 {
+			maxCap = defaultMaxCap
+		}
+		shift := min(max(attempt, 0), maxAttemptShift)
+		b := min(time.Duration(int64(1)<<uint(shift))*base, maxCap)
+		jit := time.Duration(0)
+		if b/jitterDivisor > 0 {
+			jit = time.Duration(rand.Int64N(int64(b / jitterDivisor))) // #nosec G404
+		}
+		delay = b + jit
+	} else {
+		delay = retry.Backoff(attempt)
 	}
 
-	if err := retry.Do(ctx, cfg.maxAttempts, op); err != nil {
-		return fmt.Errorf("gcp operation failed after %d attempts: %w", attempt, err)
+	if apiErr, ok := errors.AsType[*googleapi.Error](err); ok && apiErr.Header != nil {
+		if headerDelay, ok := parseRetryAfter(apiErr.Header.Get("Retry-After"), now); ok {
+			delay = max(delay, headerDelay)
+			if cfg.maxBackoff > 0 {
+				delay = min(delay, cfg.maxBackoff)
+			}
+		}
 	}
 
-	return nil
+	return delay
+}
+
+func parseRetryAfter(header string, now time.Time) (time.Duration, bool) {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return 0, false
+	}
+
+	if secs, err := strconv.Atoi(header); err == nil {
+		if secs < 0 {
+			return 0, false
+		}
+
+		return time.Duration(secs) * time.Second, true
+	}
+
+	if date, err := http.ParseTime(header); err == nil {
+		return max(date.Sub(now), 0), true
+	}
+
+	return 0, false
 }
 
 // Classify determines whether an error should be retried.

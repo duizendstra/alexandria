@@ -61,17 +61,29 @@ func IsPermanent(err error) bool {
 	return errors.As(err, &pe) && pe.Permanent()
 }
 
+// BackoffWithConfig returns an exponential delay for the given attempt (0-indexed)
+// parameterized by base delay and maximum backoff cap, plus 0–20% jitter.
+func BackoffWithConfig(attempt int, base, maxCap time.Duration) time.Duration {
+	if base <= 0 {
+		base = backoffBase
+	}
+	if maxCap <= 0 {
+		maxCap = maxBackoff
+	}
+	shift := min(max(attempt, 0), maxAttemptShift)
+	b := min(time.Duration(int64(1)<<uint(shift))*base, maxCap)
+	jit := jitter(b / jitterFraction)
+
+	return b + jit
+}
+
 // Backoff returns an exponential delay for the given attempt (0-indexed).
 //
 // The delay is 2^attempt × 100ms, capped at 5s, plus 0–20% jitter from
 // math/rand/v2. Attempt 0 returns ~100ms, attempt 5 returns ~3.2s,
 // attempt 6+ returns ~5s.
 func Backoff(attempt int) time.Duration {
-	shift := min(max(attempt, 0), maxAttemptShift)
-	base := min(time.Duration(int64(1)<<uint(shift))*backoffBase, maxBackoff)
-	jit := jitter(base / jitterFraction)
-
-	return base + jit
+	return BackoffWithConfig(attempt, backoffBase, maxBackoff)
 }
 
 // Do calls fn up to maxAttempts times. Between failures it waits using
@@ -89,12 +101,35 @@ func Backoff(attempt int) time.Duration {
 //	    return client.Ping()
 //	})
 func Do(ctx context.Context, maxAttempts int, fn func() error) error {
+	_, err := DoVal(ctx, maxAttempts, func() (struct{}, error) {
+		return struct{}{}, fn()
+	})
+
+	return err
+}
+
+// DoVal calls fn up to maxAttempts times and returns the resulting value and error.
+// Between failures it waits using [Backoff]. It returns immediately if ctx is
+// canceled or if fn returns an error marked as permanent via [Permanent] or by
+// implementing [PermanentError].
+//
+// On success, DoVal returns the value produced by fn and nil error.
+// On failure, DoVal returns the zero value of T and the terminal error.
+//
+//	val, err := retry.DoVal(ctx, 3, func() (string, error) {
+//	    return client.FetchID()
+//	})
+func DoVal[T any](ctx context.Context, maxAttempts int, fn func() (T, error)) (T, error) {
+	var zero T
 	if maxAttempts < 1 {
 		maxAttempts = 1
 	}
 
-	var lastErr error
-	var timer *time.Timer
+	var (
+		val     T
+		lastErr error
+		timer   *time.Timer
+	)
 	defer func() {
 		if timer != nil {
 			timer.Stop()
@@ -102,9 +137,9 @@ func Do(ctx context.Context, maxAttempts int, fn func() error) error {
 	}()
 
 	for attempt := range maxAttempts {
-		lastErr = fn()
+		val, lastErr = fn()
 		if lastErr == nil {
-			return nil
+			return val, nil
 		}
 
 		if IsPermanent(lastErr) {
@@ -132,11 +167,11 @@ func Do(ctx context.Context, maxAttempts int, fn func() error) error {
 		select {
 		case <-timer.C:
 		case <-ctx.Done():
-			return fmt.Errorf("retry: %w", ctx.Err())
+			return zero, fmt.Errorf("retry: %w", ctx.Err())
 		}
 	}
 
-	return lastErr
+	return zero, lastErr
 }
 
 // jitter returns a random duration in [0, ceiling) using math/rand/v2.
