@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/duizendstra/alexandria/compare/go/platform/procrun/v0.3.0...go/platform/procrun/v0.3.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **procrun:** resolve Windows commands via PATHEXT instead of the Unix execute bit ([#251](https://github.com/duizendstra/alexandria/issues/251)) ([#267](https://github.com/duizendstra/alexandria/issues/267)) ([c062f7c](https://github.com/duizendstra/alexandria/commit/c062f7c2b1750225ddcb09e19f148b26bc5e9f75))
+
 ## [0.3.0](https://github.com/duizendstra/alexandria/compare/go/platform/procrun/v0.2.0...go/platform/procrun/v0.3.0) (2026-08-22)
 
 
