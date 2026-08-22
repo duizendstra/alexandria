@@ -3,13 +3,18 @@ package gcp
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -368,6 +373,148 @@ func TestClassify_OAuthRetrieveError(t *testing.T) {
 				t.Errorf("expected classified error to preserve *oauth2.RetrieveError, got %v", got)
 			}
 		})
+	}
+}
+
+// urlErr wraps cause the way net/http.Client reports every transport
+// failure: as a *url.Error, which satisfies net.Error regardless of cause.
+func urlErr(cause error) *url.Error {
+	return &url.Error{Op: "Get", URL: "https://example.invalid/token", Err: cause}
+}
+
+// tcpOpErr wraps cause the way the net package reports a failed socket
+// operation on an HTTP connection.
+func tcpOpErr(op string, cause error) *net.OpError {
+	return &net.OpError{Op: op, Net: "tcp", Err: cause}
+}
+
+const opRead = "read"
+
+func TestClassify_URLError(t *testing.T) {
+	tests := []struct {
+		name          string
+		err           error
+		wantPermanent bool
+	}{
+		{
+			name: "tls certificate verification is permanent",
+			err: urlErr(&tls.CertificateVerificationError{
+				Err: x509.UnknownAuthorityError{},
+			}),
+			wantPermanent: true,
+		},
+		{
+			name: "tls verification wrapped in a token fetch is permanent",
+			err: fmt.Errorf("oauth2: cannot fetch token: %w", urlErr(&tls.CertificateVerificationError{
+				Err: x509.CertificateInvalidError{Reason: x509.Expired},
+			})),
+			wantPermanent: true,
+		},
+		{
+			name:          "remote tls alert is permanent",
+			err:           urlErr(tcpOpErr("remote error", tls.AlertError(40))),
+			wantPermanent: true,
+		},
+		{
+			name:          "context canceled is permanent",
+			err:           urlErr(context.Canceled),
+			wantPermanent: true,
+		},
+		{
+			name:          "plain client error is permanent",
+			err:           urlErr(errors.New("http: server gave HTTP response to HTTPS client")),
+			wantPermanent: true,
+		},
+		{
+			name:          "read deadline timeout is transient",
+			err:           urlErr(tcpOpErr(opRead, os.ErrDeadlineExceeded)),
+			wantPermanent: false,
+		},
+		{
+			name:          "sub-context deadline is transient",
+			err:           urlErr(context.DeadlineExceeded),
+			wantPermanent: false,
+		},
+		{
+			name:          "connection reset is transient",
+			err:           urlErr(tcpOpErr(opRead, &os.SyscallError{Syscall: opRead, Err: syscall.ECONNRESET})),
+			wantPermanent: false,
+		},
+		{
+			name:          "connection refused is transient",
+			err:           urlErr(tcpOpErr("dial", &os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED})),
+			wantPermanent: false,
+		},
+		{
+			name:          "temporary resolver failure is transient",
+			err:           urlErr(tcpOpErr("dial", &net.DNSError{Err: "server misbehaving", Name: "example.invalid", IsTemporary: true})),
+			wantPermanent: false,
+		},
+		{
+			name:          "dropped keep-alive connection is transient",
+			err:           urlErr(io.EOF),
+			wantPermanent: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Classify(context.Background(), tt.err, 1)
+			if got == nil {
+				t.Fatal("expected non-nil classified error, got nil")
+			}
+			if retry.IsPermanent(got) != tt.wantPermanent {
+				t.Errorf("Classify() permanent = %v, want %v (err: %v)",
+					retry.IsPermanent(got), tt.wantPermanent, got)
+			}
+			if !errors.Is(got, tt.err) {
+				t.Errorf("expected classified error to preserve %v, got %v", tt.err, got)
+			}
+		})
+	}
+}
+
+func TestWithRetry_PermanentURLErrorTLS(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	tlsErr := urlErr(&tls.CertificateVerificationError{Err: x509.UnknownAuthorityError{}})
+
+	err := WithRetry(ctx, func() error {
+		calls++
+
+		return tlsErr
+	}, WithMaxAttempts(5), WithInitialBackoff(time.Millisecond))
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, tlsErr) {
+		t.Errorf("expected wrapped TLS error %v, got %v", tlsErr, err)
+	}
+	if calls != 1 {
+		t.Errorf("expected fail-fast on TLS error after 1 call, got %d", calls)
+	}
+}
+
+func TestWithRetry_TransientURLErrorTimeout(t *testing.T) {
+	ctx := context.Background()
+	calls := 0
+	timeoutErr := urlErr(tcpOpErr(opRead, os.ErrDeadlineExceeded))
+
+	err := WithRetry(ctx, func() error {
+		calls++
+		if calls < 2 {
+			return timeoutErr
+		}
+
+		return nil
+	}, WithInitialBackoff(time.Millisecond))
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("expected 2 calls, got %d", calls)
 	}
 }
 
