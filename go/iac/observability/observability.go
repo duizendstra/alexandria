@@ -317,13 +317,41 @@ func applyMonitoring(ctx *pulumi.Context, cfg *config.Config, projectID pulumi.S
 	if err != nil {
 		return err
 	}
+	// A StackReference's logical name is the stack name, so targets sharing
+	// a stack must share one read: a second registration under the same
+	// name is a duplicate URN and the engine aborts the whole update.
+	refs := make(map[string]*pulumi.StackReference, len(targets))
 	for _, t := range targets {
-		if err := applyUptimeTarget(ctx, projectID, channelIDs, t); err != nil {
+		ref, err := stackReferenceFor(ctx, refs, t.StackRef)
+		if err != nil {
+			return fmt.Errorf("uptime target %q: %w", t.DisplayName, err)
+		}
+		if err := applyUptimeTarget(ctx, projectID, channelIDs, ref, t); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// stackReferenceFor returns the StackReference for name, creating it on
+// first use and reusing it from refs afterwards.
+func stackReferenceFor(
+	ctx *pulumi.Context,
+	refs map[string]*pulumi.StackReference,
+	name string,
+) (*pulumi.StackReference, error) {
+	if ref, ok := refs[name]; ok {
+		return ref, nil
+	}
+
+	ref, err := pulumi.NewStackReference(ctx, name, nil)
+	if err != nil {
+		return nil, fmt.Errorf("stack ref %q: %w", name, err)
+	}
+	refs[name] = ref
+
+	return ref, nil
 }
 
 // uptimeTargetsFromConfig reads and parses the optional "uptimeTargets" JSON
@@ -341,19 +369,15 @@ func uptimeTargetsFromConfig(cfg *config.Config) ([]uptimeTarget, error) {
 	return targets, nil
 }
 
-// applyUptimeTarget resolves one target's URL from its stack reference and
-// provisions the uptime check + failure alert for it.
+// applyUptimeTarget resolves one target's URL from its (possibly shared)
+// stack reference and provisions the uptime check + failure alert for it.
 func applyUptimeTarget(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
 	channelIDs pulumi.StringArrayInput,
+	ref *pulumi.StackReference,
 	t uptimeTarget,
 ) error {
-	ref, err := pulumi.NewStackReference(ctx, t.StackRef, nil)
-	if err != nil {
-		return fmt.Errorf("uptime target %q stack ref %q: %w", t.DisplayName, t.StackRef, err)
-	}
-
 	key := t.URLOutputKey
 	if key == "" {
 		key = defaultURLOutputKey
