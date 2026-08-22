@@ -9,6 +9,7 @@
 - **`resourcemanager`**: GCP Project provisioning, folder/organization hierarchy assignment, and Cloud Billing account association.
 - **`serviceusage`**: Batch GCP service API enablement and status verification.
 - **`workspace/drive`**: High-performance streaming scanner, Shared Drive lifecycle (`CreateSharedDrive`, `FindSharedDriveByName`, `ListSharedDrives`), folder operations (`CreateFolder`, `FindFolder`), safe parent file moving (`MoveFile`), trashing (`TrashFile`), and idempotent membership reconciliation (`EnsureDriveMembership`, `RoleRank`).
+- **`workspace/sheets`**: Declarative Google Sheets synchronization and creation engine featuring formula injection protection, typed cell constructors, declarative corporate themes (`ThemeCorporateNavy`, `ThemeModernSlate`, `ThemeEmeraldForest`, `ThemeCleanMinimal`), idempotent tab sync (`ReplaceTab`), struct reflection (`FromStructs`), and Google Drive folder placement.
 
 ## Features
 

@@ -8,11 +8,13 @@ import (
 	"github.com/duizendstra/alexandria/go/google/resourcemanager"
 	"github.com/duizendstra/alexandria/go/google/serviceusage"
 	workspacedrive "github.com/duizendstra/alexandria/go/google/workspace/drive"
+	workspacesheets "github.com/duizendstra/alexandria/go/google/workspace/sheets"
 	admin "google.golang.org/api/admin/directory/v1"
 	reports "google.golang.org/api/admin/reports/v1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/drive/v3"
 	serviceusageapi "google.golang.org/api/serviceusage/v1"
+	"google.golang.org/api/sheets/v4"
 )
 
 // NewDriveService creates a fully-authenticated Google Drive API client using functional options.
@@ -89,6 +91,21 @@ func NewServiceUsageService(ctx context.Context, cfg serviceusage.Config, opts .
 	srv, err := serviceusage.New(ctx, cfg, clientOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create serviceusage service: %w", err)
+	}
+
+	return srv, nil
+}
+
+// NewSheetsService creates a fully-authenticated Google Sheets Workspace service using functional options.
+func NewSheetsService(ctx context.Context, cfg workspacesheets.Config, opts ...auth.Option) (*workspacesheets.Service, error) {
+	clientOpts, err := auth.ResolveClient(ctx, []string{sheets.SpreadsheetsScope, drive.DriveScope}, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve client: %w", err)
+	}
+
+	srv, err := workspacesheets.New(ctx, cfg, clientOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sheets service: %w", err)
 	}
 
 	return srv, nil
