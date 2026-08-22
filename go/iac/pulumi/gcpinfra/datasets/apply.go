@@ -13,6 +13,10 @@ type Outputs struct {
 }
 
 // Apply creates a BigQuery dataset in a GCP project.
+//
+// cfg.ID is the Pulumi logical name as well as the dataset ID: a stack that
+// applies several datasets must give each a distinct ID, or the engine
+// rejects the repeat as a duplicate URN.
 func Apply(ctx *pulumi.Context, projectID pulumi.StringOutput, cfg Config, deps []pulumi.Resource) (*Outputs, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err

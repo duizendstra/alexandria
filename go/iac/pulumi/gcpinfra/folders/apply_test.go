@@ -19,6 +19,7 @@ import (
 const (
 	orgParent    = "organizations/123456"
 	folderParent = "folders/789012"
+	orgOne       = "organizations/1"
 	rootName     = "root"
 	childDev     = "dev"
 )
@@ -143,18 +144,25 @@ func TestApply_ValidationErrors(t *testing.T) {
 		},
 		{
 			name:    "missing root name",
-			cfg:     hierarchy.Config{Parent: "organizations/1"},
+			cfg:     hierarchy.Config{Parent: orgOne},
 			wantErr: hierarchy.ErrRootNameRequired,
 		},
 		{
 			name:    "duplicate children",
-			cfg:     hierarchy.Config{Parent: "organizations/1", RootName: rootName, Children: []string{childDev, childDev}},
+			cfg:     hierarchy.Config{Parent: orgOne, RootName: rootName, Children: []string{childDev, childDev}},
 			wantErr: hierarchy.ErrDuplicateChild,
 		},
 		{
 			name:    "invalid parent format",
 			cfg:     hierarchy.Config{Parent: "projects/1", RootName: rootName},
 			wantErr: folders.ErrInvalidParent,
+		},
+		{
+			// #248: root and children are one resource type, so a child
+			// named like the root shares its URN.
+			name:    "child named like root",
+			cfg:     hierarchy.Config{Parent: orgOne, RootName: rootName, Children: []string{childDev, rootName}},
+			wantErr: folders.ErrDuplicateFolder,
 		},
 	}
 

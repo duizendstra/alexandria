@@ -13,6 +13,10 @@ var (
 	ErrDocumentIDRequired = errors.New("firestore: document DocumentID is required")
 	// ErrFieldsRequired means the document has no field map.
 	ErrFieldsRequired = errors.New("firestore: document Fields is required")
+	// ErrDuplicateDocumentID means two documents in one ApplyDocuments call
+	// share a DocumentID. The ID is the Pulumi logical name, so it must be
+	// unique across collections within the call, not only within one.
+	ErrDuplicateDocumentID = errors.New("firestore: duplicate document DocumentID")
 )
 
 // DatabaseConfig defines a Firestore database to be provisioned.
