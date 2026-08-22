@@ -23,6 +23,23 @@ if errors.Is(err, runstate.ErrLocked) {
 defer release() // safe to call more than once
 ```
 
+`Locker` is a [`coordination.Excluder`](../coordination/): `TryAcquire` takes a
+`coordination.Subject` and refuses a second caller with the coordination
+sentinel. `runstate.ErrLocked` and `runstate.ErrBadSubject` *are*
+`coordination.ErrLocked` and `coordination.ErrBadSubject`, so `errors.Is`
+matches under either name and a caller never needs a translation layer.
+
+```go
+release, err := locker.TryAcquire(coordination.Subject("job-alpha"))
+if errors.Is(err, coordination.ErrLocked) {
+    // the same refusal, seen through the contract
+}
+```
+
+On an interrupt the lock file is removed and the signal is re-raised, so the
+shell sees the usual `128+n` exit code. Windows has no self-signal facility;
+there the process exits with code 1 after the cleanup instead.
+
 ## Lease
 
 A lease says: *this subject passed its check, against this fingerprint, at this
@@ -65,7 +82,8 @@ Three deliberate choices:
 A subject becomes part of a file name, so one that contains a path separator or
 a parent reference is refused with `ErrBadSubject`.
 
-Zero dependencies beyond the standard library.
+The only dependency is [`go/platform/coordination`](../coordination/), for the
+`Excluder` contract and its sentinels.
 
 ## Install
 
