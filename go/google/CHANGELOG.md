@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/duizendstra/alexandria/compare/go/google/v0.1.0...go/google/v0.2.0) (2026-08-21)
+
+
+### Features
+
+* **governance,google:** add policy gate engine and google drive admin/membership primitives ([#225](https://github.com/duizendstra/alexandria/issues/225)) ([1ee8190](https://github.com/duizendstra/alexandria/commit/1ee8190b8d4ff453760f8fc6cf22765e493c79a3))
+* **harvest:** upstream workflow, pulumi/runner, and gcp resource managers ([#224](https://github.com/duizendstra/alexandria/issues/224)) ([401ad59](https://github.com/duizendstra/alexandria/commit/401ad599d713df00909102eb7c9852eccadc92cc))
+
 ## [0.1.0](https://github.com/duizendstra/alexandria/compare/go/google/v0.0.3...go/google/v0.1.0) (2026-08-21)
 
 
