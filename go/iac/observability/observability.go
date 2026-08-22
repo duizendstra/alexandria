@@ -70,7 +70,14 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 		region = defaultRegion
 	}
 
-	place := resolvePlacement(ctx, cfg, params)
+	// One StackReference per stack name for the whole run: a
+	// StackReference's logical name is the stack name, so the governance
+	// stack and any uptime target on that same stack must share one read
+	// — a second registration under the same name is a duplicate URN and
+	// the engine aborts the whole update.
+	refs := make(map[string]*pulumi.StackReference)
+
+	place := resolvePlacement(ctx, cfg, params, refs)
 
 	projectOutputs, err := projects.Apply(ctx, projects.Config{
 		Name:           projectName,
@@ -116,7 +123,7 @@ func Apply(ctx *pulumi.Context, params *Params) error {
 		return fmt.Errorf("org log sink: %w", err)
 	}
 
-	if err := applyMonitoring(ctx, cfg, projectOutputs.ProjectID); err != nil {
+	if err := applyMonitoring(ctx, cfg, projectOutputs.ProjectID, refs); err != nil {
 		return err
 	}
 
@@ -213,7 +220,14 @@ func sinkFilter(logNames []string) string {
 
 // resolvePlacement determines folder ID, billing account, and org ID from
 // params, the governance stack reference, and stack config, in that order.
-func resolvePlacement(ctx *pulumi.Context, cfg *config.Config, params *Params) placement {
+// The governance stack is read through refs, the run's shared
+// StackReference cache.
+func resolvePlacement(
+	ctx *pulumi.Context,
+	cfg *config.Config,
+	params *Params,
+	refs map[string]*pulumi.StackReference,
+) placement {
 	place := placement{}
 	if params != nil {
 		place.folderID = params.FolderID
@@ -222,7 +236,7 @@ func resolvePlacement(ctx *pulumi.Context, cfg *config.Config, params *Params) p
 	}
 
 	if place.folderID == "" || place.billingAccount == "" || place.orgID == "" {
-		fromGovernanceStack(ctx, cfg, &place)
+		fromGovernanceStack(ctx, cfg, refs, &place)
 	}
 
 	if place.folderID == "" {
@@ -242,16 +256,22 @@ func resolvePlacement(ctx *pulumi.Context, cfg *config.Config, params *Params) p
 
 // fromGovernanceStack fills missing placement values from the governance
 // stack named by the "governanceStack" config key; the folder is chosen
-// by the optional "governanceFolder" key (default "shared").
+// by the optional "governanceFolder" key (default "shared"). The reference
+// comes from refs, so an uptime target on the same stack reuses it.
 // Best-effort: a missing key, unreadable stack, or absent output leaves
 // the value empty so the config fallback applies.
-func fromGovernanceStack(ctx *pulumi.Context, cfg *config.Config, place *placement) {
+func fromGovernanceStack(
+	ctx *pulumi.Context,
+	cfg *config.Config,
+	refs map[string]*pulumi.StackReference,
+	place *placement,
+) {
 	govRef := cfg.Get("governanceStack")
 	if govRef == "" {
 		return
 	}
 
-	gov, err := pulumi.NewStackReference(ctx, govRef, nil)
+	gov, err := stackReferenceFor(ctx, refs, govRef)
 	if err != nil {
 		return
 	}
@@ -295,8 +315,14 @@ type uptimeTarget struct {
 // applyMonitoring creates the ops-email notification channel (when the
 // "alertEmail" config is set) and, for each configured uptime target, an
 // HTTPS uptime check with a failure alert routed to that channel. It is a
-// no-op when neither is configured.
-func applyMonitoring(ctx *pulumi.Context, cfg *config.Config, projectID pulumi.StringOutput) error {
+// no-op when neither is configured. Each target's stack is read through
+// refs, the run's shared StackReference cache.
+func applyMonitoring(
+	ctx *pulumi.Context,
+	cfg *config.Config,
+	projectID pulumi.StringOutput,
+	refs map[string]*pulumi.StackReference,
+) error {
 	var channelIDs pulumi.StringArray
 	if email := cfg.Get("alertEmail"); email != "" {
 		channel, err := monitoring.NewNotificationChannel(ctx, "ops-email", &monitoring.NotificationChannelArgs{
@@ -318,12 +344,38 @@ func applyMonitoring(ctx *pulumi.Context, cfg *config.Config, projectID pulumi.S
 		return err
 	}
 	for _, t := range targets {
-		if err := applyUptimeTarget(ctx, projectID, channelIDs, t); err != nil {
+		ref, err := stackReferenceFor(ctx, refs, t.StackRef)
+		if err != nil {
+			return fmt.Errorf("uptime target %q: %w", t.DisplayName, err)
+		}
+		if err := applyUptimeTarget(ctx, projectID, channelIDs, ref, t); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// stackReferenceFor returns the StackReference for name, creating it on
+// first use and reusing it from refs afterwards. Every StackReference in
+// a run must come through here so no configuration — governance stack,
+// uptime targets, or both on one stack — registers the same name twice.
+func stackReferenceFor(
+	ctx *pulumi.Context,
+	refs map[string]*pulumi.StackReference,
+	name string,
+) (*pulumi.StackReference, error) {
+	if ref, ok := refs[name]; ok {
+		return ref, nil
+	}
+
+	ref, err := pulumi.NewStackReference(ctx, name, nil)
+	if err != nil {
+		return nil, fmt.Errorf("stack ref %q: %w", name, err)
+	}
+	refs[name] = ref
+
+	return ref, nil
 }
 
 // uptimeTargetsFromConfig reads and parses the optional "uptimeTargets" JSON
@@ -341,19 +393,15 @@ func uptimeTargetsFromConfig(cfg *config.Config) ([]uptimeTarget, error) {
 	return targets, nil
 }
 
-// applyUptimeTarget resolves one target's URL from its stack reference and
-// provisions the uptime check + failure alert for it.
+// applyUptimeTarget resolves one target's URL from its (possibly shared)
+// stack reference and provisions the uptime check + failure alert for it.
 func applyUptimeTarget(
 	ctx *pulumi.Context,
 	projectID pulumi.StringOutput,
 	channelIDs pulumi.StringArrayInput,
+	ref *pulumi.StackReference,
 	t uptimeTarget,
 ) error {
-	ref, err := pulumi.NewStackReference(ctx, t.StackRef, nil)
-	if err != nil {
-		return fmt.Errorf("uptime target %q stack ref %q: %w", t.DisplayName, t.StackRef, err)
-	}
-
 	key := t.URLOutputKey
 	if key == "" {
 		key = defaultURLOutputKey
