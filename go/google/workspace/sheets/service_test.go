@@ -390,6 +390,7 @@ func TestReplaceTab_RichLinks(t *testing.T) {
 	res, err := svc.ReplaceTab(ctx, mockSpreadsheetID, TabSpec{
 		Title: mockTabTitle,
 		Data:  tbl,
+		Theme: ThemeCorporateNavy(),
 	})
 	if err != nil {
 		t.Fatalf("ReplaceTab failed: %v", err)
@@ -399,13 +400,26 @@ func TestReplaceTab_RichLinks(t *testing.T) {
 		t.Errorf("expected 1 row written, got %d", res.RowsWritten)
 	}
 
-	var foundRichLink bool
-	for _, req := range handler.receivedBatchReqs {
+	var lastFormatIndex = -1
+	var firstRichLinkIndex = -1
+
+	for idx, req := range handler.receivedBatchReqs {
+		if req.RepeatCell != nil || req.AddBanding != nil || req.UpdateDimensionProperties != nil || req.UpdateSheetProperties != nil {
+			lastFormatIndex = idx
+		}
 		if req.UpdateCells != nil && req.UpdateCells.Fields == fieldMaskTextFormatRuns {
-			foundRichLink = true
+			if firstRichLinkIndex == -1 {
+				firstRichLinkIndex = idx
+			}
 		}
 	}
-	if !foundRichLink {
-		t.Errorf("expected UpdateCells with textFormatRuns for rich link")
+
+	if firstRichLinkIndex == -1 {
+		t.Fatalf("expected UpdateCells with textFormatRuns for rich link")
+	}
+
+	if lastFormatIndex != -1 && firstRichLinkIndex <= lastFormatIndex {
+		t.Errorf("contract violation: rich links (index %d) must be applied AFTER formatting requests (last format index %d)",
+			firstRichLinkIndex, lastFormatIndex)
 	}
 }
