@@ -26,26 +26,26 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v1.0.0 | GCP/Google API error classification and retry utilities |
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.1.0 | `slog.Handler` decorator for GCP Cloud Logging (trace URLs, error reporting) |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.1.0 | OpenTelemetry trace-context bridge for slog-gcp |
-| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.1.0 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
-| [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.1.0 | Proves two datasets equivalent through layered comparison |
-| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v1.0.0 | Structured append-only audit logging |
+| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.2.0 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
+| [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.2.0 | Proves two datasets equivalent through layered comparison |
+| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v1.1.0 | Structured append-only audit logging |
 | [contracts](go/contracts/) | `github.com/duizendstra/alexandria/go/contracts` | v1.0.0 | Compiled Protocol Buffer messages and ConnectRPC services |
 | [discovery/privacyfilter](go/discovery/privacyfilter/) | `github.com/duizendstra/alexandria/go/discovery/privacyfilter` | v0.1.0 | Content filtering before indexing |
 | [discovery/search](go/discovery/search/) | `github.com/duizendstra/alexandria/go/discovery/search` | v0.2.0 | Core types and port interfaces for the Discovery bounded context |
 | [discovery/search/searchtest](go/discovery/search/searchtest/) | `github.com/duizendstra/alexandria/go/discovery/search/searchtest` | v0.0.2 | Reusable contract tests for `search.Index` adapters |
 | [platform/apierr](go/platform/apierr/) | `github.com/duizendstra/alexandria/go/platform/apierr` | v0.1.0 | Sentinel errors for vendor API interactions |
 | [platform/async](go/platform/async/) | `github.com/duizendstra/alexandria/go/platform/async` | v0.1.1 | In-memory async task runner with lifecycle states |
-| [platform/buildstamp](go/platform/buildstamp/) | `github.com/duizendstra/alexandria/go/platform/buildstamp` | v0.1.0 | Build provenance stamping and strict pre-run verification (commit, dirty tree, dependency revisions) |
+| [platform/buildstamp](go/platform/buildstamp/) | `github.com/duizendstra/alexandria/go/platform/buildstamp` | v0.2.0 | Build provenance stamping and strict pre-run verification (commit, dirty tree, dependency revisions) |
 | [platform/cache](go/platform/cache/) | `github.com/duizendstra/alexandria/go/platform/cache` | v0.0.2 | Generic, concurrent-safe in-memory TTL cache |
 | [platform/gcpenv](go/platform/gcpenv/) | `github.com/duizendstra/alexandria/go/platform/gcpenv` | v0.1.0 | Canonical GCP project ID resolution (env vars + metadata service) |
 | [platform/passstore](go/platform/passstore/) | `github.com/duizendstra/alexandria/go/platform/passstore` | v0.1.0 | Deploy-time secret retrieval from the local pass store |
-| [platform/procrun](go/platform/procrun/) | `github.com/duizendstra/alexandria/go/platform/procrun` | v0.1.0 | Run external commands under a controlled environment (scrubbed env, fixed PATH, output to file) |
-| [platform/runstate](go/platform/runstate/) | `github.com/duizendstra/alexandria/go/platform/runstate` | v0.1.0 | Per-subject run lock and short-lived, fingerprint-bound leases on disk |
+| [platform/procrun](go/platform/procrun/) | `github.com/duizendstra/alexandria/go/platform/procrun` | v0.2.0 | Run external commands under a controlled environment (scrubbed env, fixed PATH, output to file) |
+| [platform/runstate](go/platform/runstate/) | `github.com/duizendstra/alexandria/go/platform/runstate` | v0.2.0 | Per-subject run lock and short-lived, fingerprint-bound leases on disk |
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.1.0 | Project-agnostic HTTP server, client, and response utilities |
-| [platform/workflow](go/platform/workflow/) | `github.com/duizendstra/alexandria/go/platform/workflow` | v0.0.1 | Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks |
-| [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.3.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
+| [platform/workflow](go/platform/workflow/) | `github.com/duizendstra/alexandria/go/platform/workflow` | v0.1.0 | Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks |
+| [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v0.4.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v1.0.0 | Pulumi adapter packages for Google Cloud infrastructure |
-| [iac/pulumi/runner](go/iac/pulumi/runner/) | `github.com/duizendstra/alexandria/go/iac/pulumi/runner` | v0.0.1 | Programmatic Pulumi CLI automation engine built on procrun |
+| [iac/pulumi/runner](go/iac/pulumi/runner/) | `github.com/duizendstra/alexandria/go/iac/pulumi/runner` | v0.1.0 | Programmatic Pulumi CLI automation engine built on procrun |
 | [iac/pulumi/stackref](go/iac/pulumi/stackref/) | `github.com/duizendstra/alexandria/go/iac/pulumi/stackref` | v0.1.0 | Typed readers for Pulumi stack reference outputs |
 | [iac/delivery](go/iac/delivery/) | `github.com/duizendstra/alexandria/go/iac/delivery` | v0.1.1 | Configuration-driven Pulumi blueprint provisioning a CI/CD project (registry, Git connection, build triggers, consumer grants) |
 | [iac/finops](go/iac/finops/) | `github.com/duizendstra/alexandria/go/iac/finops` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning a FinOps project (billing dataset, org budget with alerts) |
