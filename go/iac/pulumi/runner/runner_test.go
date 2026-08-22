@@ -3,8 +3,11 @@ package runner_test
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/duizendstra/alexandria/go/iac/pulumi/runner"
@@ -166,4 +169,147 @@ func TestRunner_Operations(t *testing.T) {
 	if err := r.GetOutputs(ctx, nil); !errors.Is(err, runner.ErrNilDestination) {
 		t.Errorf("expected ErrNilDestination, got: %v", err)
 	}
+}
+
+// createFailingPulumiScript writes a fake pulumi that fails every command
+// without echoing its arguments, so any secret in an error can only have
+// come from the runner itself.
+func createFailingPulumiScript(t *testing.T, binDir string) string {
+	t.Helper()
+	fakeBin := filepath.Join(binDir, "failing-pulumi")
+	script := "#!/bin/sh\necho 'error: failed to set config' >&2\nexit 1\n"
+	if err := os.WriteFile(fakeBin, []byte(script), 0o755); err != nil {
+		t.Fatalf("failed to write failing pulumi script: %v", err)
+	}
+
+	return fakeBin
+}
+
+func logNames(t *testing.T, logDir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		t.Fatalf("read log dir: %v", err)
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+
+	return names
+}
+
+// TestRunner_SecretsNeverNamed proves that a secret value reaches neither the
+// log file name nor the error string, and that a value longer than NAME_MAX
+// cannot make the log file uncreatable (#252).
+func TestRunner_SecretsNeverNamed(t *testing.T) {
+	t.Parallel()
+
+	const sentinel = "hunter2-SENTINEL"
+	ctx := context.Background()
+
+	t.Run("failure keeps the value out of the error and the file name", func(t *testing.T) {
+		t.Parallel()
+
+		tmpDir := t.TempDir()
+		logDir := filepath.Join(tmpDir, "logs")
+		r, err := runner.New(tmpDir, runner.WithBinPath(createFailingPulumiScript(t, tmpDir)), runner.WithLogDir(logDir))
+		if err != nil {
+			t.Fatalf("failed to initialize runner: %v", err)
+		}
+
+		err = r.SetSecret(ctx, "auth:token", sentinel)
+		if err == nil {
+			t.Fatal("expected SetSecret to fail")
+		}
+		if strings.Contains(err.Error(), sentinel) {
+			t.Errorf("error string leaks the secret value: %v", err)
+		}
+		if !strings.Contains(err.Error(), "config set --secret auth:token") {
+			t.Errorf("error string should still name the command and key, got: %v", err)
+		}
+
+		err = r.SetConfig(ctx, "gcp:region", sentinel)
+		if err == nil {
+			t.Fatal("expected SetConfig to fail")
+		}
+		if strings.Contains(err.Error(), sentinel) {
+			t.Errorf("error string leaks the plaintext config value: %v", err)
+		}
+
+		for _, name := range logNames(t, logDir) {
+			if strings.Contains(name, sentinel) {
+				t.Errorf("log file name leaks the value: %s", name)
+			}
+		}
+	})
+
+	t.Run("oversized value stays inside NAME_MAX", func(t *testing.T) {
+		t.Parallel()
+
+		tmpDir := t.TempDir()
+		logDir := filepath.Join(tmpDir, "logs")
+		r, err := runner.New(tmpDir, runner.WithBinPath(createFakePulumiScript(t, tmpDir)), runner.WithLogDir(logDir))
+		if err != nil {
+			t.Fatalf("failed to initialize runner: %v", err)
+		}
+
+		long := strings.Repeat("x", 300)
+		if err := r.SetSecret(ctx, "auth:token", long); err != nil {
+			t.Fatalf("SetSecret with a 300-byte value failed: %v", err)
+		}
+
+		names := logNames(t, logDir)
+		if len(names) == 0 {
+			t.Fatal("expected a log file")
+		}
+		for _, name := range names {
+			if len(name) > 255 {
+				t.Errorf("log file name exceeds NAME_MAX (%d bytes): %s", len(name), name)
+			}
+			if strings.Contains(name, long) {
+				t.Errorf("log file name contains the value: %s", name)
+			}
+		}
+	})
+
+	t.Run("ordinary commands keep a readable file name", func(t *testing.T) {
+		t.Parallel()
+
+		tmpDir := t.TempDir()
+		logDir := filepath.Join(tmpDir, "logs")
+		r, err := runner.New(tmpDir, runner.WithBinPath(createFakePulumiScript(t, tmpDir)), runner.WithLogDir(logDir))
+		if err != nil {
+			t.Fatalf("failed to initialize runner: %v", err)
+		}
+
+		if err := r.SelectOrCreateStack(ctx, "dev"); err != nil {
+			t.Fatalf("SelectOrCreateStack failed: %v", err)
+		}
+		if err := r.SetSecret(ctx, "auth:token", sentinel); err != nil {
+			t.Fatalf("SetSecret failed: %v", err)
+		}
+		if err := r.Up(ctx, runner.WithUpStack("dev")); err != nil {
+			t.Fatalf("Up failed: %v", err)
+		}
+		if err := r.Destroy(ctx); err != nil {
+			t.Fatalf("Destroy failed: %v", err)
+		}
+
+		want := map[string]bool{
+			"pulumi-stack-select.log": true,
+			"pulumi-config-set.log":   true,
+			"pulumi-up.log":           true,
+			"pulumi-destroy.log":      true,
+		}
+		got := logNames(t, logDir)
+		for _, name := range got {
+			if !want[name] {
+				t.Errorf("unexpected log file name %q (want one of %v)", name, slices.Sorted(maps.Keys(want)))
+			}
+		}
+		if len(got) != len(want) {
+			t.Errorf("log files: got %v, want %d files", got, len(want))
+		}
+	})
 }

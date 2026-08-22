@@ -13,7 +13,12 @@ import (
 	"github.com/duizendstra/alexandria/go/platform/procrun"
 )
 
-const logDirPerm = 0o700
+const (
+	logDirPerm = 0o700
+
+	// flagCwd points the CLI at the project directory on every call.
+	flagCwd = "--cwd"
+)
 
 // Sentinel errors.
 var (
@@ -122,7 +127,7 @@ func (r *Runner) SelectOrCreateStack(ctx context.Context, stackName string) erro
 		return ErrEmptyStackName
 	}
 
-	return r.exec(ctx, "stack", "select", stackName, "--create", "--cwd", r.workDir)
+	return r.exec(ctx, "stack", "select", stackName, "--create", flagCwd, r.workDir)
 }
 
 // SelectStack selects an existing Pulumi stack.
@@ -131,17 +136,17 @@ func (r *Runner) SelectStack(ctx context.Context, stackName string) error {
 		return ErrEmptyStackName
 	}
 
-	return r.exec(ctx, "stack", "select", stackName, "--cwd", r.workDir)
+	return r.exec(ctx, "stack", "select", stackName, flagCwd, r.workDir)
 }
 
 // SetConfig sets a plaintext key-value configuration variable on the active stack.
 func (r *Runner) SetConfig(ctx context.Context, key, val string) error {
-	return r.exec(ctx, "config", "set", key, val, "--cwd", r.workDir)
+	return r.exec(ctx, "config", "set", key, val, flagCwd, r.workDir)
 }
 
 // SetSecret sets an encrypted secret key-value configuration variable on the active stack.
 func (r *Runner) SetSecret(ctx context.Context, key, val string) error {
-	return r.exec(ctx, "config", "set", "--secret", key, val, "--cwd", r.workDir)
+	return r.exec(ctx, "config", "set", "--secret", key, val, flagCwd, r.workDir)
 }
 
 // SetConfigs sets multiple configuration key-values in deterministic alphabetical order.
@@ -191,7 +196,7 @@ func (r *Runner) Up(ctx context.Context, opts ...UpOption) error {
 		opt(&upOpts)
 	}
 
-	args := []string{"up", "--yes", "--cwd", r.workDir}
+	args := []string{"up", "--yes", flagCwd, r.workDir}
 	if upOpts.Stack != "" {
 		args = append(args, "--stack", upOpts.Stack)
 	}
@@ -204,7 +209,7 @@ func (r *Runner) Up(ctx context.Context, opts ...UpOption) error {
 
 // Destroy executes `pulumi destroy --yes` on the stack.
 func (r *Runner) Destroy(ctx context.Context) error {
-	return r.exec(ctx, "destroy", "--yes", "--cwd", r.workDir)
+	return r.exec(ctx, "destroy", "--yes", flagCwd, r.workDir)
 }
 
 // GetRawOutputs retrieves the outputs from the current Pulumi stack as raw JSON bytes.
@@ -212,7 +217,7 @@ func (r *Runner) GetRawOutputs(ctx context.Context) ([]byte, error) {
 	logFile := filepath.Join(r.logDir, "pulumi-stack-output.json")
 	call := procrun.Call{
 		Name:   r.binPath,
-		Args:   []string{"stack", "output", "--json", "--cwd", r.workDir},
+		Args:   []string{"stack", "output", "--json", flagCwd, r.workDir},
 		Output: logFile,
 	}
 
@@ -247,7 +252,7 @@ func (r *Runner) GetOutputs(ctx context.Context, dest any) error {
 }
 
 func (r *Runner) exec(ctx context.Context, args ...string) error {
-	logFile := filepath.Join(r.logDir, fmt.Sprintf("pulumi-%s.log", sanitizeCommand(args)))
+	logFile := filepath.Join(r.logDir, fmt.Sprintf("pulumi-%s.log", logName(args)))
 	call := procrun.Call{
 		Name:   r.binPath,
 		Args:   args,
@@ -255,22 +260,102 @@ func (r *Runner) exec(ctx context.Context, args ...string) error {
 	}
 
 	if err := r.proc.Run(ctx, &call); err != nil {
-		return fmt.Errorf("pulumi %s failed: %w", strings.Join(args, " "), err)
+		return fmt.Errorf("pulumi %s failed: %w", strings.Join(redactArgs(args), " "), err)
 	}
 
 	return nil
 }
 
-func sanitizeCommand(args []string) string {
-	if len(args) == 0 {
+const (
+	// maxLogWords is how many leading subcommand words name a log file:
+	// "config set", "stack select", "up". Values never reach the name.
+	maxLogWords = 2
+
+	// maxLogWordLen bounds each word so the file name stays well inside
+	// NAME_MAX whatever the caller passes.
+	maxLogWordLen = 32
+
+	// redacted replaces a configuration value wherever an error would
+	// otherwise print it.
+	redacted = "[redacted]"
+)
+
+// keepsValue reports whether flag takes a following argument that the runner
+// itself supplies and that may stay readable in an error.
+func keepsValue(flag string) bool {
+	switch flag {
+	case flagCwd, "--stack":
+		return true
+	default:
+		return false
+	}
+}
+
+// logName derives a log file name from the leading subcommand words of args —
+// the words before the first flag, capped in number and length and reduced to
+// a portable character set. Positional values such as a configuration value
+// or a stack name are never part of the name, so a secret cannot land on disk
+// as a file name and an oversized value cannot push it past NAME_MAX.
+func logName(args []string) string {
+	words := make([]string, 0, maxLogWords)
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") || len(words) == maxLogWords {
+			break
+		}
+		if w := safeWord(arg); w != "" {
+			words = append(words, w)
+		}
+	}
+	if len(words) == 0 {
 		return "run"
 	}
-	cleaned := make([]string, 0, len(args))
-	for _, arg := range args {
-		clean := strings.TrimPrefix(arg, "--")
-		clean = strings.ReplaceAll(clean, "/", "_")
-		cleaned = append(cleaned, clean)
+
+	return strings.Join(words, "-")
+}
+
+// safeWord keeps the ASCII letters, digits, '-' and '_' of s, up to
+// maxLogWordLen bytes.
+func safeWord(s string) string {
+	var b strings.Builder
+	for _, c := range s {
+		if b.Len() == maxLogWordLen {
+			break
+		}
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '-', c == '_':
+			b.WriteRune(c)
+		}
 	}
 
-	return strings.Join(cleaned, "-")
+	return b.String()
+}
+
+// redactArgs returns a copy of args fit for an error message. For
+// `config set` the configuration value — every positional argument after the
+// key — is replaced by a placeholder whether or not the value is a secret; the
+// key, the flags, and the values of flags for which keepsValue holds stay
+// readable. Other commands are returned unchanged.
+func redactArgs(args []string) []string {
+	out := make([]string, len(args))
+	copy(out, args)
+	if len(args) < 2 || args[0] != "config" || args[1] != "set" {
+		return out
+	}
+
+	positionals := 0
+	for i := 2; i < len(out); i++ {
+		if strings.HasPrefix(out[i], "-") {
+			if keepsValue(out[i]) {
+				i++ // Keep the flag's own value.
+			}
+
+			continue
+		}
+		positionals++
+		if positionals > 1 {
+			out[i] = redacted
+		}
+	}
+
+	return out
 }
