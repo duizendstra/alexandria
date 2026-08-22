@@ -28,7 +28,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.1.0 | OpenTelemetry trace-context bridge for slog-gcp |
 | [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.4.1 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
 | [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.3.0 | Proves two datasets equivalent through layered comparison |
-| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v2.0.0 | Structured append-only audit logging |
+| [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v1.1.0 | Structured append-only audit logging |
 | [contracts](go/contracts/) | `github.com/duizendstra/alexandria/go/contracts` | v1.0.0 | Compiled Protocol Buffer messages and ConnectRPC services |
 | [discovery/privacyfilter](go/discovery/privacyfilter/) | `github.com/duizendstra/alexandria/go/discovery/privacyfilter` | v0.1.0 | Content filtering before indexing |
 | [discovery/search](go/discovery/search/) | `github.com/duizendstra/alexandria/go/discovery/search` | v0.2.0 | Core types and port interfaces for the Discovery bounded context |
