@@ -109,32 +109,39 @@ func (s *Service) ReplaceTab(ctx context.Context, spreadsheetID string, spec Tab
 		return nil, err
 	}
 
-	targetRowCount, targetColCount, err := s.resizeTab(ctx, spreadsheetID, tab, spec)
+	targetRowCount, targetColCount, err := s.resizeTab(ctx, spreadsheetID, tab.Properties, spec)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.clearTab(ctx, spreadsheetID, tab.Title); err != nil {
+	if err := s.clearTab(ctx, spreadsheetID, tab.Properties.Title); err != nil {
 		return nil, err
 	}
 
-	rowsWritten, err := s.writeTabBatches(ctx, spreadsheetID, tab.Title, spec.Data)
+	rowsWritten, err := s.writeTabBatches(ctx, spreadsheetID, tab.Properties.Title, spec.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	s.applyTabFormatting(ctx, spreadsheetID, tab.SheetId, spec)
+	var bandedIDs []int64
+	for _, br := range tab.BandedRanges {
+		if br != nil && br.BandedRangeId != 0 {
+			bandedIDs = append(bandedIDs, br.BandedRangeId)
+		}
+	}
+
+	s.applyTabFormatting(ctx, spreadsheetID, tab.Properties.SheetId, bandedIDs, spec)
 
 	s.log.InfoContext(ctx, "sheet tab synchronized",
 		slog.String("spreadsheet_id", spreadsheetID),
-		slog.String("tab_title", tab.Title),
-		slog.Int64("gid", tab.SheetId),
+		slog.String("tab_title", tab.Properties.Title),
+		slog.Int64("gid", tab.Properties.SheetId),
 		slog.Int("rows_written", rowsWritten),
 	)
 
 	return &TabResult{
-		SheetID:     tab.SheetId,
-		Title:       tab.Title,
+		SheetID:     tab.Properties.SheetId,
+		Title:       tab.Properties.Title,
 		RowCount:    targetRowCount,
 		ColumnCount: targetColCount,
 		RowsWritten: rowsWritten,
@@ -249,12 +256,12 @@ func (s *Service) SyncDocument(ctx context.Context, spreadsheetID string, spec D
 	}, nil
 }
 
-func (s *Service) resolveOrCreateTab(ctx context.Context, spreadsheetID string, spec TabSpec) (*sheets.SheetProperties, error) {
+func (s *Service) resolveOrCreateTab(ctx context.Context, spreadsheetID string, spec TabSpec) (*sheets.Sheet, error) {
 	var sp *sheets.Spreadsheet
 	err := gcp.WithRetry(ctx, func() error {
 		var e error
 		sp, e = s.sheets.Spreadsheets.Get(spreadsheetID).
-			Fields("properties.title,sheets.properties").
+			Fields("properties.title,sheets.properties,sheets.bandedRanges").
 			Context(ctx).
 			Do()
 		if e != nil {
@@ -278,31 +285,31 @@ func (s *Service) resolveOrCreateTab(ctx context.Context, spreadsheetID string, 
 	return s.createNewTab(ctx, spreadsheetID, spec.Title)
 }
 
-func findMatchingSheet(existingSheets []*sheets.Sheet, spec TabSpec) *sheets.SheetProperties {
+func findMatchingSheet(existingSheets []*sheets.Sheet, spec TabSpec) *sheets.Sheet {
 	for _, sheet := range existingSheets {
 		if sheet.Properties == nil {
 			continue
 		}
 		if spec.Title != "" && sheet.Properties.Title == spec.Title {
-			return sheet.Properties
+			return sheet
 		}
 		if spec.Title == "" && spec.GID >= 0 && sheet.Properties.SheetId == spec.GID {
-			return sheet.Properties
+			return sheet
 		}
 		if spec.GID > 0 && sheet.Properties.SheetId == spec.GID {
-			return sheet.Properties
+			return sheet
 		}
 	}
 
 	return nil
 }
 
-func (s *Service) createNewTab(ctx context.Context, spreadsheetID, title string) (*sheets.SheetProperties, error) {
+func (s *Service) createNewTab(ctx context.Context, spreadsheetID, title string) (*sheets.Sheet, error) {
 	if title == "" {
 		title = DefaultSheetTitle
 	}
 
-	var tab *sheets.SheetProperties
+	var tab *sheets.Sheet
 	err := gcp.WithRetry(ctx, func() error {
 		resp, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
 			Requests: []*sheets.Request{{
@@ -315,7 +322,7 @@ func (s *Service) createNewTab(ctx context.Context, spreadsheetID, title string)
 			return fmt.Errorf("sheets: batch update add sheet: %w", e)
 		}
 		if len(resp.Replies) > 0 && resp.Replies[0].AddSheet != nil {
-			tab = resp.Replies[0].AddSheet.Properties
+			tab = &sheets.Sheet{Properties: resp.Replies[0].AddSheet.Properties}
 		}
 
 		return nil
@@ -436,14 +443,14 @@ func (s *Service) writeTabBatches(ctx context.Context, spreadsheetID, tabTitle s
 	return data.RowCount(), nil
 }
 
-func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, sheetID int64, spec TabSpec) {
+func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, sheetID int64, bandedIDs []int64, spec TabSpec) {
 	totalDataRows := int64(1)
 	colsCount := int64(0)
 	if spec.Data != nil {
 		totalDataRows = int64(spec.Data.RowCount() + 1)
 		colsCount = int64(spec.Data.ColCount())
 	}
-	formatReqs := buildFormatRequests(sheetID, spec, totalDataRows, colsCount)
+	formatReqs := buildFormatRequests(sheetID, bandedIDs, spec, totalDataRows, colsCount)
 	if len(formatReqs) > 0 {
 		_ = gcp.WithRetry(ctx, func() error {
 			_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{

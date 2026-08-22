@@ -8,8 +8,17 @@ import (
 
 // buildFormatRequests creates the Google Sheets API batch update requests
 // to apply theme styling, frozen panes, zebra banding, and column dimensions.
-func buildFormatRequests(sheetID int64, spec TabSpec, totalRows, totalCols int64) []*sheets.Request {
+func buildFormatRequests(sheetID int64, existingBandedRangeIDs []int64, spec TabSpec, totalRows, totalCols int64) []*sheets.Request {
 	var reqs []*sheets.Request
+
+	// 0. Delete any prior banding ranges on this tab to avoid conflict on idempotency.
+	for _, id := range existingBandedRangeIDs {
+		reqs = append(reqs, &sheets.Request{
+			DeleteBanding: &sheets.DeleteBandingRequest{
+				BandedRangeId: id,
+			},
+		})
+	}
 
 	theme := spec.Theme
 	if theme == nil {
@@ -21,21 +30,37 @@ func buildFormatRequests(sheetID int64, spec TabSpec, totalRows, totalCols int64
 		frozenRows = 1
 	}
 
-	// 1. Frozen rows and columns.
-	reqs = append(reqs, &sheets.Request{
-		UpdateSheetProperties: &sheets.UpdateSheetPropertiesRequest{
-			Properties: &sheets.SheetProperties{
-				SheetId: sheetID,
-				GridProperties: &sheets.GridProperties{
-					FrozenRowCount:    frozenRows,
-					FrozenColumnCount: spec.FrozenCols,
-				},
-			},
-			Fields: "gridProperties.frozenRowCount,gridProperties.frozenColumnCount",
-		},
-	})
+	reqs = append(reqs, buildFreezeAndClearRequests(sheetID, frozenRows, spec.FrozenCols, totalRows)...)
 
-	// 2. Clear cell formatting below header rows.
+	if hReq := buildHeaderFormatRequest(sheetID, frozenRows, theme); hReq != nil {
+		reqs = append(reqs, hReq)
+	}
+
+	if bReq := buildBandingRequest(sheetID, frozenRows, totalRows, totalCols, theme); bReq != nil {
+		reqs = append(reqs, bReq)
+	}
+
+	reqs = append(reqs, buildColumnDimensionRequests(sheetID, totalCols, spec, theme)...)
+
+	return reqs
+}
+
+func buildFreezeAndClearRequests(sheetID, frozenRows, frozenCols, totalRows int64) []*sheets.Request {
+	reqs := []*sheets.Request{
+		{
+			UpdateSheetProperties: &sheets.UpdateSheetPropertiesRequest{
+				Properties: &sheets.SheetProperties{
+					SheetId: sheetID,
+					GridProperties: &sheets.GridProperties{
+						FrozenRowCount:    frozenRows,
+						FrozenColumnCount: frozenCols,
+					},
+				},
+				Fields: "gridProperties.frozenRowCount,gridProperties.frozenColumnCount",
+			},
+		},
+	}
+
 	if totalRows > frozenRows {
 		reqs = append(reqs, &sheets.Request{
 			RepeatCell: &sheets.RepeatCellRequest{
@@ -49,51 +74,62 @@ func buildFormatRequests(sheetID int64, spec TabSpec, totalRows, totalCols int64
 		})
 	}
 
-	// 3. Header row formatting.
-	if frozenRows > 0 {
-		reqs = append(reqs, &sheets.Request{
-			RepeatCell: &sheets.RepeatCellRequest{
+	return reqs
+}
+
+func buildHeaderFormatRequest(sheetID, frozenRows int64, theme *Theme) *sheets.Request {
+	if frozenRows <= 0 {
+		return nil
+	}
+
+	return &sheets.Request{
+		RepeatCell: &sheets.RepeatCellRequest{
+			Range: &sheets.GridRange{
+				SheetId:       sheetID,
+				StartRowIndex: 0,
+				EndRowIndex:   frozenRows,
+			},
+			Cell: &sheets.CellData{
+				UserEnteredFormat: &sheets.CellFormat{
+					BackgroundColor: theme.HeaderBackground.ToSheetsColor(),
+					TextFormat: &sheets.TextFormat{
+						Bold:            theme.HeaderBold,
+						ForegroundColor: theme.HeaderForeground.ToSheetsColor(),
+					},
+				},
+			},
+			Fields: "userEnteredFormat(backgroundColor,textFormat)",
+		},
+	}
+}
+
+func buildBandingRequest(sheetID, frozenRows, totalRows, totalCols int64, theme *Theme) *sheets.Request {
+	if !theme.EnableBanding || totalRows <= frozenRows || totalCols <= 0 {
+		return nil
+	}
+
+	return &sheets.Request{
+		AddBanding: &sheets.AddBandingRequest{
+			BandedRange: &sheets.BandedRange{
 				Range: &sheets.GridRange{
-					SheetId:       sheetID,
-					StartRowIndex: 0,
-					EndRowIndex:   frozenRows,
+					SheetId:          sheetID,
+					StartRowIndex:    frozenRows,
+					EndRowIndex:      totalRows,
+					StartColumnIndex: 0,
+					EndColumnIndex:   totalCols,
 				},
-				Cell: &sheets.CellData{
-					UserEnteredFormat: &sheets.CellFormat{
-						BackgroundColor: theme.HeaderBackground.ToSheetsColor(),
-						TextFormat: &sheets.TextFormat{
-							Bold:            theme.HeaderBold,
-							ForegroundColor: theme.HeaderForeground.ToSheetsColor(),
-						},
-					},
-				},
-				Fields: "userEnteredFormat(backgroundColor,textFormat)",
-			},
-		})
-	}
-
-	// 4. Alternating row banding.
-	if theme.EnableBanding && totalRows > frozenRows && totalCols > 0 {
-		reqs = append(reqs, &sheets.Request{
-			AddBanding: &sheets.AddBandingRequest{
-				BandedRange: &sheets.BandedRange{
-					Range: &sheets.GridRange{
-						SheetId:          sheetID,
-						StartRowIndex:    frozenRows,
-						EndRowIndex:      totalRows,
-						StartColumnIndex: 0,
-						EndColumnIndex:   totalCols,
-					},
-					RowProperties: &sheets.BandingProperties{
-						FirstBandColor:  theme.ZebraFirstBand.ToSheetsColor(),
-						SecondBandColor: theme.ZebraSecondBand.ToSheetsColor(),
-					},
+				RowProperties: &sheets.BandingProperties{
+					FirstBandColor:  theme.ZebraFirstBand.ToSheetsColor(),
+					SecondBandColor: theme.ZebraSecondBand.ToSheetsColor(),
 				},
 			},
-		})
+		},
 	}
+}
 
-	// 5. Auto-fit column widths.
+func buildColumnDimensionRequests(sheetID, totalCols int64, spec TabSpec, theme *Theme) []*sheets.Request {
+	var reqs []*sheets.Request
+
 	if theme.AutoFitColumns && totalCols > 0 {
 		reqs = append(reqs, &sheets.Request{
 			AutoResizeDimensions: &sheets.AutoResizeDimensionsRequest{
@@ -107,7 +143,6 @@ func buildFormatRequests(sheetID int64, spec TabSpec, totalRows, totalCols int64
 		})
 	}
 
-	// 6. Custom column width overrides.
 	widths := collectColumnWidths(theme, spec.Data)
 	for colIdx, width := range widths {
 		if width <= 0 {

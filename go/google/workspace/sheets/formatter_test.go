@@ -17,7 +17,7 @@ func TestBuildFormatRequests_ThemeCorporateNavy(t *testing.T) {
 		Data:       tbl,
 	}
 
-	reqs := buildFormatRequests(12345, spec, 2, 3)
+	reqs := buildFormatRequests(12345, nil, spec, 2, 3)
 	if len(reqs) == 0 {
 		t.Fatalf("expected format requests to be generated")
 	}
@@ -67,3 +67,23 @@ func TestBuildFormatRequests_ThemeCorporateNavy(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildFormatRequests_DeleteExistingBanding(t *testing.T) {
+	spec := TabSpec{
+		Title: "BandedTab",
+		Theme: ThemeModernSlate(),
+	}
+
+	reqs := buildFormatRequests(999, []int64{101, 102}, spec, 5, 2)
+	if len(reqs) < 2 {
+		t.Fatalf("expected at least 2 requests for deleting bandings")
+	}
+
+	if reqs[0].DeleteBanding == nil || reqs[0].DeleteBanding.BandedRangeId != 101 {
+		t.Errorf("expected DeleteBanding for id 101, got %+v", reqs[0].DeleteBanding)
+	}
+	if reqs[1].DeleteBanding == nil || reqs[1].DeleteBanding.BandedRangeId != 102 {
+		t.Errorf("expected DeleteBanding for id 102, got %+v", reqs[1].DeleteBanding)
+	}
+}
+
