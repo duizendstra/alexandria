@@ -27,7 +27,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.1.0 | `slog.Handler` decorator for GCP Cloud Logging (trace URLs, error reporting) |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.1.0 | OpenTelemetry trace-context bridge for slog-gcp |
 | [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.4.1 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
-| [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.3.0 | Proves two datasets equivalent through layered comparison |
+| [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.3.1 | Proves two datasets equivalent through layered comparison |
 | [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v1.1.0 | Structured append-only audit logging |
 | [contracts](go/contracts/) | `github.com/duizendstra/alexandria/go/contracts` | v1.0.0 | Compiled Protocol Buffer messages and ConnectRPC services |
 | [discovery/privacyfilter](go/discovery/privacyfilter/) | `github.com/duizendstra/alexandria/go/discovery/privacyfilter` | v0.1.0 | Content filtering before indexing |
@@ -42,7 +42,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/passstore](go/platform/passstore/) | `github.com/duizendstra/alexandria/go/platform/passstore` | v0.1.0 | Deploy-time secret retrieval from the local pass store |
 | [platform/procrun](go/platform/procrun/) | `github.com/duizendstra/alexandria/go/platform/procrun` | v0.3.1 | Run external commands under a controlled environment (scrubbed env, fixed PATH, output to file) |
 | [platform/runstate](go/platform/runstate/) | `github.com/duizendstra/alexandria/go/platform/runstate` | v0.4.0 | Per-subject run lock and short-lived, fingerprint-bound leases on disk |
-| [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.1.0 | Project-agnostic HTTP server, client, and response utilities |
+| [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.1.1 | Project-agnostic HTTP server, client, and response utilities |
 | [platform/workflow](go/platform/workflow/) | `github.com/duizendstra/alexandria/go/platform/workflow` | v0.2.0 | Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v1.0.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v1.0.0 | Pulumi adapter packages for Google Cloud infrastructure |
