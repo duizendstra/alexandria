@@ -64,4 +64,3 @@ func gcpSeverity(level slog.Level) string {
 		return "EMERGENCY"
 	}
 }
-
