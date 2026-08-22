@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **go/iac/finops**: A present-but-malformed optional `thresholds` config value now aborts `Apply` with an error naming the key instead of being read as absent — which silently provisioned the budget alerts on the default thresholds. An absent or empty `thresholds` still applies the defaults (#284).
 - **go/dataquality/datadiff**: The stats tolerance filter now reports a `StatDiff` whose `Left`, `Right` or `Delta` is NaN or ±Inf instead of silently dropping it as "within tolerance" — including NaN-vs-NaN and Inf-vs-Inf, since a non-finite aggregate is never floating-point noise (#247).
 - **go/platform/web**: `WriteError` no longer panics on an `apierr.StatusError` whose status is outside `net/http`'s 100–999 range, and no longer reflects the upstream response excerpt (`StatusError.Body`) into the client-facing `{"error": …}` payload. A `StatusError` sets the response status only for 3xx/4xx/5xx codes (300–599, passed through as-is; the client sees `"<sentinel>: <status>"`); 0, 1xx, 2xx and out-of-range codes fall back to the generic 500 response (#250).
 - **go/iac/pulumi/runner**: Log files are named after the subcommand words only (`pulumi-config-set.log`, `pulumi-up.log`), never after argument values, so a secret set with `SetSecret` no longer lands in an on-disk file name and a long value no longer exceeds `NAME_MAX`; the error returned for a failed `config set` redacts the configuration value, secret or not (#252).
