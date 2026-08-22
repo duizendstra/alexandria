@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/duizendstra/alexandria/go/platform/coordination"
 	"github.com/duizendstra/alexandria/go/platform/runstate"
 )
 
@@ -354,5 +355,37 @@ func TestLockerSignalCleansUpTheLock(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "lock."+subject)); !os.IsNotExist(err) {
 		t.Fatal("a signal must clean up the lock")
+	}
+}
+
+// TestLockerTryAcquireIsTheExcluderContract pins the coordination contract
+// on Locker: TryAcquire takes a coordination.Subject, refuses a second caller
+// with the coordination sentinel, and refuses a subject that cannot be part
+// of a path before touching the directory. The errors must match under both
+// names, so a caller that classifies by runstate.ErrLocked today can move to
+// coordination.ErrLocked without a translation layer.
+func TestLockerTryAcquireIsTheExcluderContract(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "state")
+	locker := &runstate.Locker{Dir: dir, OnSignal: func(os.Signal) {}}
+
+	release, err := locker.TryAcquire(coordination.Subject(subject))
+	if err != nil {
+		t.Fatalf("first TryAcquire: %v", err)
+	}
+	defer release()
+
+	_, err = locker.TryAcquire(coordination.Subject(subject))
+	if !errors.Is(err, coordination.ErrLocked) || !errors.Is(err, runstate.ErrLocked) {
+		t.Fatalf("a second run must be refused with the coordination sentinel under both names, got %v", err)
+	}
+
+	// The same window, seen through Acquire: one lock, two spellings.
+	if _, err := locker.Acquire(subject); !errors.Is(err, coordination.ErrLocked) {
+		t.Fatalf("Acquire must refuse with the same sentinel, got %v", err)
+	}
+
+	_, err = locker.TryAcquire("../escape")
+	if !errors.Is(err, coordination.ErrBadSubject) || !errors.Is(err, runstate.ErrBadSubject) {
+		t.Fatalf("an escaping subject must be refused with ErrBadSubject under both names, got %v", err)
 	}
 }

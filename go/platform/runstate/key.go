@@ -1,15 +1,18 @@
 package runstate
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/duizendstra/alexandria/go/platform/coordination"
 )
 
-// ErrBadSubject reports a subject that cannot be part of a file name.
-var ErrBadSubject = errors.New("subject may not contain a path separator or a parent reference")
+// ErrBadSubject reports a subject that cannot be part of a file name. It is
+// the coordination sentinel itself, so errors.Is matches it under either
+// name.
+var ErrBadSubject = coordination.ErrBadSubject
 
 // dirPerm and filePerm keep run state readable by its owner only.
 const (
