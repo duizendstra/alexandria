@@ -39,10 +39,12 @@ the contract section of [doc.go](doc.go);
 - **Release is idempotent.** It is safe to call more than once and to defer
   unconditionally, including after an explicit call.
 - **Release removes only its own record.** What a release removes is checked
-  by file identity, never by content or by path alone: a holder that was
-  reclaimed while still inside releases without touching the record of
-  whoever holds the window now, so an overlap ends with the slow holder's
-  work instead of cascading to a third caller.
+  by file identity and by the record's own bytes, never by path alone — a
+  path can name a successor's record, and on a filesystem that reuses inode
+  numbers so can the identity: a holder that was reclaimed while still
+  inside releases without touching the record of whoever holds the window
+  now, so an overlap ends with the slow holder's work instead of cascading
+  to a third caller.
 - **The fence rises per subject.** It is read and rewritten while the window
   is held: 1 for a subject nobody has ever entered, one higher per occupancy,
   never repeated. Counters are per subject and independent of each other. The
@@ -76,7 +78,7 @@ the contract section of [doc.go](doc.go);
   default.
 - **Reclaim takes aside only the record it judged.** A stale record is not
   removed in place: it is set aside by rename onto a name only that reclaim
-  attempt uses, and identity is checked on what actually moved. The judged
+  attempt uses, and identity and bytes are checked on what actually moved. The judged
   record: reclaimed. A live claim that replaced it between the read and the
   rename: put straight back, by a primitive that refuses an existing target,
   and the wait continues behind it. If yet another claim lands inside the two
@@ -136,7 +138,12 @@ alternative":
 - **Identity, wherever a record is removed.** Release and reclaim both check
   file identity before removing anything, because a path alone can name a
   successor's record: an unconditional remove-by-path is exactly how a
-  reclaim overlap cascades to a third caller.
+  reclaim overlap cascades to a third caller. Identity is the dev/inode
+  pair AND the record's bytes: ext4 hands a freed inode number to the very
+  next file created, so a successor that claims right after a reclaim can
+  sit on its predecessor's identity, and the pair alone would remove it.
+  APFS never reuses an inode, which is why identity alone passes on macOS
+  and fails on Linux.
 - **Set-aside, not remove, in reclaim.** POSIX has no conditional remove, so
   the judged record is renamed onto a private name and identity is checked
   on what moved; a record that turns out to be live is restored by a
@@ -169,6 +176,7 @@ alternative":
 | `TestReleaseRemovesOnlyItsOwnRecord` | An overlapped holder's release leaves its successor's record untouched — what release removes is checked by identity, not by path |
 | `TestAcquireGivingUpNamesTheHolderItWaitedBehind` | The give-up error wraps the context error and reports how long the caller queued and whom it was queued behind |
 | `TestTakeAsideReclaimsTheRecordItJudged` | Reclaim takes exactly the record it judged, frees the path, and leaves no set-aside file behind |
+| `TestRecordIdentityIsTheInodeAndTheBytes` | A record rewritten in place — same inode, different bytes, the inode-reuse case made deterministic — is not recognised as the judged one |
 | `TestTakeAsidePutsBackALiveRecordItDidNotJudge` | A live record that replaced the judged one between the read and the set-aside is restored untouched, and the reclaim reports nothing to do |
 | `TestContractIsTheSameTextInREADMEAndDoc` | The Contract section above and doc.go's contract section are the same text, mechanically |
 | `TestCoordination_MutualExclusionAcrossProcesses` | **Separate processes** — the test binary re-executed as four children — queue for one subject: a counter each of them read-pauses-writes while inside ends at exactly four, and every child got a distinct fence |

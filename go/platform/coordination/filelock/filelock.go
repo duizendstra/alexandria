@@ -1,6 +1,7 @@
 package filelock
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -237,28 +238,30 @@ func (s *Store) path(subject coordination.Subject, suffix string) (string, error
 // can come back with the directory entry missing. A claim that cannot be
 // made durable is undone and failed rather than handed out — a caller whose
 // claim might not survive the next second was never inside.
-func (s *Store) claim(path string) (os.FileInfo, error) {
+func (s *Store) claim(path string) (record, error) {
 	dir := filepath.Dir(path)
 
-	record, err := json.Marshal(coordination.Self(s.Purpose))
+	raw, err := json.Marshal(coordination.Self(s.Purpose))
 	if err != nil {
-		return nil, fmt.Errorf("enter %s: holder record: %w", path, err)
+		return record{}, fmt.Errorf("enter %s: holder record: %w", path, err)
 	}
+	raw = append(raw, '\n')
 
-	tmp, err := writeTemp(dir, filepath.Base(path), append(record, '\n'))
+	tmp, err := writeTemp(dir, filepath.Base(path), raw)
 	if err != nil {
-		return nil, fmt.Errorf("enter %s: %w", path, err)
+		return record{}, fmt.Errorf("enter %s: %w", path, err)
 	}
 
 	// The record's identity is fixed here, before the link: linking adds a
 	// second name for this same file, so the staging file's identity IS the
 	// published record's, with no moment in which reading it could race.
-	mine, err := os.Stat(tmp)
+	fi, err := os.Stat(tmp)
 	if err != nil {
 		_ = os.Remove(tmp)
 
-		return nil, fmt.Errorf("enter %s: %w", path, err)
+		return record{}, fmt.Errorf("enter %s: %w", path, err)
 	}
+	mine := record{fi: fi, raw: raw}
 
 	// The temporary file has done its job either way: it is the record when
 	// the link lands, and it is rubbish when the link is refused. Removing it
@@ -268,13 +271,13 @@ func (s *Store) claim(path string) (os.FileInfo, error) {
 	_ = os.Remove(tmp)
 
 	if linkErr != nil {
-		return nil, fmt.Errorf("enter %s: %w", path, linkErr)
+		return record{}, fmt.Errorf("enter %s: %w", path, linkErr)
 	}
 
 	if err := fsyncDir(dir); err != nil {
 		releaseOwn(path, mine)
 
-		return nil, fmt.Errorf("enter %s: %w", path, err)
+		return record{}, fmt.Errorf("enter %s: %w", path, err)
 	}
 
 	return mine, nil
@@ -290,7 +293,7 @@ func (s *Store) claim(path string) (os.FileInfo, error) {
 // holder's record with it on the way out.
 //
 //nolint:gocritic // unnamedResult: enter returns exactly what Acquire promises, and nonamedreturns forbids naming it here.
-func (s *Store) enter(path string, subject coordination.Subject, mine os.FileInfo) (func(), uint64, error) {
+func (s *Store) enter(path string, subject coordination.Subject, mine record) (func(), uint64, error) {
 	fence, err := s.advanceFence(subject)
 	if err != nil {
 		releaseOwn(path, mine)
@@ -316,13 +319,44 @@ func (s *Store) enter(path string, subject coordination.Subject, mine os.FileInf
 // the interval between the two, only a reclaim can take the record away, and
 // only once this record is itself past the staleness age — at which point
 // removing the successor is exactly what this function exists to prevent.
-func releaseOwn(path string, mine os.FileInfo) {
-	cur, err := os.Stat(path)
-	if err != nil || !os.SameFile(cur, mine) {
+func releaseOwn(path string, mine record) {
+	if !mine.same(path) {
 		return
 	}
 
 	_ = os.Remove(path)
+}
+
+// record is what an occupancy or a reclaim removes by: the file's identity
+// as the filesystem reports it AND the bytes the record holds. Neither
+// alone is enough. A path can name a successor's record. So can a
+// dev/inode pair: ext4 hands a freed inode number straight to the next file
+// created in its place, so a successor that claims right after a reclaim
+// can sit on its predecessor's identity — APFS never reuses one, which is
+// how a check on identity alone passes on macOS and fails on Linux.
+type record struct {
+	fi  os.FileInfo
+	raw []byte
+}
+
+// same reports whether the file at path is this record: the same identity
+// and the same bytes. Any failure to look is "no" — removing what cannot
+// be identified is the more dangerous reading.
+func (r record) same(path string) bool {
+	f, err := os.Open(path) //nolint:gosec // the caller owns this directory
+	if err != nil {
+		return false
+	}
+	defer func() { _ = f.Close() }()
+
+	fi, err := f.Stat()
+	if err != nil || !os.SameFile(fi, r.fi) {
+		return false
+	}
+
+	b, err := io.ReadAll(f)
+
+	return err == nil && bytes.Equal(b, r.raw)
 }
 
 // advanceFence reads subject's counter, increments it and rewrites it
@@ -397,7 +431,7 @@ func (s *Store) reclaim(path string) error {
 // two callers are now inside — the one raced outcome a filesystem without a
 // conditional remove cannot rule out, and the fence is what keeps even that
 // one distinguishable downstream.
-func takeAside(path string, judged coordination.Holder, judgedFi os.FileInfo) error {
+func takeAside(path string, judged coordination.Holder, judgedRec record) error {
 	tomb, err := reserveTomb(path)
 	if err != nil {
 		return fmt.Errorf("reclaim %s held by %s: %w: %w", path, judged, coordination.ErrStaleLock, err)
@@ -413,12 +447,11 @@ func takeAside(path string, judged coordination.Holder, judgedFi os.FileInfo) er
 		return fmt.Errorf("reclaim %s held by %s: %w: %w", path, judged, coordination.ErrStaleLock, err)
 	}
 
-	moved, err := os.Stat(tomb)
-	if err != nil {
+	if _, err := os.Stat(tomb); err != nil {
 		return fmt.Errorf("reclaim %s held by %s: record set aside at %s: %w", path, judged, tomb, err)
 	}
 
-	if os.SameFile(moved, judgedFi) {
+	if judgedRec.same(tomb) {
 		_ = os.Remove(tomb)
 
 		return nil
@@ -466,33 +499,35 @@ func reserveTomb(path string) (string, error) {
 // Since is defaulted to the file's modification time when the record parses
 // but carries no Since of its own, so a record written by an older writer
 // still ages.
-func readHolder(path string) (coordination.Holder, os.FileInfo, bool) {
+func readHolder(path string) (coordination.Holder, record, bool) {
 	f, err := os.Open(path) //nolint:gosec // the caller owns this directory
 	if err != nil {
-		return coordination.Holder{}, nil, false
+		return coordination.Holder{}, record{}, false
 	}
 	defer func() { _ = f.Close() }()
 
 	fi, err := f.Stat()
 	if err != nil {
-		return coordination.Holder{}, nil, false
+		return coordination.Holder{}, record{}, false
 	}
 
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return coordination.Holder{}, nil, false
+		return coordination.Holder{}, record{}, false
 	}
+
+	rec := record{fi: fi, raw: b}
 
 	var h coordination.Holder
 	if err := json.Unmarshal(b, &h); err != nil {
-		return coordination.Holder{}, fi, true
+		return coordination.Holder{}, rec, true
 	}
 
 	if h.Since.IsZero() {
 		h.Since = fi.ModTime().UTC()
 	}
 
-	return h, fi, true
+	return h, rec, true
 }
 
 // writeTemp writes content to a fresh temporary file next to the name it is

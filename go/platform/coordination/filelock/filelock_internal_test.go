@@ -12,10 +12,18 @@ import (
 	"github.com/duizendstra/alexandria/go/platform/coordination"
 )
 
+// abandoned is the record of a holder that left an hour ago and never
+// released: what every reclaim in these tests judges.
+func abandoned() coordination.Holder {
+	return coordination.Holder{
+		PID: 1, Host: "gone", Since: time.Now().UTC().Add(-time.Hour), Purpose: "abandoned work",
+	}
+}
+
 // seedRecord writes a holder record at path the way an abandoned or a live
 // claim would look on disk, and reads it back through readHolder so the
 // caller holds exactly what a reclaimer would have judged.
-func seedRecord(t *testing.T, path string, h coordination.Holder) (judged coordination.Holder, fi os.FileInfo) {
+func seedRecord(t *testing.T, path string, h coordination.Holder) (judged coordination.Holder, rec record) {
 	t.Helper()
 
 	record, err := json.Marshal(h)
@@ -26,12 +34,44 @@ func seedRecord(t *testing.T, path string, h coordination.Holder) (judged coordi
 		t.Fatalf("seed record: %v", err)
 	}
 
-	judged, fi, ok := readHolder(path)
+	judged, rec, ok := readHolder(path)
 	if !ok {
 		t.Fatal("the seeded record must read back")
 	}
 
-	return judged, fi
+	return judged, rec
+}
+
+// TestRecordIdentityIsTheInodeAndTheBytes pins why a record is more than
+// its dev/inode pair: ext4 gives a freed inode number to the very next
+// file created, so a successor's record can carry the predecessor's
+// identity (APFS never reuses one, which is how identity alone passes on
+// macOS and fails on Linux). Rewriting the file in place keeps the inode on
+// every filesystem, so this is the reuse case made deterministic: same
+// identity, different bytes, and same must say no.
+func TestRecordIdentityIsTheInodeAndTheBytes(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "subject"+LockSuffix)
+
+	_, rec := seedRecord(t, path, abandoned())
+	if !rec.same(path) {
+		t.Fatal("a record must recognise itself")
+	}
+
+	successor, err := json.Marshal(coordination.Holder{PID: 2, Host: "here", Since: time.Now().UTC(), Purpose: "live work"})
+	if err != nil {
+		t.Fatalf("marshal successor: %v", err)
+	}
+	if err := os.WriteFile(path, append(successor, '\n'), 0o600); err != nil {
+		t.Fatalf("rewrite in place: %v", err)
+	}
+
+	if rec.same(path) {
+		t.Fatal("a successor's record on the same inode must not pass as the judged one")
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("the successor's record must still be there: %v", err)
+	}
 }
 
 // noSetAsideSurvives fails the test if any set-aside name is left in dir.
@@ -57,9 +97,7 @@ func TestTakeAsideReclaimsTheRecordItJudged(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "subject"+LockSuffix)
 
-	judged, fi := seedRecord(t, path, coordination.Holder{
-		PID: 1, Host: "gone", Since: time.Now().UTC().Add(-time.Hour), Purpose: "abandoned work",
-	})
+	judged, fi := seedRecord(t, path, abandoned())
 
 	if err := takeAside(path, judged, fi); err != nil {
 		t.Fatalf("takeAside over the judged record: %v", err)
@@ -82,9 +120,7 @@ func TestTakeAsidePutsBackALiveRecordItDidNotJudge(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "subject"+LockSuffix)
 
-	judged, judgedFi := seedRecord(t, path, coordination.Holder{
-		PID: 1, Host: "gone", Since: time.Now().UTC().Add(-time.Hour), Purpose: "abandoned work",
-	})
+	judged, judgedFi := seedRecord(t, path, abandoned())
 
 	// The judged holder's record leaves and a live claim replaces it,
 	// exactly between the reclaimer's read and its set-aside.

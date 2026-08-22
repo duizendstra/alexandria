@@ -14,10 +14,12 @@
 //   - Release is idempotent. It is safe to call more than once and to defer
 //     unconditionally, including after an explicit call.
 //   - Release removes only its own record. What a release removes is
-//     checked by file identity, never by content or by path alone: a holder
-//     that was reclaimed while still inside releases without touching the
-//     record of whoever holds the window now, so an overlap ends with the
-//     slow holder's work instead of cascading to a third caller.
+//     checked by file identity and by the record's own bytes, never by path
+//     alone — a path can name a successor's record, and on a filesystem
+//     that reuses inode numbers so can the identity: a holder that was
+//     reclaimed while still inside releases without touching the record of
+//     whoever holds the window now, so an overlap ends with the slow
+//     holder's work instead of cascading to a third caller.
 //   - The fence rises per subject. It is read and rewritten while the
 //     window is held: 1 for a subject nobody has ever entered, one higher
 //     per occupancy, never repeated. Counters are per subject and
@@ -52,7 +54,8 @@
 //     deliberately no built-in non-zero default.
 //   - Reclaim takes aside only the record it judged. A stale record is not
 //     removed in place: it is set aside by rename onto a name only that
-//     reclaim attempt uses, and identity is checked on what actually moved.
+//     reclaim attempt uses, and identity and bytes are checked on what
+//     actually moved.
 //     The judged record: reclaimed. A live claim that replaced it between
 //     the read and the rename: put straight back, by a primitive that
 //     refuses an existing target, and the wait continues behind it. If yet
