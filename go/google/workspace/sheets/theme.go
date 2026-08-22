@@ -14,6 +14,18 @@ func ThemeCorporateNavy() *Theme {
 	}
 }
 
+// ThemeCorporateNavyPlain returns the corporate navy header style (#1C4E78, bold white text)
+// with frozen row 1, auto-fit columns, and no alternating row zebra banding.
+func ThemeCorporateNavyPlain() *Theme {
+	return &Theme{
+		HeaderBackground: Hex("#1C4E78"),
+		HeaderForeground: Hex("#FFFFFF"),
+		HeaderBold:       true,
+		EnableBanding:    false,
+		AutoFitColumns:   true,
+	}
+}
+
 // ThemeModernSlate returns a neutral modern aesthetic with dark slate header
 // and light slate alternating rows.
 func ThemeModernSlate() *Theme {

@@ -31,6 +31,10 @@ type Cell struct {
 	// When false (the default), the cell will be written safely using ValueInputOption("RAW"),
 	// ensuring any leading '=', '+', '-', or '@' characters are treated as literal text.
 	IsFormula bool
+	// LinkURL is an optional target URI for rich-text hyperlinks.
+	// When set, the cell displays RawVal as text and attaches LinkURL without using formulas,
+	// rendering clickably and identically across all locales (nl_NL, en_US, etc.) with zero formula injection risk.
+	LinkURL string
 }
 
 // Text constructs a literal text cell. It is immune to formula injection.
@@ -48,30 +52,19 @@ func Formula(f string) Cell {
 	return Cell{RawVal: f, IsFormula: true}
 }
 
-// Hyperlink constructs an explicit =HYPERLINK("url"; "label") formula cell.
+// Hyperlink constructs a rich-text clickable hyperlink cell.
+// It displays label (or url if label is empty) and attaches url as a clickable link.
+// It is completely locale-independent (no formula delimiter ambiguity) and immune to formula injection.
 func Hyperlink(url, label string) Cell {
 	if label == "" {
 		label = url
 	}
-	// Escape quotes in url and label for sheets formula.
-	safeURL := escapeFormulaString(url)
-	safeLabel := escapeFormulaString(label)
 
-	return Formula(`=HYPERLINK("` + safeURL + `";"` + safeLabel + `")`)
-}
-
-// escapeFormulaString escapes internal double quotes for formula string literals.
-func escapeFormulaString(s string) string {
-	var b []byte
-	for i := range s {
-		if s[i] == '"' {
-			b = append(b, '"', '"')
-		} else {
-			b = append(b, s[i])
-		}
+	return Cell{
+		RawVal:    label,
+		IsFormula: false,
+		LinkURL:   url,
 	}
-
-	return string(b)
 }
 
 // Number constructs a numeric cell with safe raw representation.
@@ -200,7 +193,11 @@ type TabSpec struct {
 	GID int64
 	// CreateIfMissing determines whether to create the tab if it does not exist.
 	CreateIfMissing bool
-	// FrozenRows is the number of top rows to freeze (defaults to 1 if Data has headers).
+	// SkipFormatting, when true, skips all visual formatting requests
+	// (RepeatCell header styling, AddBanding, UpdateSheetProperties frozen panes, and column resizing).
+	// With SkipFormatting enabled, only raw value updates and rich text links are written.
+	SkipFormatting bool
+	// FrozenRows is the number of top rows to freeze (defaults to 1 if Data has headers and SkipFormatting is false).
 	FrozenRows int64
 	// FrozenCols is the number of left columns to freeze (defaults to 0).
 	FrozenCols int64

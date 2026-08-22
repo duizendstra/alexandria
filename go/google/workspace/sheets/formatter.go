@@ -6,23 +6,34 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+const (
+	fieldMaskTextFormatRuns = "textFormatRuns"
+)
+
 // buildFormatRequests creates the Google Sheets API batch update requests
 // to apply theme styling, frozen panes, zebra banding, and column dimensions.
+// If spec.SkipFormatting is true, it returns nil immediately without issuing formatting requests.
 func buildFormatRequests(sheetID int64, existingBandedRangeIDs []int64, spec TabSpec, totalRows, totalCols int64) []*sheets.Request {
-	var reqs []*sheets.Request
-
-	// 0. Delete any prior banding ranges on this tab to avoid conflict on idempotency.
-	for _, id := range existingBandedRangeIDs {
-		reqs = append(reqs, &sheets.Request{
-			DeleteBanding: &sheets.DeleteBandingRequest{
-				BandedRangeId: id,
-			},
-		})
+	if spec.SkipFormatting {
+		return nil
 	}
+
+	var reqs []*sheets.Request
 
 	theme := spec.Theme
 	if theme == nil {
 		theme = ThemeCorporateNavy()
+	}
+
+	// 0. Only delete prior banding ranges if banding is enabled in the new theme.
+	if theme.EnableBanding {
+		for _, id := range existingBandedRangeIDs {
+			reqs = append(reqs, &sheets.Request{
+				DeleteBanding: &sheets.DeleteBandingRequest{
+					BandedRangeId: id,
+				},
+			})
+		}
 	}
 
 	frozenRows := spec.FrozenRows
@@ -41,6 +52,60 @@ func buildFormatRequests(sheetID int64, existingBandedRangeIDs []int64, spec Tab
 	}
 
 	reqs = append(reqs, buildColumnDimensionRequests(sheetID, totalCols, spec, theme)...)
+
+	return reqs
+}
+
+// buildRichLinkRequests creates UpdateCells batch requests to attach clickable URLs
+// as rich-text links to cells with LinkURL without using spreadsheet formulas.
+func buildRichLinkRequests(sheetID int64, table *Table) []*sheets.Request {
+	if table == nil || len(table.Rows) == 0 {
+		return nil
+	}
+
+	headerOffset := 0
+	if len(table.Headers) > 0 {
+		headerOffset = 1
+	}
+
+	var reqs []*sheets.Request
+	for rIdx, row := range table.Rows {
+		for cIdx, cell := range row {
+			if cell.LinkURL == "" {
+				continue
+			}
+			reqs = append(reqs, &sheets.Request{
+				UpdateCells: &sheets.UpdateCellsRequest{
+					Range: &sheets.GridRange{
+						SheetId:          sheetID,
+						StartRowIndex:    int64(rIdx + headerOffset),
+						EndRowIndex:      int64(rIdx + headerOffset + 1),
+						StartColumnIndex: int64(cIdx),
+						EndColumnIndex:   int64(cIdx + 1),
+					},
+					Rows: []*sheets.RowData{
+						{
+							Values: []*sheets.CellData{
+								{
+									TextFormatRuns: []*sheets.TextFormatRun{
+										{
+											StartIndex: 0,
+											Format: &sheets.TextFormat{
+												Link: &sheets.Link{
+													Uri: cell.LinkURL,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Fields: fieldMaskTextFormatRuns,
+				},
+			})
+		}
+	}
 
 	return reqs
 }

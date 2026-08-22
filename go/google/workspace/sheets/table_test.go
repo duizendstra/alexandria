@@ -98,22 +98,29 @@ func TestFluentTableBuilder(t *testing.T) {
 		t.Errorf("expected '=Bob' to be raw text, got formula")
 	}
 
-	// Hyperlink must be a formula.
+	// Hyperlink must be rich text (IsFormula: false, LinkURL set).
 	linkCell := tbl.Rows[0][2]
-	if !linkCell.IsFormula {
-		t.Errorf("expected hyperlink to be marked as formula")
+	if linkCell.IsFormula {
+		t.Errorf("expected hyperlink to be rich text with IsFormula=false")
 	}
-	wantFormula := `=HYPERLINK("https://example.com/alice";"Profile")`
-	if linkCell.RawVal != wantFormula {
-		t.Errorf("got hyperlink %q, want %q", linkCell.RawVal, wantFormula)
+	if linkCell.RawVal != "Profile" {
+		t.Errorf("got hyperlink label %q, want %q", linkCell.RawVal, "Profile")
+	}
+	if linkCell.LinkURL != "https://example.com/alice" {
+		t.Errorf("got link URL %q, want %q", linkCell.LinkURL, "https://example.com/alice")
 	}
 }
 
-func TestHyperlinkQuoteEscaping(t *testing.T) {
-	link := Hyperlink("https://example.com/item?q=\"search\"", "Look \"Here\"")
-	want := `=HYPERLINK("https://example.com/item?q=""search""";"Look ""Here""")`
-	if link.RawVal != want {
-		t.Errorf("got %q, want %q", link.RawVal, want)
+func TestHyperlink_FallbackLabel(t *testing.T) {
+	link := Hyperlink("https://example.com/item", "")
+	if link.RawVal != "https://example.com/item" {
+		t.Errorf("got %q, want %q", link.RawVal, "https://example.com/item")
+	}
+	if link.LinkURL != "https://example.com/item" {
+		t.Errorf("got LinkURL %q, want %q", link.LinkURL, "https://example.com/item")
+	}
+	if link.IsFormula {
+		t.Errorf("expected IsFormula=false for rich-text hyperlink")
 	}
 }
 

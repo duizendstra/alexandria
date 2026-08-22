@@ -123,14 +123,18 @@ func (s *Service) ReplaceTab(ctx context.Context, spreadsheetID string, spec Tab
 		return nil, err
 	}
 
-	var bandedIDs []int64
-	for _, br := range tab.BandedRanges {
-		if br != nil && br.BandedRangeId != 0 {
-			bandedIDs = append(bandedIDs, br.BandedRangeId)
-		}
-	}
+	s.applyRichLinks(ctx, spreadsheetID, tab.Properties.SheetId, spec.Data)
 
-	s.applyTabFormatting(ctx, spreadsheetID, tab.Properties.SheetId, bandedIDs, spec)
+	if !spec.SkipFormatting {
+		var bandedIDs []int64
+		for _, br := range tab.BandedRanges {
+			if br != nil && br.BandedRangeId != 0 {
+				bandedIDs = append(bandedIDs, br.BandedRangeId)
+			}
+		}
+
+		s.applyTabFormatting(ctx, spreadsheetID, tab.Properties.SheetId, bandedIDs, spec)
+	}
 
 	s.log.InfoContext(ctx, "sheet tab synchronized",
 		slog.String("spreadsheet_id", spreadsheetID),
@@ -341,27 +345,10 @@ func (s *Service) resizeTab(
 	tab *sheets.SheetProperties,
 	spec TabSpec,
 ) (int64, int64, error) {
-	var rowsCount, colsCount = defaultMinRows, defaultMinCols
-	if spec.Data != nil {
-		rowsCount = int64(spec.Data.RowCount() + 1)
-		colsCount = int64(spec.Data.ColCount())
-	}
-	if rowsCount < defaultMinRows {
-		rowsCount = defaultMinRows
-	}
-	if colsCount < defaultMinCols {
-		colsCount = defaultMinCols
-	}
+	rowsCount, colsCount, targetRowCount, targetColCount := calculateTargetGridDimensions(tab, spec.Data)
 
-	targetRowCount := rowsCount + extraRowsBuffer
-	targetColCount := colsCount + extraColsBuffer
-	if tab.GridProperties != nil {
-		if tab.GridProperties.RowCount > targetRowCount {
-			targetRowCount = tab.GridProperties.RowCount
-		}
-		if tab.GridProperties.ColumnCount > targetColCount {
-			targetColCount = tab.GridProperties.ColumnCount
-		}
+	if spec.SkipFormatting {
+		return s.resizeTabGridOnly(ctx, spreadsheetID, tab, rowsCount, colsCount, targetRowCount, targetColCount)
 	}
 
 	frozenRows := spec.FrozenRows
@@ -394,6 +381,82 @@ func (s *Service) resizeTab(
 	})
 	if retryErr != nil {
 		return 0, 0, fmt.Errorf("sheets: resize/freeze tab %q: %w", tab.Title, retryErr)
+	}
+
+	return targetRowCount, targetColCount, nil
+}
+
+//nolint:gocritic // returns (rowsCount, colsCount, targetRowCount, targetColCount)
+func calculateTargetGridDimensions(tab *sheets.SheetProperties, data *Table) (int64, int64, int64, int64) {
+	rowsCount, colsCount := defaultMinRows, defaultMinCols
+	if data != nil {
+		rowsCount = int64(data.RowCount() + 1)
+		colsCount = int64(data.ColCount())
+	}
+	if rowsCount < defaultMinRows {
+		rowsCount = defaultMinRows
+	}
+	if colsCount < defaultMinCols {
+		colsCount = defaultMinCols
+	}
+
+	targetRowCount := rowsCount + extraRowsBuffer
+	targetColCount := colsCount + extraColsBuffer
+	if tab != nil && tab.GridProperties != nil {
+		if tab.GridProperties.RowCount > targetRowCount {
+			targetRowCount = tab.GridProperties.RowCount
+		}
+		if tab.GridProperties.ColumnCount > targetColCount {
+			targetColCount = tab.GridProperties.ColumnCount
+		}
+	}
+
+	return rowsCount, colsCount, targetRowCount, targetColCount
+}
+
+//nolint:gocritic // returns rowCount, colCount, err
+func (s *Service) resizeTabGridOnly(
+	ctx context.Context,
+	spreadsheetID string,
+	tab *sheets.SheetProperties,
+	rowsCount, colsCount, targetRowCount, targetColCount int64,
+) (int64, int64, error) {
+	if tab != nil && tab.GridProperties != nil &&
+		tab.GridProperties.RowCount >= rowsCount &&
+		tab.GridProperties.ColumnCount >= colsCount {
+		return tab.GridProperties.RowCount, tab.GridProperties.ColumnCount, nil
+	}
+
+	sheetID := int64(0)
+	title := ""
+	if tab != nil {
+		sheetID = tab.SheetId
+		title = tab.Title
+	}
+
+	retryErr := gcp.WithRetry(ctx, func() error {
+		_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: []*sheets.Request{{
+				UpdateSheetProperties: &sheets.UpdateSheetPropertiesRequest{
+					Properties: &sheets.SheetProperties{
+						SheetId: sheetID,
+						GridProperties: &sheets.GridProperties{
+							RowCount:    targetRowCount,
+							ColumnCount: targetColCount,
+						},
+					},
+					Fields: "gridProperties.rowCount,gridProperties.columnCount",
+				},
+			}},
+		}).Context(ctx).Do()
+		if e != nil {
+			return fmt.Errorf("sheets api resize: %w", e)
+		}
+
+		return nil
+	})
+	if retryErr != nil {
+		return 0, 0, fmt.Errorf("sheets: resize tab %q: %w", title, retryErr)
 	}
 
 	return targetRowCount, targetColCount, nil
@@ -443,6 +506,24 @@ func (s *Service) writeTabBatches(ctx context.Context, spreadsheetID, tabTitle s
 	return data.RowCount(), nil
 }
 
+func (s *Service) applyRichLinks(ctx context.Context, spreadsheetID string, sheetID int64, table *Table) {
+	linkReqs := buildRichLinkRequests(sheetID, table)
+	if len(linkReqs) == 0 {
+		return
+	}
+
+	_ = gcp.WithRetry(ctx, func() error {
+		_, e := s.sheets.Spreadsheets.BatchUpdate(spreadsheetID, &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: linkReqs,
+		}).Context(ctx).Do()
+		if e != nil {
+			return fmt.Errorf("sheets api update rich links: %w", e)
+		}
+
+		return nil
+	})
+}
+
 func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, sheetID int64, bandedIDs []int64, spec TabSpec) {
 	totalDataRows := int64(1)
 	colsCount := int64(0)
@@ -468,16 +549,20 @@ func (s *Service) applyTabFormatting(ctx context.Context, spreadsheetID string, 
 func buildInitialSheets(tabs []TabSpec) []*sheets.Sheet {
 	sheetDefs := make([]*sheets.Sheet, len(tabs))
 	for i, t := range tabs {
-		frozenRows := t.FrozenRows
-		if frozenRows == 0 && t.Data != nil && len(t.Data.Headers) > 0 {
-			frozenRows = 1
+		var frozenRows, frozenCols int64
+		if !t.SkipFormatting {
+			frozenRows = t.FrozenRows
+			if frozenRows == 0 && t.Data != nil && len(t.Data.Headers) > 0 {
+				frozenRows = 1
+			}
+			frozenCols = t.FrozenCols
 		}
 		sheetDefs[i] = &sheets.Sheet{
 			Properties: &sheets.SheetProperties{
 				Title: t.Title,
 				GridProperties: &sheets.GridProperties{
 					FrozenRowCount:    frozenRows,
-					FrozenColumnCount: t.FrozenCols,
+					FrozenColumnCount: frozenCols,
 				},
 			},
 		}

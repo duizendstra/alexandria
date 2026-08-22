@@ -132,4 +132,83 @@ func TestBuildFormatRequests_ColumnBoundsAndMax(t *testing.T) {
 	}
 }
 
+func TestBuildFormatRequests_SkipFormatting(t *testing.T) {
+	tbl := NewTable("Col1", "Col2")
+	tbl.AddRowValues("a", "b")
+
+	spec := TabSpec{
+		Title:          "RawOnlyTab",
+		SkipFormatting: true,
+		Data:           tbl,
+	}
+
+	reqs := buildFormatRequests(123, []int64{101, 102}, spec, 2, 2)
+	if len(reqs) != 0 {
+		t.Fatalf("expected 0 format requests with SkipFormatting=true, got %d", len(reqs))
+	}
+}
+
+func TestBuildFormatRequests_ThemeCorporateNavyPlain(t *testing.T) {
+	tbl := NewTable("Col1", "Col2")
+	tbl.AddRowValues("a", "b")
+
+	theme := ThemeCorporateNavyPlain()
+	if theme.EnableBanding {
+		t.Errorf("expected EnableBanding to be false for Plain theme")
+	}
+
+	spec := TabSpec{
+		Title: "PlainNavyTab",
+		Theme: theme,
+		Data:  tbl,
+	}
+
+	reqs := buildFormatRequests(123, []int64{101, 102}, spec, 2, 2)
+
+	for _, r := range reqs {
+		if r.AddBanding != nil {
+			t.Errorf("expected zero AddBanding requests, but found one: %+v", r.AddBanding)
+		}
+		if r.DeleteBanding != nil {
+			t.Errorf("expected zero DeleteBanding requests when banding is disabled, but found: %+v", r.DeleteBanding)
+		}
+	}
+}
+
+func TestBuildRichLinkRequests(t *testing.T) {
+	tbl := NewTable("Name", "Profile")
+	tbl.AddRow(Text("Alice"), Hyperlink("https://example.com/alice", "Alice Profile"))
+	tbl.AddRow(Text("Bob"), Text("No Link"))
+
+	reqs := buildRichLinkRequests(456, tbl)
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 rich link request, got %d", len(reqs))
+	}
+
+	up := reqs[0].UpdateCells
+	if up == nil {
+		t.Fatalf("expected UpdateCells request")
+	}
+	if up.Range.StartRowIndex != 1 || up.Range.EndRowIndex != 2 {
+		t.Errorf("got row range [%d, %d), want [1, 2)", up.Range.StartRowIndex, up.Range.EndRowIndex)
+	}
+	if up.Range.StartColumnIndex != 1 || up.Range.EndColumnIndex != 2 {
+		t.Errorf("got col range [%d, %d), want [1, 2)", up.Range.StartColumnIndex, up.Range.EndColumnIndex)
+	}
+	if len(up.Rows) != 1 || len(up.Rows[0].Values) != 1 {
+		t.Fatalf("invalid row/value count in UpdateCells")
+	}
+
+	tfr := up.Rows[0].Values[0].TextFormatRuns
+	if len(tfr) != 1 {
+		t.Fatalf("expected 1 text format run, got %d", len(tfr))
+	}
+	if tfr[0].Format.Link == nil || tfr[0].Format.Link.Uri != "https://example.com/alice" {
+		t.Errorf("expected link uri https://example.com/alice, got %+v", tfr[0].Format.Link)
+	}
+	if up.Fields != fieldMaskTextFormatRuns {
+		t.Errorf("expected fields %q, got %q", fieldMaskTextFormatRuns, up.Fields)
+	}
+}
+
 

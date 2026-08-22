@@ -21,15 +21,16 @@ const (
 )
 
 type mockSheetsHandler struct {
-	mu           sync.Mutex
-	getCalls     int
-	batchUpdates int
-	clears       int
-	valUpdates   []string
-	createdTitle string
-	movedFileID  string
-	parentAdded  string
-	sheets       []*sheets.Sheet
+	mu                sync.Mutex
+	getCalls          int
+	batchUpdates      int
+	receivedBatchReqs []*sheets.Request
+	clears            int
+	valUpdates        []string
+	createdTitle      string
+	movedFileID       string
+	parentAdded       string
+	sheets            []*sheets.Sheet
 }
 
 func writeJSON(w http.ResponseWriter, val any) {
@@ -126,6 +127,10 @@ func (m *mockSheetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Spreadsheets BatchUpdate.
 	if strings.HasSuffix(path, ":batchUpdate") && r.Method == http.MethodPost {
 		m.batchUpdates++
+		var bReq sheets.BatchUpdateSpreadsheetRequest
+		_ = json.NewDecoder(r.Body).Decode(&bReq)
+		m.receivedBatchReqs = append(m.receivedBatchReqs, bReq.Requests...)
+
 		newSheet := &sheets.Sheet{
 			Properties: &sheets.SheetProperties{
 				SheetId: 999,
@@ -332,5 +337,75 @@ func TestSyncDocument_WithPruning(t *testing.T) {
 	}
 	if handler.batchUpdates < 1 {
 		t.Errorf("expected batchUpdates to execute deletion/formatting")
+	}
+}
+
+func TestReplaceTab_SkipFormatting(t *testing.T) {
+	svc, handler := setupTestService(t)
+	ctx := context.Background()
+
+	tbl := NewTable("Col1", "Col2")
+	tbl.AddRowValues("Val1", "Val2")
+
+	res, err := svc.ReplaceTab(ctx, mockSpreadsheetID, TabSpec{
+		Title:          mockTabTitle,
+		SkipFormatting: true,
+		Data:           tbl,
+	})
+	if err != nil {
+		t.Fatalf("ReplaceTab failed: %v", err)
+	}
+
+	if res.Title != mockTabTitle {
+		t.Errorf("expected title %s, got %s", mockTabTitle, res.Title)
+	}
+	if handler.clears != 1 {
+		t.Errorf("expected 1 clear call, got %d", handler.clears)
+	}
+	if len(handler.valUpdates) == 0 {
+		t.Errorf("expected value updates to be recorded")
+	}
+
+	// Verify contract: with SkipFormatting=true, zero RepeatCell, AddBanding, or UpdateSheetProperties requests.
+	for _, req := range handler.receivedBatchReqs {
+		if req.RepeatCell != nil {
+			t.Errorf("expected zero RepeatCell requests under SkipFormatting, got %+v", req.RepeatCell)
+		}
+		if req.AddBanding != nil {
+			t.Errorf("expected zero AddBanding requests under SkipFormatting, got %+v", req.AddBanding)
+		}
+		if req.UpdateSheetProperties != nil {
+			t.Errorf("expected zero UpdateSheetProperties requests under SkipFormatting, got %+v", req.UpdateSheetProperties)
+		}
+	}
+}
+
+func TestReplaceTab_RichLinks(t *testing.T) {
+	svc, handler := setupTestService(t)
+	ctx := context.Background()
+
+	tbl := NewTable("Name", "Link")
+	tbl.AddRow(Text("Alice"), Hyperlink("https://example.com/alice", "Alice Profile"))
+
+	res, err := svc.ReplaceTab(ctx, mockSpreadsheetID, TabSpec{
+		Title: mockTabTitle,
+		Data:  tbl,
+	})
+	if err != nil {
+		t.Fatalf("ReplaceTab failed: %v", err)
+	}
+
+	if res.RowsWritten != 1 {
+		t.Errorf("expected 1 row written, got %d", res.RowsWritten)
+	}
+
+	var foundRichLink bool
+	for _, req := range handler.receivedBatchReqs {
+		if req.UpdateCells != nil && req.UpdateCells.Fields == fieldMaskTextFormatRuns {
+			foundRichLink = true
+		}
+	}
+	if !foundRichLink {
+		t.Errorf("expected UpdateCells with textFormatRuns for rich link")
 	}
 }
