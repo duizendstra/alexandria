@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/duizendstra/alexandria/compare/go/observability/audit/v1.0.0...go/observability/audit/v1.1.0) (2026-08-21)
+
+
+### Features
+
+* **datadiff,audit:** add in-memory parity differ and audit stream reader ([#226](https://github.com/duizendstra/alexandria/issues/226)) ([36f3c5c](https://github.com/duizendstra/alexandria/commit/36f3c5c448d9476805b240f2e26e444d22697e9c))
+
 ## [1.0.0](https://github.com/duizendstra/alexandria/compare/go/observability/audit/v0.0.3...go/observability/audit/v1.0.0) (2026-08-21)
 
 

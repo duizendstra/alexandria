@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **go/platform/workflow**: Added comprehensive documentation, runnable example tests, SRE hardening guidance, and minor Go version alignment.
 - **go/dataquality/datadiff**: Added in-memory set and map parity comparison engine (`SetDiff[T]`, `MapDiff[K, V]`) and 3-way migration reconciler (`ThreeWayDiff[T]`) proving the mathematical equation `baseline ∖ leftovers == target`.
 - **go/observability/audit**: Added streaming JSONL `Reader`, predicate `Filter`, and summary `AggregateScorecard` calculation for audit trail event processing.
 - **go/governance/gate**: Policy evaluation gate engine (`Gate`, `Policy`, `Rule`, `Verdict`, `Status`, `Enforce`) supporting Standard, Strict, and Permissive evaluation, invariant check adapter bridges, and JSON report serialization.

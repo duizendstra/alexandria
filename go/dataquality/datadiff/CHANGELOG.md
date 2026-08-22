@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/duizendstra/alexandria/compare/go/dataquality/datadiff/v0.1.0...go/dataquality/datadiff/v0.2.0) (2026-08-21)
+
+
+### Features
+
+* **datadiff,audit:** add in-memory parity differ and audit stream reader ([#226](https://github.com/duizendstra/alexandria/issues/226)) ([36f3c5c](https://github.com/duizendstra/alexandria/commit/36f3c5c448d9476805b240f2e26e444d22697e9c))
+
 ## [0.1.0](https://github.com/duizendstra/alexandria/compare/go/dataquality/datadiff/v0.0.4...go/dataquality/datadiff/v0.1.0) (2026-08-21)
 
 
