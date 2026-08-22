@@ -1,12 +1,18 @@
 package sheets
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
 
 const (
 	testOptRaw = "RAW"
+
+	testHeaderKey   = "Key"
+	testHeaderValue = "Value"
+	testFormulaSum  = "=SUM(1,2)"
+	testRangeB2     = "'T'!B2:B2"
 )
 
 func TestColIndexToA1(t *testing.T) {
@@ -117,5 +123,147 @@ func TestPrepareValueUpdates_MixedFormulas(t *testing.T) {
 	// 4. D2:D3 RAW.
 	if batches[3].Range != "'Users'!D2:D3" || batches[3].ValueInputOption != testOptRaw {
 		t.Errorf("batch 3: expected 'Users'!D2:D3 %s, got %s %s", testOptRaw, batches[3].Range, batches[3].ValueInputOption)
+	}
+}
+
+// TestPrepareValueUpdates_HomogeneousColumnsGolden pins the exact requests emitted for
+// columns that are purely text or purely formula, including a short row whose missing
+// cell is padded with "". These requests must not change when mixed columns are split.
+func TestPrepareValueUpdates_HomogeneousColumnsGolden(t *testing.T) {
+	tbl := NewTable("Item", "Total", "Note")
+	tbl.AddRow(Text("a"), Formula(testFormulaSum), Text("=looks-like-a-formula"))
+	tbl.AddRow(Text("b"), Formula("=SUM(3,4)"))
+	tbl.AddRow(Text("c"), Formula("=SUM(5,6)"), Text("+plus"))
+
+	want := []valueUpdateBatch{
+		{Range: "'T'!A1:C1", ValueInputOption: testOptRaw, Values: [][]any{{"Item", "Total", "Note"}}},
+		{Range: "'T'!A2:A4", ValueInputOption: testOptRaw, Values: [][]any{{"a"}, {"b"}, {"c"}}},
+		{Range: "'T'!B2:B4", ValueInputOption: InputOptionUserEntered, Values: [][]any{{testFormulaSum}, {"=SUM(3,4)"}, {"=SUM(5,6)"}}},
+		{Range: "'T'!C2:C4", ValueInputOption: testOptRaw, Values: [][]any{{"=looks-like-a-formula"}, {""}, {"+plus"}}},
+	}
+
+	got := prepareValueUpdates("T", tbl)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("homogeneous columns: got\n%#v\nwant\n%#v", got, want)
+	}
+}
+
+// TestPrepareValueUpdates_MixedColumnPerCellInput covers a column holding both formula
+// and text cells: only the formula cells may be sent USER_ENTERED; every text cell —
+// including ones that start with a formula trigger — must land in a RAW request so
+// Sheets stores it literally (#244).
+func TestPrepareValueUpdates_MixedColumnPerCellInput(t *testing.T) {
+	tests := []struct {
+		name  string
+		build func() *Table
+		want  []valueUpdateBatch
+	}{
+		{
+			name: "alternating runs",
+			build: func() *Table {
+				tbl := NewTable(testHeaderKey, testHeaderValue)
+				tbl.AddRow(Text("a"), Formula(testFormulaSum))
+				tbl.AddRow(Text("b"), Text("=not-a-formula"))
+				tbl.AddRow(Text("c"), Formula("=SUM(3,4)"))
+				tbl.AddRow(Text("d"), Text("+tel"))
+				tbl.AddRow(Text("e"), Text("-neg"))
+
+				return tbl
+			},
+			want: []valueUpdateBatch{
+				{Range: "'T'!A1:B1", ValueInputOption: testOptRaw, Values: [][]any{{testHeaderKey, testHeaderValue}}},
+				{Range: "'T'!A2:A6", ValueInputOption: testOptRaw, Values: [][]any{{"a"}, {"b"}, {"c"}, {"d"}, {"e"}}},
+				{Range: testRangeB2, ValueInputOption: InputOptionUserEntered, Values: [][]any{{testFormulaSum}}},
+				{Range: "'T'!B3:B3", ValueInputOption: testOptRaw, Values: [][]any{{"=not-a-formula"}}},
+				{Range: "'T'!B4:B4", ValueInputOption: InputOptionUserEntered, Values: [][]any{{"=SUM(3,4)"}}},
+				{Range: "'T'!B5:B6", ValueInputOption: testOptRaw, Values: [][]any{{"+tel"}, {"-neg"}}},
+			},
+		},
+		{
+			name: "short row pads the mixed column with an empty RAW cell",
+			build: func() *Table {
+				tbl := NewTable(testHeaderKey, testHeaderValue)
+				tbl.AddRow(Text("a"), Formula(testFormulaSum))
+				tbl.AddRow(Text("b"))
+				tbl.AddRow(Text("c"), Text("=x"))
+
+				return tbl
+			},
+			want: []valueUpdateBatch{
+				{Range: "'T'!A1:B1", ValueInputOption: testOptRaw, Values: [][]any{{testHeaderKey, testHeaderValue}}},
+				{Range: "'T'!A2:A4", ValueInputOption: testOptRaw, Values: [][]any{{"a"}, {"b"}, {"c"}}},
+				{Range: testRangeB2, ValueInputOption: InputOptionUserEntered, Values: [][]any{{testFormulaSum}}},
+				{Range: "'T'!B3:B4", ValueInputOption: testOptRaw, Values: [][]any{{""}, {"=x"}}},
+			},
+		},
+		{
+			name: "mixed column between homogeneous neighbours keeps their grouping",
+			build: func() *Table {
+				tbl := NewTable("A", "B", "C", "D")
+				tbl.AddRow(Text("a1"), Text("=b1"), Formula("=1"), Formula("=2"))
+				tbl.AddRow(Text("a2"), Formula("=3"), Formula("=4"), Formula("=5"))
+
+				return tbl
+			},
+			want: []valueUpdateBatch{
+				{Range: "'T'!A1:D1", ValueInputOption: testOptRaw, Values: [][]any{{"A", "B", "C", "D"}}},
+				{Range: "'T'!A2:A3", ValueInputOption: testOptRaw, Values: [][]any{{"a1"}, {"a2"}}},
+				{Range: testRangeB2, ValueInputOption: testOptRaw, Values: [][]any{{"=b1"}}},
+				{Range: "'T'!B3:B3", ValueInputOption: InputOptionUserEntered, Values: [][]any{{"=3"}}},
+				{Range: "'T'!C2:D3", ValueInputOption: InputOptionUserEntered, Values: [][]any{{"=1", "=2"}, {"=4", "=5"}}},
+			},
+		},
+		{
+			name: "headerless table starts the runs on row 1",
+			build: func() *Table {
+				tbl := NewTable()
+				tbl.AddRow(Text("=t"), Formula("=1"))
+				tbl.AddRow(Formula("=2"), Text("@u"))
+
+				return tbl
+			},
+			want: []valueUpdateBatch{
+				{Range: "'T'!A1:A1", ValueInputOption: testOptRaw, Values: [][]any{{"=t"}}},
+				{Range: "'T'!A2:A2", ValueInputOption: InputOptionUserEntered, Values: [][]any{{"=2"}}},
+				{Range: "'T'!B1:B1", ValueInputOption: InputOptionUserEntered, Values: [][]any{{"=1"}}},
+				{Range: testRangeB2, ValueInputOption: testOptRaw, Values: [][]any{{"@u"}}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := prepareValueUpdates("T", tt.build())
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got\n%#v\nwant\n%#v", got, tt.want)
+			}
+			assertOnlyFormulasUserEntered(t, tt.build(), got)
+		})
+	}
+}
+
+// assertOnlyFormulasUserEntered checks the invariant behind #244: a USER_ENTERED request
+// may carry nothing but cells the table marked IsFormula.
+func assertOnlyFormulasUserEntered(t *testing.T, tbl *Table, batches []valueUpdateBatch) {
+	t.Helper()
+	formulas := map[string]bool{}
+	for _, r := range tbl.Rows {
+		for _, c := range r {
+			if c.IsFormula {
+				formulas[fmt.Sprint(c.RawVal)] = true
+			}
+		}
+	}
+	for _, b := range batches {
+		if b.ValueInputOption != InputOptionUserEntered {
+			continue
+		}
+		for _, row := range b.Values {
+			for _, v := range row {
+				if !formulas[fmt.Sprint(v)] {
+					t.Errorf("range %s sent %q as USER_ENTERED but it is not a formula cell", b.Range, v)
+				}
+			}
+		}
 	}
 }
