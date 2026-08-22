@@ -105,18 +105,35 @@ func applyStatsTolerance(s *StatsResult, tolerance float64) {
 
 	n := 0
 	for _, d := range s.Diffs {
-		base := math.Max(math.Abs(d.Left), math.Abs(d.Right))
-		if base == 0 {
-			s.Diffs[n] = d
-			n++
-
-			continue
-		}
-		if math.Abs(d.Delta)/base > tolerance {
+		if !withinTolerance(d, tolerance) {
 			s.Diffs[n] = d
 			n++
 		}
 	}
 	s.Diffs = s.Diffs[:n]
 	s.Match = n == 0
+}
+
+// withinTolerance reports whether a stat diff is small enough, relative to the
+// larger side, to be dropped as floating-point noise.
+//
+// A NaN or infinite value on either side is never within tolerance: the
+// relative difference is undefined (NaN) and any comparison against it is
+// false, which would otherwise let the diff vanish as a false clean pass.
+// That includes NaN-vs-NaN and Inf-vs-Inf — the filter only removes diffs it
+// can prove are noise, and a non-finite aggregate is never noise.
+func withinTolerance(d StatDiff, tolerance float64) bool {
+	if !isFinite(d.Left) || !isFinite(d.Right) || !isFinite(d.Delta) {
+		return false
+	}
+	base := math.Max(math.Abs(d.Left), math.Abs(d.Right))
+	if base == 0 {
+		return false
+	}
+
+	return math.Abs(d.Delta)/base <= tolerance
+}
+
+func isFinite(f float64) bool {
+	return !math.IsNaN(f) && !math.IsInf(f, 0)
 }
