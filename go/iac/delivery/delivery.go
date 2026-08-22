@@ -171,8 +171,8 @@ func fromGovernanceStack(ctx *pulumi.Context, cfg *config.Config, place *placeme
 	}
 }
 
-// applyRegistry creates the container registry and grants the Cloud
-// Build default SA write access to it.
+// applyRegistry creates the container registry and grants the build
+// identity write access to it (see applyBuildWriterGrants).
 func applyRegistry(ctx *pulumi.Context, cfg *config.Config, region string, projectOutputs *projects.Outputs) (*registries.Outputs, error) {
 	arID := cfg.Require("registryId")
 
@@ -191,13 +191,49 @@ func applyRegistry(ctx *pulumi.Context, cfg *config.Config, region string, proje
 		return nil, fmt.Errorf("registry: %w", err)
 	}
 
-	buildSA := pulumi.Sprintf("serviceAccount:%s@cloudbuild.gserviceaccount.com", projectOutputs.ProjectNumber)
-
-	if err := registries.GrantWriter(ctx, "build-ar-writer", projectOutputs.ProjectID, region, arOutputs.Name, buildSA); err != nil {
-		return nil, fmt.Errorf("build writer grant: %w", err)
+	if err := applyBuildWriterGrants(ctx, cfg, region, projectOutputs, arOutputs); err != nil {
+		return nil, err
 	}
 
 	return arOutputs, nil
+}
+
+// applyBuildWriterGrants grants artifactregistry.writer to the identity
+// builds push images as.
+//
+// When the optional "buildServiceAccount" config key names a service
+// account email, that account is the only grantee. Otherwise the grant
+// covers both identities a build may run as by default: the legacy
+// Cloud Build SA (<number>@cloudbuild.gserviceaccount.com), which
+// projects created before Cloud Build's 2024 default change still use,
+// and the Compute Engine default SA
+// (<number>-compute@developer.gserviceaccount.com), which newer
+// projects use unless a build SA is set explicitly. The legacy grant
+// keeps its original logical name so existing stacks see no replace.
+func applyBuildWriterGrants(ctx *pulumi.Context, cfg *config.Config, region string, projectOutputs *projects.Outputs, arOutputs *registries.Outputs) error {
+	if buildSA := cfg.Get("buildServiceAccount"); buildSA != "" {
+		member := pulumi.String("serviceAccount:" + buildSA).ToStringOutput()
+
+		if err := registries.GrantWriter(ctx, "build-ar-writer", projectOutputs.ProjectID, region, arOutputs.Name, member); err != nil {
+			return fmt.Errorf("build writer grant: %w", err)
+		}
+
+		return nil
+	}
+
+	legacySA := pulumi.Sprintf("serviceAccount:%s@cloudbuild.gserviceaccount.com", projectOutputs.ProjectNumber)
+
+	if err := registries.GrantWriter(ctx, "build-ar-writer", projectOutputs.ProjectID, region, arOutputs.Name, legacySA); err != nil {
+		return fmt.Errorf("build writer grant: %w", err)
+	}
+
+	computeSA := pulumi.Sprintf("serviceAccount:%s-compute@developer.gserviceaccount.com", projectOutputs.ProjectNumber)
+
+	if err := registries.GrantWriter(ctx, "build-ar-writer-compute", projectOutputs.ProjectID, region, arOutputs.Name, computeSA); err != nil {
+		return fmt.Errorf("compute build writer grant: %w", err)
+	}
+
+	return nil
 }
 
 // applyGitHub creates the Git hosting connection and the configured

@@ -11,7 +11,10 @@ reader grants for consumer workloads.
    Compute APIs enabled, deletion policy `PREVENT`, no default VPC) in
    a governance-managed folder
 2. A `DOCKER` Artifact Registry repository, with write access for the
-   Cloud Build default SA
+   identity builds run as: the `buildServiceAccount` when configured,
+   otherwise both the Compute default SA (what new projects build as
+   since Cloud Build's 2024 default change) and the legacy Cloud Build
+   SA (`<number>@cloudbuild.gserviceaccount.com`)
 3. A Cloud Build v2 connection to GitHub (app installation +
    OAuth-token secret version); until both are configured, the stack
    exports a `nextStep` hint and stops after the registry. Once
@@ -30,6 +33,7 @@ reader grants for consumer workloads.
 | `projectName` | yes | Project ID and display name |
 | `registryId` | yes | Artifact Registry repository ID |
 | `registryDescription` | no | Registry description (default "Container images") |
+| `buildServiceAccount` | no | Email of the service account builds run as; it becomes the sole `artifactregistry.writer` grantee. Unset: both the Compute default SA and the legacy Cloud Build SA are granted |
 | `region` | no | Deployment region (default `europe-west4`) |
 | `governanceStack` | no | Fully-qualified stack reference (`org/project/stack`) to read placement from |
 | `governanceFolder` | no | Key into the governance stack's folder-ID export map (default `shared`) |
