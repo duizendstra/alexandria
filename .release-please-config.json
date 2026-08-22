@@ -67,6 +67,9 @@
     "go/platform/cache": {
       "package-name": "go/platform/cache"
     },
+    "go/platform/coordination": {
+      "package-name": "go/platform/coordination"
+    },
     "go/platform/gcpenv": {
       "package-name": "go/platform/gcpenv"
     },

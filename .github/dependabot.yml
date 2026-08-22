@@ -190,6 +190,15 @@ updates:
           - "*"
 
   - package-ecosystem: "gomod"
+    directory: "/go/platform/coordination/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gomod"
     directory: "/go/platform/gcpenv/"
     schedule:
       interval: "weekly"
