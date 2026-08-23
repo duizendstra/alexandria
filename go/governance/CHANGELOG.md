@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.2 (2026-08-23)
+
+Re-anchoring release: the first `go/governance` version tagged against the
+current commit history. `v0.4.0`–`v1.0.1` are withdrawn by a `retract`
+directive in `go.mod` — they were published from a history that has since been
+rewritten and their tags no longer exist here, so they cannot be reproduced from
+source. The compare links in the entries below this one point at those deleted
+tags. No API changed: `v1.0.2` is byte-identical in exported surface to
+`v1.0.1`.
+
+
+### Documentation
+
+* **governance:** document consumer archetypes and load-bearing promises in the module README ([#301](https://github.com/duizendstra/alexandria/issues/301)) ([58283ab](https://github.com/duizendstra/alexandria/commit/58283ab295bd9714115083802f8876538b4f6342))
+
 ## [1.0.1](https://github.com/duizendstra/alexandria/compare/go/governance/v1.0.0...go/governance/v1.0.1) (2026-08-22)
 
 
