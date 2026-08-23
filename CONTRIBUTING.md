@@ -90,8 +90,20 @@ The hooks are instances of the golden [`blueprints/githooks`](blueprints/githook
 set: `commit-msg` validates Conventional Commits (including the `!`
 breaking-change marker; git-generated merge/revert messages pass through),
 `pre-commit` checks staged content for gofmt cleanliness and leaked
-credentials, and `pre-push` runs the fail-closed vet/lint/test/build gate
-across every module.
+credentials, and `pre-push` runs the fail-closed vet/lint/test/build gate.
+
+`pre-push` scopes that gate to the commits being pushed rather than sweeping
+all ~30 modules every time: a documentation-only push runs `okf-lint` and
+`scripts/check-links.sh` alone, a change inside one module runs that module,
+and a change to shared configuration falls back to the full sweep (every
+module *and* the documentation checks — the doc-checking scripts are
+themselves shared configuration). It prints the scope it chose before
+running anything, and `PRE_PUSH_DRY_RUN=1` prints that plan without running
+the gate. `just check` remains the full local gate,
+and CI remains authoritative — narrowing the hook cannot let anything through.
+(`pre-push` is the one hook that deliberately diverges from the golden
+blueprint, since Alexandria has no root `go.mod`; CI exempts it from the
+hook-drift check.)
 
 ## Adding a New Go Module
 
