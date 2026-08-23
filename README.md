@@ -26,7 +26,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v1.1.1 | GCP/Google API error classification and retry utilities |
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.1.1 | `slog.Handler` decorator for GCP Cloud Logging (trace URLs, error reporting) |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.1.0 | OpenTelemetry trace-context bridge for slog-gcp |
-| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.4.2 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
+| [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.5.0 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |
 | [dataquality/datadiff](go/dataquality/datadiff/) | `github.com/duizendstra/alexandria/go/dataquality/datadiff` | v0.3.1 | Proves two datasets equivalent through layered comparison |
 | [observability/audit](go/observability/audit/) | `github.com/duizendstra/alexandria/go/observability/audit` | v1.1.0 | Structured append-only audit logging |
 | [contracts](go/contracts/) | `github.com/duizendstra/alexandria/go/contracts` | v1.0.0 | Compiled Protocol Buffer messages and ConnectRPC services |
@@ -44,7 +44,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/runstate](go/platform/runstate/) | `github.com/duizendstra/alexandria/go/platform/runstate` | v0.4.0 | Per-subject run lock and short-lived, fingerprint-bound leases on disk |
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.1.1 | Project-agnostic HTTP server, client, and response utilities |
 | [platform/workflow](go/platform/workflow/) | `github.com/duizendstra/alexandria/go/platform/workflow` | v0.2.0 | Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks |
-| [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v1.0.1 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
+| [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v2.0.0 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
 | [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v1.1.0 | Pulumi adapter packages for Google Cloud infrastructure |
 | [iac/pulumi/runner](go/iac/pulumi/runner/) | `github.com/duizendstra/alexandria/go/iac/pulumi/runner` | v0.2.2 | Programmatic Pulumi CLI automation engine built on procrun |
 | [iac/pulumi/stackref](go/iac/pulumi/stackref/) | `github.com/duizendstra/alexandria/go/iac/pulumi/stackref` | v0.1.0 | Typed readers for Pulumi stack reference outputs |
@@ -52,7 +52,7 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [iac/finops](go/iac/finops/) | `github.com/duizendstra/alexandria/go/iac/finops` | v0.1.1 | Configuration-driven Pulumi blueprint provisioning a FinOps project (billing dataset, org budget with alerts) |
 | [iac/governance](go/iac/governance/) | `github.com/duizendstra/alexandria/go/iac/governance` | v0.1.2 | Configuration-driven Pulumi blueprint provisioning GCP governance |
 | [iac/identity](go/iac/identity/) | `github.com/duizendstra/alexandria/go/iac/identity` | v0.1.1 | Configuration-driven Pulumi blueprint provisioning an identity project (secrets, SAs, IAM) |
-| [iac/observability](go/iac/observability/) | `github.com/duizendstra/alexandria/go/iac/observability` | v0.3.1 | Configuration-driven Pulumi blueprint provisioning an observability project (log dataset, org audit-log sink, optional uptime checks + alert channel) |
+| [iac/observability](go/iac/observability/) | `github.com/duizendstra/alexandria/go/iac/observability` | v0.3.2 | Configuration-driven Pulumi blueprint provisioning an observability project (log dataset, org audit-log sink, optional uptime checks + alert channel) |
 | [iac/workloads](go/iac/workloads/) | `github.com/duizendstra/alexandria/go/iac/workloads` | v0.1.0 | Configuration-driven Pulumi blueprint provisioning multi-project workload environments with per-concern exports |
 
 Version numbers signal maturity: `v0.0.x` modules are experimental; `v0.1.x`
