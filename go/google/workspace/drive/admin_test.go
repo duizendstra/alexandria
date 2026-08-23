@@ -19,7 +19,7 @@ const (
 	fieldName       = "name"
 	fieldFiles      = "files"
 	fileToMoveID    = "file-to-move"
-	sharedDriveName = "Agora - Team Drive"
+	sharedDriveName = "Engineering - Team Drive"
 )
 
 func TestService_SharedDriveOperations(t *testing.T) {

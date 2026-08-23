@@ -16,9 +16,9 @@ const (
 	fieldType         = "type"
 	fieldEmailAddress = "emailAddress"
 	permToDelete      = "perm-to-delete"
-	somlWriterEmail   = "existing-writer@soml.nl"
-	somlOrganizer     = "existing-organizer@soml.nl"
-	somlNewUser       = "new-user@soml.nl"
+	existingWriter    = "existing-writer@example.com"
+	existingOrganizer = "existing-organizer@example.com"
+	newUser           = "new-user@example.com"
 )
 
 func TestRoleRank(t *testing.T) {
@@ -58,13 +58,13 @@ func TestService_EnsureDriveMembership(t *testing.T) {
 						"id":              "perm-existing-writer",
 						fieldRole:         "writer",
 						fieldType:         "user",
-						fieldEmailAddress: somlWriterEmail,
+						fieldEmailAddress: existingWriter,
 					},
 					{
 						"id":              "perm-existing-organizer",
 						fieldRole:         "organizer",
 						fieldType:         "user",
-						fieldEmailAddress: somlOrganizer,
+						fieldEmailAddress: existingOrganizer,
 					},
 				},
 			})
@@ -98,19 +98,19 @@ func TestService_EnsureDriveMembership(t *testing.T) {
 	svc := newRetryingService(t, ctx, ts.URL)
 
 	// Scenario 1: New Member Creation.
-	resNew, err := svc.EnsureDriveMembership(ctx, "drive-1", somlNewUser, drive.RoleWriter, false)
+	resNew, err := svc.EnsureDriveMembership(ctx, "drive-1", newUser, drive.RoleWriter, false)
 	if err != nil {
 		t.Fatalf("EnsureDriveMembership (new): %v", err)
 	}
 	if resNew.Action != drive.MembershipActionCreated {
 		t.Errorf("expected CREATED, got %s", resNew.Action)
 	}
-	if len(createdPerms) != 1 || createdPerms[0] != somlNewUser {
+	if len(createdPerms) != 1 || createdPerms[0] != newUser {
 		t.Errorf("expected created perm for new user, got %v", createdPerms)
 	}
 
 	// Scenario 2: Upgrade Existing Member (writer -> organizer).
-	resUpgrade, err := svc.EnsureDriveMembership(ctx, "drive-1", somlWriterEmail, drive.RoleOrganizer, false)
+	resUpgrade, err := svc.EnsureDriveMembership(ctx, "drive-1", existingWriter, drive.RoleOrganizer, false)
 	if err != nil {
 		t.Fatalf("EnsureDriveMembership (upgrade): %v", err)
 	}
@@ -125,7 +125,7 @@ func TestService_EnsureDriveMembership(t *testing.T) {
 	}
 
 	// Scenario 3: Unchanged Member (organizer requested for organizer).
-	resUnchanged, err := svc.EnsureDriveMembership(ctx, "drive-1", somlOrganizer, drive.RoleOrganizer, false)
+	resUnchanged, err := svc.EnsureDriveMembership(ctx, "drive-1", existingOrganizer, drive.RoleOrganizer, false)
 	if err != nil {
 		t.Fatalf("EnsureDriveMembership (unchanged): %v", err)
 	}
@@ -134,7 +134,7 @@ func TestService_EnsureDriveMembership(t *testing.T) {
 	}
 
 	// Scenario 4: Dry-Run Mode (should not mutate).
-	resDryRun, err := svc.EnsureDriveMembership(ctx, "drive-1", "dryrun-user@soml.nl", drive.RoleOrganizer, true)
+	resDryRun, err := svc.EnsureDriveMembership(ctx, "drive-1", "dryrun-user@example.com", drive.RoleOrganizer, true)
 	if err != nil {
 		t.Fatalf("EnsureDriveMembership (dryrun): %v", err)
 	}

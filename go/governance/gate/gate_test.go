@@ -52,7 +52,7 @@ func TestGate_Enforce_Failure(t *testing.T) {
 				return gate.Result{
 					Status:   gate.StatusFail,
 					Reason:   "MFA not enabled on target admin account",
-					Evidence: []string{"account admin@soml.nl has enrolled_mfa=false"},
+					Evidence: []string{"account admin@example.com has enrolled_mfa=false"},
 				}
 			}),
 		),
