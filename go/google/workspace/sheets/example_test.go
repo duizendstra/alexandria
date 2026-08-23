@@ -97,7 +97,7 @@ func ExampleService_ReplaceTab() {
 	}
 
 	if svc != nil {
-		result, err := svc.ReplaceTab(ctx, "koppellijst-spreadsheet-id", spec)
+		result, err := svc.ReplaceTab(ctx, "existing-spreadsheet-id", spec)
 		if err != nil {
 			fmt.Printf("sync error: %v\n", err)
 

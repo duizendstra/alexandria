@@ -80,8 +80,8 @@ Skills live at `skills/` (repo root), not `.agents/skills/`. Other repos
 inherit skills via `skills.json` in their `.agents/` directory.
 
 ## 13. Public Repo Hygiene
-Never reference private GitHub orgs (e.g., `duizendstra-com`) in public
-repositories. Use generic placeholders (`OWNER/REPO`) in templates and
+Never reference private GitHub orgs or their repositories by name in
+public repositories. Use generic placeholders (`OWNER/REPO`) in templates and
 documentation.
 
 ## 14. Shell Portability in Documentation
