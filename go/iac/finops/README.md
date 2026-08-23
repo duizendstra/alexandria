@@ -37,3 +37,22 @@ an org-level budget with threshold alerts.
 
 - **Enterprise** (standalone stack): `func main() { finops.FinOps() }`
 - **Collapsed** (alongside other BCs): `finops.Apply(ctx, &finops.Params{...})`
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks wiring cost monitoring into a platform.
+- **Budget and alerting owners**: configuration that must keep alerting even
+  when thresholds are left unspecified.
+
+### Load-Bearing Promises
+1. **Unset Means Defaults, Not Nothing**: absent *and* empty threshold
+   configuration both fall back to the defaults. A budget never ends up with
+   no thresholds because a key was left out or written as an empty value.
+2. **Custom Thresholds Override, Malformed Ones Fail**: supplied thresholds
+   replace the defaults; thresholds that do not parse fail the apply rather
+   than falling back and looking successful.
+3. **Empty Is Distinct From Absent Is Distinct From Broken**: an absent key
+   leaves its target untouched, an empty array is an empty result rather than
+   an error, and a malformed key is an error. The three cases never collapse
+   into one.

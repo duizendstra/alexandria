@@ -91,7 +91,25 @@ The only dependency is [`go/platform/coordination`](../coordination/), for the
 go get github.com/duizendstra/alexandria/go/platform/runstate
 ```
 
-## Consumers
+## Consumers & Load-Bearing Promises
 
+### Consumer Archetypes
 - Command-line tools with a two-step ceremony — plan, then apply — where the
   apply step must refuse to run without a recent plan against the same build.
+
+### Load-Bearing Promises
+1. **A Lease Needs A Fingerprint On Both Sides**: a lease with an empty
+   fingerprint on either side is invalid. An apply cannot be matched to a plan
+   by accident.
+2. **Saving Is Atomic**: a lease is written atomically, so an interrupted save
+   leaves the previous state rather than a truncated file.
+3. **An Unreadable Lease Is Ignored, Not Fatal**: corrupt state degrades to
+   "no lease" instead of breaking the tool that finds it.
+4. **A Lease Is Readable JSON**: an operator can inspect state with ordinary
+   tools rather than needing the program that wrote it.
+5. **Subjects Cannot Escape**: a subject that would address something outside
+   the store is refused; ordinary subjects are accepted.
+6. **The Locker Excludes A Second Run**: a second concurrent run is kept out,
+   and an unusable state directory is reported rather than silently treated as
+   "no lock held".
+

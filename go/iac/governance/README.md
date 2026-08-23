@@ -49,3 +49,21 @@ pulumi.Run(func(ctx *pulumi.Context) error {
 | `orgId` | Organization scope |
 | `billingAccount` | when configured |
 | `<dimension>TagKeyId` | per configured tag key |
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks realising governance over an
+  organisation or a folder.
+- **Platform teams adopting a tier**: callers choosing how much governance to
+  switch on without rewriting their stack.
+
+### Load-Bearing Promises
+1. **Standard Is The Default Tier**: a stack that names no tier gets Standard.
+   The default is explicit and pinned, not whichever tier happens to be first.
+2. **Tiers Apply At Both Scopes**: the Starter tier applies at folder scope and
+   at organisation scope, so scope is a choice rather than a constraint.
+3. **An Invalid Parent Fails**: a parent that does not resolve fails the apply
+   instead of provisioning against the wrong place in the hierarchy.
+4. **Enterprise Degrades Explicitly**: the Enterprise tier applies without tag
+   keys, and fails when tag keys are supplied but malformed.

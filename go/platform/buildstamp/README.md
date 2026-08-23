@@ -66,3 +66,26 @@ The strictness is deliberate. Each rule closes a way a build can look trustworth
 | `unknown` is never accepted | It is what you get when the build lost its VCS context — exactly when guessing is worst. |
 | Dirty tree refused | Uncommitted changes cannot be reconstructed later. |
 | Dependency stamps must be clean | A pinned binary built against a dirty local dependency is not pinned. |
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Operator tools that change production state**: binaries where "which build
+  was that?" has to be answerable after the fact.
+- **Two-step ceremonies**: commands whose apply step must refuse a plan
+  produced by a different build.
+
+### Load-Bearing Promises
+1. **Round-Trip Is Lossless**: a stamp rendered with `String` parses back to an
+   equal stamp.
+2. **Rendering Is Deterministic**: the same stamp renders identically
+   regardless of dependency ordering, so stamps can be compared as text.
+3. **Unknown Keys Are Kept**: a stamp written by a newer version parses rather
+   than failing, with unrecognised keys retained as dependencies. Malformed
+   lines are still rejected.
+4. **`Matches` Only Accepts A Clean Exact Build**: a dirty tree, a different
+   commit, or a missing stamp is a refusal, and the refusal says which.
+5. **Absence Degrades To `unknown`**: a binary built without stamping reports
+   `unknown` instead of failing at startup.
+6. **`Get` Copies**: the returned dependency set is a copy, so a caller cannot
+   mutate the recorded stamp.

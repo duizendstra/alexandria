@@ -31,3 +31,20 @@ for downstream stacks.
 
 - **Enterprise** (standalone stack): `func main() { workloads.Workloads() }`
 - **Collapsed** (alongside other BCs): `workloads.Apply(ctx, &workloads.Params{FolderID: …, BillingAccount: …})`
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks provisioning multi-project workload
+  environments.
+
+### Load-Bearing Promises
+1. **`Apply` Is The Entry Point**: the blueprint is consumed through `Apply`;
+   the types it reads are the published surface and anything else is internal.
+2. **Configuration Is Read, Not Inferred**: the blueprint provisions what the
+   Pulumi configuration states, so a stack's shape is readable from its config
+   rather than from this package's defaults.
+
+> This module currently carries no tests of its own. Until it does, the
+> promises above are structural rather than pinned — treat changes here as
+> needing review against consuming stacks rather than against a suite.

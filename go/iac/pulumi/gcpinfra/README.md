@@ -113,3 +113,22 @@ state and is written by an `up`, so an `up` that both adds protection and
 renames still deletes the old resource — the state the engine consults was
 written before the protection existed. Deploy the protection on its own,
 then rename.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks declaring BigQuery datasets, tables and
+  the external sources behind them.
+- **Data platform owners**: callers whose schema definitions must be rejected
+  early rather than half-applied.
+
+### Load-Bearing Promises
+1. **Validation Happens Before Apply**: a missing name, missing schema, missing
+   ID or missing format is refused at validation. An invalid configuration
+   never reaches a partial apply.
+2. **Duplicate Names Are An Error**: two resources declared with the same name
+   fail rather than one silently overwriting the other — for both native and
+   external definitions.
+3. **External Sources Are Validated Just As Strictly**: an external definition
+   missing its name, source format, or source URIs is refused on the same
+   terms as a native one.

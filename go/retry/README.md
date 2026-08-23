@@ -119,3 +119,30 @@ func main() {
 1. **Keep-Alive Protection**: Calling `Close()` on a response body before its bytes are fully consumed tears down the underlying TCP connection. The `retry.Transport` automatically copies and discards trailing bytes (up to 4KB) prior to closure to permit connection pooling.
 2. **Payload Jitter Speed**: Retry interval randomization is backed by `math/rand/v2`'s PCG-based lock-free random generator, avoiding global CPU mutex contentions in concurrent environments.
 3. **Stream Resets**: `retry.Transport` clones request payload bodies before each try via `req.GetBody()`, resolving "empty request body" failures on subsequent attempts of `POST`/`PUT` requests.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **API clients over flaky transports**: callers wrapping an outbound HTTP or
+  RPC call that fails for reasons that go away on their own.
+- **Long-running migrators and pipelines**: sequential work where one transient
+  failure must not abort the run, but a permanent one must abort it at once.
+
+### Load-Bearing Promises
+1. **Permanent Means One Attempt**: an error marked with `Permanent` (or
+   classified permanent through a nested wrap) is returned after a single
+   attempt, with no backoff slept.
+2. **Nested Classification Wins**: `IsPermanent` sees through wrapping, so a
+   permanent error stays permanent no matter how many layers wrap it.
+3. **Context Ends It**: cancellation or deadline expiry stops progression
+   before the next attempt rather than after it.
+4. **Exhaustion Returns Both**: when `Transport` runs out of attempts it
+   returns the last response *and* an error, and that error surfaces through a
+   plain `http.Client` rather than being swallowed by it.
+5. **Bodies Replay**: request payloads are cloned via `req.GetBody()` before
+   each attempt, so a retried `POST` or `PUT` is not sent with an empty body.
+6. **`Retry-After` Is Honoured**: a `Retry-After` on the response drives the
+   next delay, including a zero value.
+7. **Exhausted Network Errors Wrap A Sentinel**: transport-level exhaustion
+   returns an error that `errors.Is` matches, so callers can tell it apart
+   from the origin's own failure.

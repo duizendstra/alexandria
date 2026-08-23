@@ -81,3 +81,23 @@ Run URI) and stripped to its host.
 
 - **Enterprise** (standalone stack): `func main() { observability.Observability() }`
 - **Collapsed** (alongside other BCs): `observability.Apply(ctx, &observability.Params{...})`
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks wiring monitoring and log routing across
+  an estate.
+- **Uptime and alerting owners**: configuration naming targets that live in
+  other stacks.
+
+### Load-Bearing Promises
+1. **Log Names Fail Closed**: an extra sink log name that is empty, that breaks
+   out of its quoting, or that tries the same break percent-encoded, fails the
+   apply. A filter is never assembled from a value that could change its
+   meaning.
+2. **Omitting Extras Still Yields A Sink**: with no extra log names supplied
+   the default sink is still produced, and caller-supplied names are *added to*
+   that default rather than replacing it.
+3. **A Stack Is Read Once**: uptime targets that share a stack read it a single
+   time, including when the governance stack is itself a target. Adding targets
+   does not multiply cross-stack reads.

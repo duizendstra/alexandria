@@ -54,3 +54,24 @@ connection is unconfigured)
 
 - **Enterprise** (standalone stack): `func main() { delivery.Delivery() }`
 - **Collapsed** (alongside other BCs): `delivery.Apply(ctx, &delivery.Params{...})`
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks wiring the Delivery bounded context into
+  a wider platform.
+- **Build and deploy pipelines**: infrastructure granting the identities that
+  push images and roll out revisions.
+
+### Load-Bearing Promises
+1. **Absent Is Not Malformed**: an omitted optional block applies cleanly and
+   creates nothing. A *malformed* block fails the apply — it is never skipped
+   silently, because a typo that quietly provisions nothing is the failure
+   mode this blueprint exists to prevent.
+2. **Well-Formed Means Created**: a valid optional block creates its resources.
+   Configuration that parses is configuration that takes effect.
+3. **Both Default Build Identities Are Covered**: the writer grant reaches both
+   default build service accounts, so a project on either default does not
+   silently lack permission.
+4. **A Configured Build Account Is Honoured**: when a build service account is
+   named, the writer grant lands on that account rather than on a default.

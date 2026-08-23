@@ -153,3 +153,27 @@ func TestMyHandler(t *testing.T) {
 ## License
 
 Copyright 2026 Jasper Duizendstra. Licensed under [Apache-2.0](../../LICENSE).
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Services logging to Cloud Logging**: anything whose structured logs must
+  be grouped by request and correlated with traces.
+- **Libraries emitting through `slog`**: code that should not know whether it
+  is running on GCP.
+
+### Load-Bearing Promises
+1. **Reserved Fields Stay At The Root**: trace, span and severity remain
+   top-level even when the caller is inside one or more `WithGroup` scopes.
+   Grouping never buries the fields Cloud Logging reads.
+2. **Grouping Is Otherwise Transparent**: a group with no trace present, and
+   output with no group at all, are unchanged from the wrapped handler.
+3. **`insertId` Is Unique Per Record**: entries are de-duplicated by Cloud
+   Logging rather than collapsed. The key is configurable, and the behaviour
+   can be turned off.
+4. **Empty IDs Are Not Emitted**: an absent trace or span produces no field
+   rather than an empty one.
+5. **It Delegates Rather Than Decides**: `Enabled` defers to the wrapped
+   handler, and an error from it propagates instead of being swallowed.
+6. **It Works Without A Resolver**: with no trace resolver configured the
+   handler still emits valid records.

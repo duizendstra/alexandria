@@ -100,3 +100,28 @@ if err := g.Enforce(); err != nil {
 The `Plan` is the port. This module is pure Go with zero external
 dependencies — provisioning adapters (Pulumi, Terraform, any cloud)
 consume a validated `Plan` and create the actual resources.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Policy evaluators**: work running a rule set over a resource hierarchy and
+  reporting a verdict.
+- **Report and export consumers**: downstream readers of a stored verdict that
+  must interpret it the same way months later.
+
+### Load-Bearing Promises
+1. **The Verdict Takes The Worst**: aggregation is worst-wins. A builder
+   starts at pass and can only be lowered by findings, never raised past one.
+2. **A Failure Is Permanent**: once a check fails, nothing later in the run
+   upgrades it. An anomaly raises a pass but never rescues a fail.
+3. **Annotation Does Not Change The Verdict**: adding a note or a label leaves
+   the status and the existing wording intact.
+4. **Rules Run In Order, Output Is Sorted**: evaluation is deterministic, and
+   failed and anomalous results come back in a stable order — so two runs over
+   the same input are diffable.
+5. **Checks Marshal As Plain Strings**: the serialised form is plain text
+   rather than an enum ordinal, so a stored verdict stays readable when the
+   code that wrote it has moved on.
+6. **Invalid Input Is Rejected At Validation**: missing names, missing parents,
+   empty children and duplicates are refused before evaluation rather than
+   producing a verdict over nonsense.

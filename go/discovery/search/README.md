@@ -108,3 +108,23 @@ func main() {
 1. **Batch API Support**: The `BatchIndex` port contract ensures that performance-sensitive ingestion pipelines can load large datasets concurrently, reducing operational overhead and DB connection cycles.
 2. **Platform Portability**: Zero platform-specific package dependencies prevent dependency locks, enabling the search layer to operate seamlessly across serverless, containerized, or local environments.
 3. **Structured Query Constraints**: By enforcing query constraints inside a structured `Query` configuration, implementations protect backend engines from search parameter overflow or query injection attacks.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Index adapter authors**: implementations backing the port with a concrete
+  store.
+- **Callers issuing queries**: code that finds workspace content without
+  knowing which adapter is underneath.
+
+### Load-Bearing Promises
+1. **Zero External Dependencies**: this module defines types and ports using
+   the standard library only, and runs without the platform layer. Adding a
+   dependency here forces it on every adapter.
+2. **Queries Have Defined Defaults**: an unset field on a query resolves to a
+   documented default rather than to a zero value an adapter must guess about.
+3. **Document Kinds And Scoring Are Part Of The Contract**: adapters agree on
+   the kind vocabulary and on how results are scored, so results from
+   different adapters are comparable.
+4. **Adapters Prove Conformance With `searchtest`**: the port is not satisfied
+   by compiling against it — it is satisfied by passing the contract tests.
