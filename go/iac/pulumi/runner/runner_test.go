@@ -3,6 +3,7 @@ package runner_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -13,10 +14,11 @@ import (
 	"github.com/duizendstra/alexandria/go/iac/pulumi/runner"
 )
 
-func createFakePulumiScript(t *testing.T, binDir string) string {
-	t.Helper()
-	fakeBin := filepath.Join(binDir, "fake-pulumi")
-	script := `#!/bin/sh
+// fakePulumiScript answers the commands the runner issues. failingPulumiScript
+// fails every command without echoing its arguments, so any secret appearing in
+// an error can only have come from the runner itself.
+const (
+	fakePulumiScript = `#!/bin/sh
 cmd="$1"
 subcmd="$2"
 
@@ -53,11 +55,52 @@ fi
 echo "unhandled command: $@" >&2
 exit 0
 `
-	if err := os.WriteFile(fakeBin, []byte(script), 0o755); err != nil {
-		t.Fatalf("failed to write fake pulumi script: %v", err)
+
+	failingPulumiScript = "#!/bin/sh\necho 'error: failed to set config' >&2\nexit 1\n"
+)
+
+// The stubs are written once, from TestMain, before any test starts. That is
+// deliberate. On Linux, exec fails with ETXTBSY while any process holds the
+// file open for writing, and os.OpenFile sets O_CLOEXEC, which closes the
+// descriptor at exec but not at fork. A stub written inside a t.Parallel()
+// test is therefore exec'd while a child forked by a sibling test may still
+// hold the writing descriptor it inherited. Writing the stubs while the
+// process is still single-threaded removes the overlap rather than masking
+// it. See issue #291.
+var (
+	fakePulumiBin    string
+	failingPulumiBin string
+)
+
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "pulumi-runner-stubs")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "create stub dir: %v\n", err)
+		os.Exit(1)
 	}
 
-	return fakeBin
+	fakePulumiBin, err = writeStub(dir, "fake-pulumi", fakePulumiScript)
+	if err == nil {
+		failingPulumiBin, err = writeStub(dir, "failing-pulumi", failingPulumiScript)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "write stub: %v\n", err)
+		os.RemoveAll(dir)
+		os.Exit(1)
+	}
+
+	code := m.Run()
+	os.RemoveAll(dir)
+	os.Exit(code)
+}
+
+func writeStub(dir, name, body string) (string, error) {
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+		return "", err
+	}
+
+	return path, nil
 }
 
 func TestNew_Validation(t *testing.T) {
@@ -78,12 +121,11 @@ func TestRunner_Operations(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	fakeBin := createFakePulumiScript(t, tmpDir)
 	logDir := filepath.Join(tmpDir, "logs")
 
 	r, err := runner.New(
 		tmpDir,
-		runner.WithBinPath(fakeBin),
+		runner.WithBinPath(fakePulumiBin),
 		runner.WithLogDir(logDir),
 		runner.WithEnv(map[string]string{"PULUMI_ACCESS_TOKEN": "test-token"}),
 		runner.WithScrub("CLOUDSDK_"),
@@ -171,20 +213,6 @@ func TestRunner_Operations(t *testing.T) {
 	}
 }
 
-// createFailingPulumiScript writes a fake pulumi that fails every command
-// without echoing its arguments, so any secret in an error can only have
-// come from the runner itself.
-func createFailingPulumiScript(t *testing.T, binDir string) string {
-	t.Helper()
-	fakeBin := filepath.Join(binDir, "failing-pulumi")
-	script := "#!/bin/sh\necho 'error: failed to set config' >&2\nexit 1\n"
-	if err := os.WriteFile(fakeBin, []byte(script), 0o755); err != nil {
-		t.Fatalf("failed to write failing pulumi script: %v", err)
-	}
-
-	return fakeBin
-}
-
 func logNames(t *testing.T, logDir string) []string {
 	t.Helper()
 	entries, err := os.ReadDir(logDir)
@@ -213,7 +241,7 @@ func TestRunner_SecretsNeverNamed(t *testing.T) {
 
 		tmpDir := t.TempDir()
 		logDir := filepath.Join(tmpDir, "logs")
-		r, err := runner.New(tmpDir, runner.WithBinPath(createFailingPulumiScript(t, tmpDir)), runner.WithLogDir(logDir))
+		r, err := runner.New(tmpDir, runner.WithBinPath(failingPulumiBin), runner.WithLogDir(logDir))
 		if err != nil {
 			t.Fatalf("failed to initialize runner: %v", err)
 		}
@@ -249,7 +277,7 @@ func TestRunner_SecretsNeverNamed(t *testing.T) {
 
 		tmpDir := t.TempDir()
 		logDir := filepath.Join(tmpDir, "logs")
-		r, err := runner.New(tmpDir, runner.WithBinPath(createFakePulumiScript(t, tmpDir)), runner.WithLogDir(logDir))
+		r, err := runner.New(tmpDir, runner.WithBinPath(fakePulumiBin), runner.WithLogDir(logDir))
 		if err != nil {
 			t.Fatalf("failed to initialize runner: %v", err)
 		}
@@ -278,7 +306,7 @@ func TestRunner_SecretsNeverNamed(t *testing.T) {
 
 		tmpDir := t.TempDir()
 		logDir := filepath.Join(tmpDir, "logs")
-		r, err := runner.New(tmpDir, runner.WithBinPath(createFakePulumiScript(t, tmpDir)), runner.WithLogDir(logDir))
+		r, err := runner.New(tmpDir, runner.WithBinPath(fakePulumiBin), runner.WithLogDir(logDir))
 		if err != nil {
 			t.Fatalf("failed to initialize runner: %v", err)
 		}
