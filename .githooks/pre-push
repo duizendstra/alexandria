@@ -1,40 +1,188 @@
 #!/bin/sh
-# Pre-push quality gate: vet, lint, test, and build every Go module.
+# Pre-push quality gate, scoped to what the push actually changes.
 #
 # Multi-module variant of blueprints/githooks/pre-push — Alexandria has no
-# root go.mod, so the gate iterates every module under go/, mirroring the
-# CI detect-modules matrix.
+# root go.mod, so the gate mirrors the CI detect-modules matrix. Rather than
+# sweeping every module on every push, it derives the affected set from the
+# commits being pushed: a docs-only push runs the documentation checks alone,
+# a one-module change runs that one module, and any change to shared config
+# falls back to the full sweep: every module AND the documentation checks.
+# Docs are included in the fallback deliberately — the doc-checking scripts
+# are themselves shared config, so a change to scripts/check-links.sh must
+# re-run the link check.
 #
-# Note: this validates the current working tree, not the exact commits
-# being pushed — push from a clean tree for a faithful gate.
-set -e
-
-# Match CI: resolve modules standalone, ignoring any parent go.work.
-GOWORK=off
-export GOWORK
-
-if ! command -v golangci-lint >/dev/null 2>&1; then
-  echo "❌ golangci-lint not found — the quality gate fails closed."
-  echo "   Install it (the Nix devshell provides it) or push from a full shell."
-  exit 1
-fi
+# `just check` remains the full local gate and CI remains authoritative — the
+# ruleset on main requires its status checks regardless of what ran here, so
+# narrowing this hook cannot let anything through.
+#
+# Note: the SCOPE is derived from the commits being pushed, but the gate runs
+# against the current working tree — push from a clean tree for a faithful
+# result.
+#
+# PRE_PUSH_DRY_RUN=1 prints the chosen scope and exits without running it.
+set -eu
 
 root=$(git rev-parse --show-toplevel)
+cd "$root"
 
-for modfile in $(cd "$root" && find go -name go.mod | sort); do
-  mod=$(dirname "$modfile")
-  echo "Running quality gate for $mod..."
-  (
-    cd "$root/$mod"
-    echo "  → go vet"
-    go vet ./...
-    echo "  → golangci-lint"
-    golangci-lint run ./...
-    echo "  → go test"
-    go test ./...
-    echo "  → go build"
-    go build ./...
-  )
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT INT TERM
+
+: > "$TMP/changed"
+refs=0
+updates=0
+full=0
+
+# Git feeds one "<local ref> <local sha> <remote ref> <remote sha>" line per
+# ref on stdin. An all-zero local sha is a deletion; an all-zero remote sha
+# means the branch is new on the remote. Empty stdin (manual invocation)
+# leaves nothing to scope by, so everything runs.
+while read -r _ local_sha _ remote_sha; do
+  refs=$((refs + 1))
+  case "$local_sha" in
+    *[!0]*) ;;
+    *) continue ;;
+  esac
+  updates=$((updates + 1))
+
+  case "$remote_sha" in
+    *[!0]*)
+      base=$remote_sha
+      ;;
+    *)
+      # New on the remote: diff from where it forked the default branch.
+      base=$(git merge-base "$local_sha" origin/main 2>/dev/null || true)
+      ;;
+  esac
+
+  if [ -z "$base" ]; then
+    full=1
+    continue
+  fi
+
+  git -c core.quotepath=false diff --name-only "$base" "$local_sha" \
+    >> "$TMP/changed" 2>/dev/null || full=1
 done
+
+if [ "$refs" -gt 0 ] && [ "$updates" -eq 0 ]; then
+  echo "Push only deletes refs — skipping quality gate."
+  exit 0
+fi
+
+[ "$refs" -eq 0 ] && full=1
+
+# Classify every changed path into a Go module, the documentation corpus,
+# or shared configuration that can change how all modules build.
+docs=0
+: > "$TMP/modules"
+
+if [ "$full" -eq 0 ]; then
+  sort -u "$TMP/changed" > "$TMP/changed.u"
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    case "$path" in
+      *.md)
+        docs=1
+        continue
+        ;;
+    esac
+    case "$path" in
+      go/*)
+        # Walk up to the NEAREST enclosing go.mod: modules nest, so
+        # go/retry/gcp/x.go belongs to go/retry/gcp, not to go/retry.
+        dir=$(dirname "$path")
+        mod=""
+        while [ "$dir" != "." ] && [ "$dir" != "/" ]; do
+          if [ -f "$dir/go.mod" ]; then
+            mod=$dir
+            break
+          fi
+          dir=$(dirname "$dir")
+        done
+        if [ -n "$mod" ]; then
+          echo "$mod" >> "$TMP/modules"
+        else
+          full=1
+        fi
+        ;;
+      *)
+        full=1
+        ;;
+    esac
+  done < "$TMP/changed.u"
+fi
+
+if [ "$full" -eq 1 ]; then
+  find go -name go.mod | sed 's|/go.mod$||' | sort > "$TMP/modules.u"
+  docs=1
+else
+  sort -u "$TMP/modules" > "$TMP/modules.u"
+fi
+
+mod_count=$(wc -l < "$TMP/modules.u" | tr -d ' ')
+
+echo "Pre-push scope:"
+if [ "$full" -eq 1 ]; then
+  echo "  reason:  full sweep (shared config changed, unresolvable range, or manual run)"
+else
+  echo "  reason:  scoped to the commits being pushed"
+fi
+if [ "$mod_count" -eq 0 ]; then
+  echo "  modules: none"
+else
+  echo "  modules: $mod_count"
+  sed 's/^/    - /' "$TMP/modules.u"
+fi
+if [ "$docs" -eq 1 ]; then
+  echo "  docs:    okf-lint + link check"
+else
+  echo "  docs:    skipped (no markdown changed)"
+fi
+
+if [ "$mod_count" -eq 0 ] && [ "$docs" -eq 0 ]; then
+  echo "Nothing to validate — push touches no Go or documentation files."
+  exit 0
+fi
+
+if [ "${PRE_PUSH_DRY_RUN:-0}" = "1" ]; then
+  echo "PRE_PUSH_DRY_RUN=1 — plan only, no gates run."
+  exit 0
+fi
+
+if [ "$mod_count" -gt 0 ]; then
+  if ! command -v golangci-lint >/dev/null 2>&1; then
+    echo "❌ golangci-lint not found — the quality gate fails closed."
+    echo "   Install it (the Nix devshell provides it) or push from a full shell."
+    exit 1
+  fi
+
+  # Match CI: resolve modules standalone, ignoring any parent go.work.
+  GOWORK=off
+  export GOWORK
+
+  while IFS= read -r mod; do
+    [ -n "$mod" ] || continue
+    echo "Running quality gate for $mod..."
+    (
+      cd "$root/$mod"
+      echo "  → go vet"
+      go vet ./...
+      echo "  → golangci-lint"
+      golangci-lint run ./...
+      echo "  → go test"
+      go test ./...
+      echo "  → go build"
+      go build ./...
+    )
+  done < "$TMP/modules.u"
+fi
+
+if [ "$docs" -eq 1 ]; then
+  echo "Running documentation checks..."
+  echo "  → okf-lint"
+  python3 scripts/okf-lint.py
+  echo "  → link check"
+  sh scripts/check-links.sh
+fi
 
 echo "✅ Quality gate passed"
