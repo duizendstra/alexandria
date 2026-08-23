@@ -47,3 +47,18 @@ func main() {
 	slog.InfoContext(ctx, "Processed operation step successfully")
 }
 ```
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Services already instrumented with OpenTelemetry**: callers wanting their
+  existing spans to reach Cloud Logging without a second tracing setup.
+
+### Load-Bearing Promises
+1. **One Job, One Constructor**: this package exists to supply a trace resolver
+   to `slog-gcp` from an OpenTelemetry context, and nothing else.
+2. **The Coupling Is One-Way**: `slog-gcp` does not depend on OpenTelemetry —
+   this adapter does. A consumer not using OTel never pulls it in.
+3. **Absence Is Not An Error**: a context without an active span yields no
+   trace fields rather than a failure, so the resolver is safe to install
+   unconditionally.

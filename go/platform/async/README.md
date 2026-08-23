@@ -84,3 +84,27 @@ func main() {
 1. **Host Crash Prevention**: Background goroutine failures are caught using recovery blocks. If a task panics, the runner safely logs the panic output to the task result and frees the concurrency semaphore rather than crashing the entire microservice.
 2. **Goroutine Leak Protection**: Utilizes a buffered channel semaphore to bound concurrency. The slot is acquired in `Submit` itself, so when the limit is reached submitters block (backpressure) rather than spawning unlimited, resource-heavy goroutines that park on the semaphore.
 3. **Task State Copying**: Querying task states via `Get` and `List` performs field copying of `Task` structs. This preserves internal runner thread-safety and avoids read/write races on the internal state map.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **HTTP handlers fronting slow work**: endpoints that accept a request,
+  return an identifier immediately, and let the caller poll.
+- **Background reconcilers**: routines running bounded concurrent work inside
+  a process whose shutdown must not strand goroutines.
+
+### Load-Bearing Promises
+1. **A Panic Fails The Task, Not The Process**: a panic inside a task function
+   is recovered and recorded as a failed task; the host process survives.
+2. **`Get` Returns A Copy**: a caller cannot reach into runner state through a
+   returned task, so polling can never corrupt bookkeeping.
+3. **Concurrency Is Bounded**: the limit applies backpressure at submit time
+   and goroutine count stays bounded under sustained load.
+4. **Close Cancels Everything Outstanding**: closing cancels the contexts of
+   all in-flight tasks, is idempotent, and a submit after close comes back as
+   a failed task rather than a panic.
+5. **The Base Context Propagates**: cancelling the runner's base context
+   reaches running tasks.
+6. **Results Persist Until Pruned**: a completed task remains pollable until
+   `Prune` or the optional janitor removes it — completion never silently
+   discards the result.

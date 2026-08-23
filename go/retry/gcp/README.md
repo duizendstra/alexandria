@@ -80,3 +80,30 @@ The evaluator checks both HTTP, OAuth2 token endpoints, and gRPC status codes:
 | **HTTP 403** (Permission Denied / IAM block) | 🛑 **Fail Fast** | Permanent IAM/Domain authorization blocks. |
 | **OAuth `invalid_grant` / `unauthorized_client`** | 🛑 **Fail Fast** | Permanent DWD / Service Account key errors. |
 | **HTTP 404** / `NOT_FOUND` | 🛑 **Fail Fast** | Logical failure (resource missing). |
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Google Workspace and GCP integrations**: callers of Drive, Admin SDK,
+  BigQuery or similar APIs that must distinguish a quota pause from a
+  permission wall.
+- **Service-account pipelines**: unattended work where a credential fault has
+  to fail fast instead of burning a retry budget.
+
+### Load-Bearing Promises
+1. **404 Is Permanent**: a `*googleapi.Error` with code 404 classifies as
+   permanent, so a missing resource costs exactly one attempt.
+2. **403 Splits On Reason, Not Status**: `quotaExceeded` is transient and is
+   retried; `accessNotConfigured` and other authorization blocks are permanent
+   and fail fast. The status code alone never decides.
+3. **gRPC And REST Classify Alike**: a gRPC status code and an equivalent
+   `googleapi.Error` reach the same verdict, so a caller does not need to know
+   which transport the client used.
+4. **OAuth Faults Are Split**: a transient token-endpoint failure is retried
+   while `invalid_grant` and `unauthorized_client` fail fast.
+5. **`url.Error` Splits On Cause**: a TLS failure is permanent; a timeout is
+   transient. A bare `io.EOF` is treated as transient.
+6. **`Retry-After` Is Honoured**: the header drives the next delay when present.
+
+The full verdict table is in [Retry Classification Table](#retry-classification-table);
+the promises above are the parts of it that consumers pin.

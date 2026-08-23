@@ -9,6 +9,7 @@ This folder contains step-by-step how-to guides for common development and maint
 - **Publishing to pkg.go.dev** — Tagging, versioning, and post-publish verification workflow.
 - **Adopting Alexandria Modules** — De-vendoring duplicate packages, removing local replace directives, and adopting canonical platform modules.
 - **Ascension & Consumption** — The two-directional protocol between Alexandria and a downstream consumer repository: depending by tag, and ascending a staged package into a shared module.
+- **Reviewing a Pull Request** — The fixed checklist a reviewer works through before a change is merged.
 
 ## Contents
 
@@ -18,3 +19,4 @@ This folder contains step-by-step how-to guides for common development and maint
 * [golangci-lint Resolutions Cheat-Sheet](golangci-resolutions.md) - Recurring fixes for getting a Go change to 0 issues under the Alexandria golangci profiles: the library vs consumer posture, the gocritic/nonamedreturns struct pattern, err113 sentinels, the pulumi forcetypeassert rewrite, and the goconst-counts-tests trap.
 * [Adopting Alexandria Modules in Downstream Consumers](module-adoption.md) - How-to guide for downstream repositories adopting tagged Alexandria Go modules, eliminating vendored/duplicate packages, removing local replace directives, and integrating shared platform primitives.
 * [Ascension & Consumption Protocol](ascension-and-consumption.md) - How Alexandria and a downstream consumer repository collaborate in both directions: consuming modules by tag behind blocking consumer contract tests, and ascending a generic package up from a consumer's staging lane through a read-only scaffold to a merged, tagged module.
+* [Pull Request Review Checklist](pr-review-checklist.md) - The fixed checklist a reviewer agent works through on every Alexandria pull request before the maintainer merges: no consumer specifics, module shape, coverage baseline, the consumers and promises section, the CHANGELOG entry, Conventional Commits, and a proposed tag.

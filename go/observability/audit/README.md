@@ -76,3 +76,27 @@ func main() {
 1. **Thread-Safe Log Rotation**: Checks the file size and executes atomic filesystem rotations inside synchronized blocks to prevent inter-thread race conditions or partial file overwrites.
 2. **Streaming Parser Memory Bound**: The `ReadScorecard` analyzer uses streaming chunked JSON decoders rather than loading whole log files into the heap, preserving memory when parsing large files.
 3. **Fail-Safe Writer Integrity**: The write pipeline guarantees append-only integrity, ensuring log entries are formatted strictly as single-line JSON records (JSONL), making them safe for generic log aggregators.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Tools that mutate production state**: anything whose actions must remain
+  reconstructable after the fact.
+- **Scorecard and report readers**: consumers reading audit output written by
+  an older version of the writer.
+
+### Load-Bearing Promises
+1. **The Wire Format Is Golden**: the JSON encoding of an entry is pinned by a
+   golden test. Changing it is a breaking change, not a refactor.
+2. **Old Files Still Parse**: entries and scorecards written in the previous
+   format are read by the current reader. Format evolution never orphans
+   existing audit trails.
+3. **The Writer Stamps The Time**: a caller-supplied timestamp is overwritten
+   by the writer, so an entry's time reflects when it was recorded rather than
+   what the caller claimed.
+4. **Append-Only**: entries are appended, never rewritten in place; the file is
+   created when absent and rotated on size.
+5. **JSON And Proto Agree**: an entry or scorecard round-trips through both the
+   JSON and the protobuf representation without loss.
+6. **Bad Input Surfaces**: an invalid path or malformed JSON is reported rather
+   than silently skipped.

@@ -55,3 +55,24 @@ func main() {
 1. **Memory Bounds Protection**: When instantiating `StatusError`, response bodies are capped to a maximum size of 4096 bytes. This prevents high-throughput services from buffering massive error pages (e.g., standard HTML error pages from proxies) and causing Out-Of-Memory (OOM) situations.
 2. **Stateless Operations**: All classification helpers (e.g., `IsRetryable`, `FromStatus`) are pure, stateless functions, eliminating resource contention or lock synchronization inside concurrent request loops.
 3. **Dependency-Free Implementation**: Sits at the bottom of the service dependency graph with zero internal dependencies, resolving compilation and diamond-dependency version issues.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Vendor API adapters**: code translating one provider's failure shapes into
+  a vocabulary the rest of the system can branch on.
+- **Retry and backoff layers**: callers that must decide "again or not" without
+  knowing which transport produced the failure.
+
+### Load-Bearing Promises
+1. **Sentinels Survive Wrapping**: every sentinel is distinct, and `errors.Is`
+   still matches after a vendor wraps it in its own error type.
+2. **Both Paths Agree On Retryability**: asking a status code and asking the
+   sentinel it maps to return the same verdict. A consumer may use whichever
+   is closer to hand without changing behaviour.
+3. **HTTP And gRPC Share One Vocabulary**: an HTTP status and the equivalent
+   gRPC code resolve to the same sentinel, so branching code is written once.
+4. **`StatusError` Unwraps Both Ways**: it unwraps to its sentinel for
+   `errors.Is` and is reachable by `errors.As`, including when double-wrapped.
+5. **Messages Degrade, Not Break**: the error message carries response body
+   context when there is one and stays well-formed when there is not.

@@ -156,3 +156,27 @@ func main() {
 1. **Fail-Fast Verification**: The `DWDValidator` validates authentication scopes and user delegation policies at startup, preventing cascading logical failures inside application hotpaths.
 2. **Connection Pooling Preservation**: Custom HTTP client injection via `WithHTTPClient` lets services inject clients configured with specialized idle connection limits, preventing connection starvation.
 3. **Impersonation Token Reuse**: Resolves access token generation using Google's native IAM credentials flow, avoiding hardcoded long-lived private keys.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Workspace automation**: tools acting on Drive or Sheets as a delegated
+  identity rather than as themselves.
+- **Project provisioning**: work creating or configuring GCP projects and the
+  APIs enabled on them.
+
+### Load-Bearing Promises
+1. **A Client Is Validated Before It Is Handed Out**: configuration and the
+   delegation subject are checked at resolve time, so a misconfigured client
+   fails where it is built rather than at the first call.
+2. **Delegated Access Is Verified, Not Assumed**: domain-wide delegation is
+   validated against the subject being impersonated before the caller relies
+   on it.
+3. **Resolved Clients Carry Retry**: the transport handed back already applies
+   the retry classification, so a caller does not have to remember to wrap it.
+4. **Interactive Consent Opens Safely**: the browser handoff refuses to launch
+   anything other than the intended consent URL.
+5. **Sheets Rendering Is Stable**: a table built from structs keeps its column
+   ordering and named column widths, a hyperlink without a label falls back to
+   a readable one, and replacing a tab creates it when missing rather than
+   erroring.

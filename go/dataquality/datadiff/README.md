@@ -79,3 +79,26 @@ func main() {
 1. **Zero-Allocation Struct Flattening**: The nested column flattening routine (`FlattenTo`) appends leaf columns directly into a pre-allocated accumulator slice rather than allocating new arrays during recursion, minimizing heap allocations.
 2. **Memory Exhaustion Safeguard**: High-volume content discrepancies can consume significant memory. The `WithMaxDiffs` option enforces a hard cap on retrieved differences, safeguarding service memory from out-of-memory (OOM) failures.
 3. **Execution Isolation**: Individual comparison layers execute independently. If content comparison errors out (e.g., due to temporary network timeouts), volume and schema analysis still complete, preserving observability of the data quality pipeline.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Migration verifiers**: work proving a rebuilt table matches the one it
+  replaces before the old one is dropped.
+- **Scheduled reconciliation**: recurring checks that two pipelines producing
+  the same dataset have not drifted.
+
+### Load-Bearing Promises
+1. **Layers Short-Circuit In Order**: a schema mismatch skips the content
+   layer rather than comparing rows that cannot correspond. A cheap disproof
+   is never paid for with an expensive one.
+2. **Every Difference Is Reported, Not The First**: left-only columns,
+   right-only columns, type mismatches and nested record differences are all
+   returned together, so one run gives the whole picture.
+3. **Tolerance Is Honoured, Including Non-Finite**: statistical comparison
+   respects the configured tolerance, and non-finite values are handled
+   explicitly rather than propagating a silent `NaN` verdict.
+4. **Failure Is Structured, Not An Abort**: when every layer fails the result
+   still describes what failed at each layer.
+5. **The Spec Is Captured In The Result**: a result records the comparison it
+   came from, so a stored verdict remains interpretable later.

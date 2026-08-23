@@ -81,3 +81,20 @@ func TestMyIndexContract(t *testing.T) {
 1. **Semantic Drift Protection**: Running these contract tests in CI prevents subtle API changes or vendor-specific behavior differences from introducing bugs during production database migrations.
 2. **Subtest Isolation**: Uses Go's native `t.Run` structure for test isolation, allowing test execution to recover cleanly and check other methods even if one assertion fails.
 3. **Empty Results Verification**: Confirms that queries matching no files return zero-length slices instead of nil values or unhandled API errors, defending against downstream slice handling panics.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Index adapter authors**: any implementation of the `search.Index` port,
+  in this repository or in a consumer's own infrastructure layer.
+
+### Load-Bearing Promises
+1. **One Entry Point**: an adapter proves conformance by calling
+   `IndexContractTest` from its own test file. There is no second thing to
+   remember to run.
+2. **The Suite Is The Contract**: it exercises index-and-search, batch index
+   with count, delete, empty search, and search with a kind filter. An adapter
+   that passes satisfies the port; an adapter that only compiles does not.
+3. **Growth Is A Compatibility Event**: a case added here can fail an adapter
+   that previously passed. New cases arrive with a version bump so adapters
+   choose when to take them.

@@ -62,8 +62,32 @@ Zero dependencies beyond the standard library.
 go get github.com/duizendstra/alexandria/go/platform/procrun
 ```
 
-## Consumers
+## Consumers & Load-Bearing Promises
 
-- Orchestrators that drive other binaries as a permission boundary: the child
-  process is the boundary, so an identity can only exist inside the process
-  that is allowed to have it.
+### Consumer Archetypes
+- **Orchestrators that drive other binaries as a permission boundary**: the
+  child process is the boundary, so an identity can only exist inside the
+  process that is allowed to have it.
+- **Reproducible build and migration steps**: callers that need a child to
+  behave the same on a developer laptop and on a runner.
+
+### Load-Bearing Promises
+1. **Nothing Is Inherited By Accident**: inherited environment families are
+   dropped rather than passed through; a variable reaches the child only
+   because it was allow-listed or fixed.
+2. **A Fixed Value Replaces, Not Merges**: an entry in `Runner.Env` overrides
+   the inherited value of the same name — setting `LC_ALL=C` displaces an
+   inherited `en_US.UTF-8` rather than losing to it.
+3. **Per-Call Env Stays In That Call**: environment set on a `Call` reaches
+   only that call and does not leak into later ones through the `Runner`.
+4. **Output Goes To A File, Never A Pipe**: both streams are written to the
+   named output file, and a `Call` without one is refused rather than run.
+   An unwritable output path is reported as an error.
+5. **Exit Codes Are Carried, Absence Is Not An Exit**: a child's non-zero exit
+   arrives as an `ExitError` carrying the code, while a missing binary is a
+   different error — so "failed" and "never ran" are distinguishable.
+6. **`PATH` Is The Fixed One**: lookup and the child both see the configured
+   `PATH`, not the parent's, and explicit paths pass through untouched.
+7. **Windows Resolves Through `PATHEXT`**: extensions are appended in
+   `PATHEXT` order, earlier entries win, a non-executable extension is
+   rejected, and an unset `PATHEXT` falls back to a default.

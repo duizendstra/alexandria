@@ -118,3 +118,29 @@ as separate processes — are listed in
   trade and is opt-in.
 - **Revocation.** A holder is never told it lost its window. The fence lets a
   downstream reader detect the consequence; it does not prevent it.
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Adapter authors**: infrastructure code implementing an acquisition
+  interface over a file, a database row, or an object-store precondition.
+- **Callers serialising mutation**: processes that must not both mutate a
+  shared resource, and need a holder record an operator can read.
+
+### Load-Bearing Promises
+1. **Contracts Only, Standard Library Only**: this module holds the subject,
+   the holder record, the two acquisition interfaces and the error vocabulary,
+   and depends on nothing outside the standard library. Adapters live
+   elsewhere; a dependency added here is a breaking change to every consumer.
+2. **A Subject Cannot Escape Its Store**: a subject that would address
+   something outside the store is rejected, and the error names the offending
+   subject rather than failing anonymously.
+3. **Errors Are Distinct Sentinels**: each failure mode is separately matchable
+   with `errors.Is`, so a caller can tell "held by someone else" from "cannot
+   reach the store".
+4. **A Holder Round-Trips As JSON**: the record survives being written by one
+   process and read by another.
+5. **A Holder Prints As One Operator-Readable Line**: `String` is a single
+   line, safe to put straight into a log or an error message.
+6. **Age Is Zero Without `Since`**: an unset timestamp reports zero age rather
+   than an epoch-derived nonsense value.

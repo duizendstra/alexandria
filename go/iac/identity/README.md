@@ -48,3 +48,22 @@ identity.Apply(ctx, &identity.Params{FolderID: f, BillingAccount: b})
 |---|---|
 | `projectId` | The identity project ID |
 | `<sa-id>-email` | Email of each provisioned service account |
+
+## Consumers & Load-Bearing Promises
+
+### Consumer Archetypes
+- **Pulumi composition roots**: stacks provisioning service accounts and the
+  access granted to them.
+- **Deployment scenarios of differing shape**: callers composing the same
+  `Apply` unit into single-project and multi-project layouts.
+
+### Load-Bearing Promises
+1. **Absent Is Not Malformed**: an omitted optional block applies cleanly and
+   creates nothing. A *malformed* block fails the apply — it is never skipped
+   silently, because a typo that quietly provisions nothing is the failure
+   mode this blueprint exists to prevent.
+2. **Well-Formed Means Created**: a valid optional block creates its resources.
+   Configuration that parses is configuration that takes effect.
+3. **`Apply` Is The Composable Unit**: the same entry point supports every
+   supported deployment scenario. Composition is done by calling it more than
+   once, not by reaching past it.

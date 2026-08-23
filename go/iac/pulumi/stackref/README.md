@@ -16,7 +16,16 @@ projectID := stackref.RequireString(workloadRef, "computeProjectId")
 has not exported the key yet (e.g. first deploy ordering), so downstream
 resources fail with a clear GCP validation error instead of a nil panic.
 
-## Consumers
+## Consumers & Load-Bearing Promises
 
+### Consumer Archetypes
 - Pulumi composition roots that wire bounded contexts together via
   stack references.
+
+### Load-Bearing Promises
+1. **Present Values Are Returned As-Is**: a required string that exists comes
+   back unchanged.
+2. **Missing Means Empty, Not Panic**: a missing key yields the empty string,
+   so a composition root decides how to handle absence rather than being
+   aborted mid-wiring.
+
