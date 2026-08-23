@@ -18,9 +18,9 @@ import (
 type AddOnEvent struct {
 	Calendar          map[string]any `json:"calendar,omitempty"`
 	CommonEventObject struct {
-		UserLocale string                                `json:"userLocale,omitempty"`
-		HostApp    string                                `json:"hostApp,omitempty"`
-		Platform   string                                `json:"platform,omitempty"`
+		UserLocale string `json:"userLocale,omitempty"`
+		HostApp    string `json:"hostApp,omitempty"`
+		Platform   string `json:"platform,omitempty"`
 		FormInputs map[string]struct {
 			StringInputs struct {
 				Value []string `json:"value,omitempty"`
@@ -280,9 +280,22 @@ func handleAnalyzeNote(ctx context.Context, w http.ResponseWriter, event AddOnEv
 }
 
 // callGeminiExtract calls Google AI Studio Gemini API with JSON response format.
-func callGeminiExtract(ctx context.Context, note, apiKey string) (*TimeEntry, error) {
-	endpoint := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=%s", apiKey)
+// The key travels in a header, never in this URL. A transport failure yields a
+// *url.Error carrying the whole URL, and callGeminiExtractAt's errors are both
+// logged and written into the HTTP response.
+// A var, not a const, so a test can exercise callGeminiExtract itself rather than
+// only the helper beneath it.
+//
+//nolint:gochecknoglobals // Test seam: lets the key-leak regression test drive callGeminiExtract itself.
+var geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
+func callGeminiExtract(ctx context.Context, note, apiKey string) (*TimeEntry, error) {
+	return callGeminiExtractAt(ctx, geminiEndpoint, note, apiKey)
+}
+
+// callGeminiExtractAt takes the endpoint so a test can point it at a closed
+// listener and assert on the resulting error.
+func callGeminiExtractAt(ctx context.Context, endpoint, note, apiKey string) (*TimeEntry, error) {
 	prompt := fmt.Sprintf(`You are an expert time-tracking assistant.
 Analyze this work note and extract:
 - client (string)
@@ -302,7 +315,7 @@ Work note: %q`, note)
 			},
 		},
 		"generationConfig": map[string]any{
-			"temperature":        0.2,
+			"temperature":      0.2,
 			"responseMimeType": "application/json",
 		},
 	}
@@ -317,13 +330,14 @@ Work note: %q`, note)
 		return nil, fmt.Errorf("failed to create http request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", apiKey)
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("gemini request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
