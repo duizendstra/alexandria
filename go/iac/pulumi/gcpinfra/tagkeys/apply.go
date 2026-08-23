@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/duizendstra/alexandria/go/governance/classification"
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/lifecycle"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/tags"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -16,8 +17,9 @@ var ErrOrgIDRequired = errors.New("tagkeys: orgID is required")
 // Outputs maps dimension short name → Pulumi resource ID.
 type Outputs map[string]pulumi.IDOutput
 
-// Apply creates tag keys at the org level in GCP. Protected from accidental deletion.
-func Apply(ctx *pulumi.Context, orgID string, dims []classification.Dimension) (Outputs, error) {
+// Apply creates tag keys at the org level in GCP. Tag keys are protected from
+// accidental deletion unless the caller passes lifecycle.Ephemeral.
+func Apply(ctx *pulumi.Context, orgID string, dims []classification.Dimension, opts ...lifecycle.Option) (Outputs, error) {
 	if orgID == "" {
 		return nil, ErrOrgIDRequired
 	}
@@ -34,7 +36,7 @@ func Apply(ctx *pulumi.Context, orgID string, dims []classification.Dimension) (
 			Parent:      orgParent,
 			ShortName:   pulumi.String(dim.ShortName),
 			Description: pulumi.String(dim.Description),
-		}, pulumi.Protect(true))
+		}, lifecycle.Protect(opts...))
 		if err != nil {
 			return nil, fmt.Errorf("create %s tag key: %w", dim.ShortName, err)
 		}

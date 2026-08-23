@@ -1,12 +1,26 @@
 package firestore
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
+
+// The two delete-protection states the Firestore API accepts. Anything else,
+// including the empty string, reads as protection disabled at the provider.
+const (
+	DeleteProtectionEnabled  = "DELETE_PROTECTION_ENABLED"
+	DeleteProtectionDisabled = "DELETE_PROTECTION_DISABLED"
+)
 
 var (
 	// ErrNameRequired means the database has no ID.
 	ErrNameRequired = errors.New("firestore: Name is required")
 	// ErrRegionRequired means the database has no location.
 	ErrRegionRequired = errors.New("firestore: Region is required")
+	// ErrInvalidDeleteProtection means DeleteProtection is neither empty nor
+	// one of the two states the API accepts. An unrecognised value used to
+	// reach the provider unchecked, where it read as protection disabled.
+	ErrInvalidDeleteProtection = errors.New("firestore: DeleteProtection must be DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED")
 	// ErrCollectionRequired means the document has no collection.
 	ErrCollectionRequired = errors.New("firestore: document Collection is required")
 	// ErrDocumentIDRequired means the document has no identifier.
@@ -25,7 +39,9 @@ type DatabaseConfig struct {
 	Name string
 	// Region is the location (e.g. "europe-west4").
 	Region string
-	// DeleteProtection is "DELETE_PROTECTION_ENABLED" or "DELETE_PROTECTION_DISABLED".
+	// DeleteProtection is "DELETE_PROTECTION_ENABLED" or
+	// "DELETE_PROTECTION_DISABLED". Leave it empty to follow the stack: a
+	// permanent stack enables it, lifecycle.Ephemeral disables it.
 	DeleteProtection string
 }
 
@@ -36,6 +52,12 @@ func (c *DatabaseConfig) Validate() error {
 	}
 	if c.Region == "" {
 		return ErrRegionRequired
+	}
+
+	switch c.DeleteProtection {
+	case "", DeleteProtectionEnabled, DeleteProtectionDisabled:
+	default:
+		return fmt.Errorf("%w, got %q", ErrInvalidDeleteProtection, c.DeleteProtection)
 	}
 
 	return nil

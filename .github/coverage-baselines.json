@@ -11,7 +11,7 @@
   "go/iac/governance": 90,
   "go/iac/identity": 0,
   "go/iac/observability": 55,
-  "go/iac/pulumi/gcpinfra": 66,
+  "go/iac/pulumi/gcpinfra": 71,
   "go/iac/pulumi/runner": 85,
   "go/iac/pulumi/stackref": 83,
   "go/iac/workloads": 0,

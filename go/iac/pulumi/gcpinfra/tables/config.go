@@ -30,7 +30,9 @@ type Config struct {
 	// PartitionField is the column to partition by (time-based, DAY granularity).
 	// Leave empty for unpartitioned tables.
 	PartitionField string
-	// DeletionProtection prevents accidental deletion.
+	// DeletionProtection forces GCP-level deletion protection on even when
+	// the stack is ephemeral. A permanent stack protects every table anyway,
+	// so this only matters to a stack that opted out with lifecycle.Ephemeral.
 	DeletionProtection bool
 	// Labels are resource labels.
 	Labels map[string]string
@@ -62,7 +64,9 @@ type ExternalConfig struct {
 	SheetRange string
 	// SkipLeadingRows skips header rows.
 	SkipLeadingRows int
-	// DeletionProtection prevents accidental deletion.
+	// DeletionProtection forces GCP-level deletion protection on even when
+	// the stack is ephemeral. A permanent stack protects every table anyway,
+	// so this only matters to a stack that opted out with lifecycle.Ephemeral.
 	DeletionProtection bool
 	// Labels are resource labels.
 	Labels map[string]string

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/internal/names"
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/lifecycle"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/bigquery"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -12,7 +13,9 @@ import (
 //
 // Every Name in tt must be unique: it is the Pulumi logical name, and a
 // repeat is rejected with ErrDuplicateName before any table is created.
-func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []Config, deps []pulumi.Resource) error {
+// Changing one later replaces the table and drops its rows, so the tables are
+// protected unless the caller passes lifecycle.Ephemeral.
+func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []Config, deps []pulumi.Resource, opts ...lifecycle.Option) error {
 	for i := range tt {
 		if err := tt[i].Validate(); err != nil {
 			return err
@@ -22,6 +25,8 @@ func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []C
 	if name, dup := names.Duplicate(tt, func(t *Config) string { return t.Name }); dup {
 		return fmt.Errorf("%w %q", ErrDuplicateName, name)
 	}
+
+	ephemeral := lifecycle.IsEphemeral(opts...)
 
 	for i := range tt {
 		t := &tt[i]
@@ -36,7 +41,7 @@ func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []C
 			DatasetId:          datasetID,
 			TableId:            pulumi.String(t.Name),
 			Schema:             pulumi.String(t.Schema),
-			DeletionProtection: pulumi.Bool(t.DeletionProtection),
+			DeletionProtection: pulumi.Bool(!ephemeral || t.DeletionProtection),
 			Labels:             labels,
 		}
 
@@ -47,7 +52,7 @@ func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []C
 			}
 		}
 
-		_, err := bigquery.NewTable(ctx, t.Name, args, pulumi.DependsOn(deps))
+		_, err := bigquery.NewTable(ctx, t.Name, args, pulumi.DependsOn(deps), lifecycle.Protect(opts...))
 		if err != nil {
 			return fmt.Errorf("create table %s: %w", t.Name, err)
 		}
@@ -61,7 +66,11 @@ func Apply(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []C
 // Every Name in tt must be unique: it is the Pulumi logical name, and a
 // repeat is rejected with ErrDuplicateExternalName before any table is
 // created.
-func ApplyExternal(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []ExternalConfig, deps []pulumi.Resource) error {
+//
+// External tables carry no rows of their own — the data stays in the source —
+// so they are not given pulumi.Protect. They do keep the provider's own
+// deletion protection, which lifecycle.Ephemeral clears.
+func ApplyExternal(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput, tt []ExternalConfig, deps []pulumi.Resource, opts ...lifecycle.Option) error {
 	for i := range tt {
 		if err := tt[i].Validate(); err != nil {
 			return err
@@ -71,6 +80,8 @@ func ApplyExternal(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput
 	if name, dup := names.Duplicate(tt, func(t *ExternalConfig) string { return t.Name }); dup {
 		return fmt.Errorf("%w %q", ErrDuplicateExternalName, name)
 	}
+
+	ephemeral := lifecycle.IsEphemeral(opts...)
 
 	for i := range tt {
 		t := &tt[i]
@@ -103,7 +114,7 @@ func ApplyExternal(ctx *pulumi.Context, projectID, datasetID pulumi.StringOutput
 			Project:                   projectID,
 			DatasetId:                 datasetID,
 			TableId:                   pulumi.String(t.Name),
-			DeletionProtection:        pulumi.Bool(t.DeletionProtection),
+			DeletionProtection:        pulumi.Bool(!ephemeral || t.DeletionProtection),
 			Labels:                    labels,
 			ExternalDataConfiguration: extCfg,
 		}
