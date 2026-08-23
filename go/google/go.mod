@@ -35,3 +35,8 @@ require (
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
+
+// v0.2.0 through v0.4.2 were published from a commit history that has since
+// been rewritten. Their tags no longer exist in this repository, so those
+// versions cannot be reproduced from source and are withdrawn. Use v0.4.3+.
+retract [v0.2.0, v0.4.2]
