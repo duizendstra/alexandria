@@ -249,26 +249,4 @@ jobs:
         run: python3 scripts/okf-lint.py --github
 
       - name: Check for broken internal links
-        run: |
-          status=0
-          while IFS= read -r file; do
-            while IFS= read -r link; do
-              # Skip URLs, anchors, and template placeholders
-              if echo "$link" | grep -qE '^(https?://|mailto:|#|\\<)'; then
-                continue
-              fi
-              # Strip anchor from link
-              target=$(echo "$link" | sed 's/#.*//')
-              if [ -z "$target" ]; then
-                continue
-              fi
-              # Resolve relative to the file's directory
-              dir=$(dirname "$file")
-              resolved="$dir/$target"
-              if [ ! -e "$resolved" ]; then
-                echo "::warning file=$file::Broken link: $link (resolved: $resolved)"
-                status=1
-              fi
-            done < <(grep -oP '\[.*?\]\(\K[^)]+' "$file" 2>/dev/null)
-          done < <(find . -name '*.md' -not -path './.git/*')
-          exit $status
+        run: scripts/check-links.sh --github
