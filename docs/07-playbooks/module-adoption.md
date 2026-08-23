@@ -16,8 +16,6 @@ summary: >
 audience: [public]
 tags: [ "playbook", "adoption", "modules", "vendoring", "go" ]
 relations:
-  - target_uuid: "f93b71c5-2fef-48e3-9219-714ad1543083"
-    rel_type: "relates_to"
   - target_uuid: "b5ca5a05-41c7-49cb-8cb6-06ea4258c90b"
     rel_type: "relates_to"
 ---

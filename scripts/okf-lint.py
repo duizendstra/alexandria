@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """OKF vault integrity lint — the validator promised by ADR-0002.
 
-Validates every markdown document under docs/ against the canonical
-frontmatter schema in docs/08-reference/okf-profile.md:
+docs/ is an OKF v0.2 bundle, so the vault has two kinds of file and the
+lint checks each against its own rules.
+
+Concept documents — every .md that is not a reserved filename — carry the
+canonical frontmatter schema in docs/08-reference/okf-profile.md:
 
   * frontmatter present and well-formed
   * all required fields declared
@@ -11,6 +14,17 @@ frontmatter schema in docs/08-reference/okf-profile.md:
   * domain matches the folder the document lives in
   * created_at / updated_at are ISO 8601 timestamps
   * relations are {target_uuid, rel_type} maps whose targets resolve
+
+Reserved filenames — index.md and log.md, at any level (OKF §3.1) — are
+not concept documents and carry none of that schema (ADR-0003):
+
+  * index.md holds no frontmatter, the one exception being the bundle-root
+    docs/index.md, which declares okf_version and nothing else (§8, §12)
+  * an index body is sections of listing entries under headings (§8)
+  * log.md groups entries under ISO 8601 YYYY-MM-DD headings (§9)
+
+Together those are the three conditions OKF v0.2 §11 defines as bundle
+conformance, plus the Alexandria profile on top of them.
 
 Self-contained: parses the vault's YAML subset directly so it runs on any
 python3 without third-party packages. Exit code 0 = clean, 1 = findings.
@@ -33,7 +47,7 @@ ENUMS = {
     "status": {"active", "draft", "proposed", "accepted", "superseded", "deprecated"},
     "maturity": {"seed", "draft", "standard"},
     "diataxis_quadrant": {"tutorial", "how-to", "reference", "explanation"},
-    "type": {"index", "guide", "architecture_decision_record"},
+    "type": {"guide", "architecture_decision_record"},
 }
 
 AUDIENCES = {"public", "internal"}
@@ -51,6 +65,16 @@ DOMAIN_FOLDERS = {
 
 UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+# OKF §3.1: these names mean something at every level of the hierarchy and
+# are never concept documents.
+RESERVED = {"index.md", "log.md"}
+
+OKF_VERSION_RE = re.compile(r"^\d+\.\d+$")
+ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+HEADING_RE = re.compile(r"^#{1,6}\s+\S")
+LIST_LINK_RE = re.compile(r"^\s*[*+-]\s+\[[^]]+\]\([^)]+\)")
+LOG_SECTION_RE = re.compile(r"^##\s+(.+?)\s*$")
 
 
 def strip_scalar(raw: str) -> str:
@@ -141,25 +165,122 @@ def check_timestamp(value, field: str, path: str, errors: list[str]) -> None:
         errors.append(f"{path}: {field} {value!r} is not ISO 8601")
 
 
+def split_frontmatter(text: str) -> tuple[bool, str | None, str]:
+    """Split a leading `---` block off the body.
+
+    Returns (terminated, block, body). block is None when the file carries
+    no frontmatter at all; terminated is False when an opening delimiter is
+    never closed. The search starts at the newline that ends the opening
+    delimiter, so an empty block (`---` immediately followed by `---`) reads
+    as a block with no keys rather than as an unterminated one.
+    """
+    if not text.startswith("---\n"):
+        return True, None, text
+    try:
+        end = text.index("\n---", 3)
+    except ValueError:
+        return False, None, text
+    rest = text[end + 1:]
+    newline = rest.find("\n")
+    return True, text[4:end], rest[newline + 1:] if newline != -1 else ""
+
+
+def check_index(rel: str, text: str, is_root: bool, errors: list[str]) -> None:
+    """OKF §8/§12: an index carries no frontmatter, except the bundle root's,
+    which declares okf_version and nothing else."""
+    terminated, block, body = split_frontmatter(text)
+    if not terminated:
+        errors.append(f"{rel}: unterminated frontmatter")
+        return
+    if block is None:
+        if is_root:
+            errors.append(
+                f"{rel}: the bundle-root index must declare okf_version "
+                "(OKF v0.2 §12)")
+    elif not is_root:
+        errors.append(
+            f"{rel}: index files carry no frontmatter (OKF v0.2 §8) — only "
+            "the bundle-root docs/index.md may declare okf_version")
+    else:
+        fields = parse_frontmatter(block.splitlines(), rel, errors)
+        extra = sorted(set(fields) - {"okf_version"})
+        if extra:
+            errors.append(
+                f"{rel}: bundle-root index frontmatter holds okf_version and "
+                f"nothing else (OKF v0.2 §12); also found {extra}")
+        version = fields.get("okf_version")
+        if not isinstance(version, str) or not OKF_VERSION_RE.match(version):
+            errors.append(
+                f"{rel}: okf_version {version!r} is not a <major>.<minor> "
+                "string (OKF v0.2 §12)")
+
+    lines = body.splitlines()
+    if not any(HEADING_RE.match(line) for line in lines):
+        errors.append(
+            f"{rel}: index body groups its entries under headings "
+            "(OKF v0.2 §8); found none")
+    if not any(LIST_LINK_RE.match(line) for line in lines):
+        errors.append(
+            f"{rel}: index body lists no linked entries (OKF v0.2 §8); an "
+            "index that would list nothing should not exist")
+
+
+def check_log(rel: str, text: str, errors: list[str]) -> None:
+    """OKF §9: log entries are grouped under ISO 8601 date headings."""
+    terminated, _, body = split_frontmatter(text)
+    if not terminated:
+        errors.append(f"{rel}: unterminated frontmatter")
+        return
+    dated = 0
+    for line in body.splitlines():
+        section = LOG_SECTION_RE.match(line)
+        if not section:
+            continue
+        if ISO_DATE_RE.match(section.group(1)):
+            dated += 1
+        else:
+            errors.append(
+                f"{rel}: log section heading {section.group(1)!r} is not an "
+                "ISO 8601 YYYY-MM-DD date (OKF v0.2 §9)")
+    if not dated:
+        errors.append(
+            f"{rel}: log body has no YYYY-MM-DD section headings "
+            "(OKF v0.2 §9)")
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     docs = root / "docs"
     errors: list[str] = []
     uuids: dict[str, str] = {}
     documents: list[tuple[str, dict]] = []
+    reserved = 0
+
+    if not (docs / "index.md").is_file():
+        errors.append(
+            "docs/index.md: the bundle root must carry an index declaring "
+            "okf_version (OKF v0.2 §12)")
 
     for md in sorted(docs.rglob("*.md")):
         rel = md.relative_to(root).as_posix()
         text = md.read_text(encoding="utf-8")
-        if not text.startswith("---\n"):
-            errors.append(f"{rel}: missing frontmatter (must start with ---)")
+
+        if md.name in RESERVED:
+            reserved += 1
+            if md.name == "index.md":
+                check_index(rel, text, md.parent == docs, errors)
+            else:
+                check_log(rel, text, errors)
             continue
-        try:
-            end = text.index("\n---", 4)
-        except ValueError:
+
+        terminated, block, _ = split_frontmatter(text)
+        if not terminated:
             errors.append(f"{rel}: unterminated frontmatter")
             continue
-        fields = parse_frontmatter(text[4:end].splitlines(), rel, errors)
+        if block is None:
+            errors.append(f"{rel}: missing frontmatter (must start with ---)")
+            continue
+        fields = parse_frontmatter(block.splitlines(), rel, errors)
         documents.append((rel, fields))
 
         for field in REQUIRED_FIELDS:
@@ -224,10 +345,12 @@ def main() -> int:
     if errors:
         for e in errors:
             print(f"::error::{e}" if "--github" in sys.argv else e)
-        print(f"\nokf-lint: {len(errors)} finding(s) across {len(documents)} documents")
+        print(f"\nokf-lint: {len(errors)} finding(s) across "
+              f"{len(documents)} concept documents and {reserved} reserved files")
         return 1
 
-    print(f"okf-lint: {len(documents)} documents clean")
+    print(f"okf-lint: {len(documents)} concept documents and "
+          f"{reserved} reserved files clean")
     return 0
 
 
