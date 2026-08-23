@@ -182,6 +182,7 @@ linters:
         - stdlib
         - generic
         - "github.com/pulumi/pulumi/sdk/v3/go/pulumi.Resource"
+        - "github.com/pulumi/pulumi/sdk/v3/go/pulumi.ResourceOption"
 
     gocritic:
       enabled-tags:

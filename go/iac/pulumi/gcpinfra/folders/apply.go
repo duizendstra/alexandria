@@ -7,6 +7,7 @@ import (
 
 	"github.com/duizendstra/alexandria/go/governance/hierarchy"
 	"github.com/duizendstra/alexandria/go/governance/scope"
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/lifecycle"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/organizations"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -56,7 +57,10 @@ func OrgID(parent string) string {
 // uniqueness, no child named like the root). Whether children are required
 // at all is tier policy owned by the plan package — a Starter hierarchy
 // legitimately has none.
-func Apply(ctx *pulumi.Context, cfg hierarchy.Config) (*Outputs, error) {
+//
+// Folders are protected at both layers unless the caller passes
+// lifecycle.Ephemeral.
+func Apply(ctx *pulumi.Context, cfg hierarchy.Config, opts ...lifecycle.Option) (*Outputs, error) {
 	if err := cfg.ValidateBase(); err != nil {
 		return nil, fmt.Errorf("folders: %w", err)
 	}
@@ -78,11 +82,13 @@ func Apply(ctx *pulumi.Context, cfg hierarchy.Config) (*Outputs, error) {
 		return nil, err
 	}
 
+	protectFolders := !lifecycle.IsEphemeral(opts...)
+
 	rootFolder, err := organizations.NewFolder(ctx, cfg.RootName, &organizations.FolderArgs{
 		Parent:             pulumi.String(cfg.Parent),
 		DisplayName:        pulumi.String(cfg.RootName),
-		DeletionProtection: pulumi.Bool(true),
-	}, pulumi.Protect(true))
+		DeletionProtection: pulumi.Bool(protectFolders),
+	}, lifecycle.Protect(opts...))
 	if err != nil {
 		return nil, fmt.Errorf("create %s folder: %w", cfg.RootName, err)
 	}
@@ -93,8 +99,8 @@ func Apply(ctx *pulumi.Context, cfg hierarchy.Config) (*Outputs, error) {
 		folder, err := organizations.NewFolder(ctx, child, &organizations.FolderArgs{
 			Parent:             rootFolder.Name,
 			DisplayName:        pulumi.String(child),
-			DeletionProtection: pulumi.Bool(true),
-		}, pulumi.Protect(true))
+			DeletionProtection: pulumi.Bool(protectFolders),
+		}, lifecycle.Protect(opts...))
 		if err != nil {
 			return nil, fmt.Errorf("create %s folder: %w", child, err)
 		}

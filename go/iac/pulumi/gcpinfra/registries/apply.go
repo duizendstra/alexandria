@@ -3,6 +3,7 @@ package registries
 import (
 	"fmt"
 
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/lifecycle"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/artifactregistry"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -14,9 +15,18 @@ type Outputs struct {
 }
 
 // Apply creates an Artifact Registry repository in a GCP project.
-func Apply(ctx *pulumi.Context, projectID pulumi.StringOutput, cfg Config, deps []pulumi.Resource) (*Outputs, error) {
+//
+// The repository holds published artifacts, and the provider's deletion policy
+// defaults to DELETE, so a rename would take every image with it. It is
+// protected at both layers unless the caller passes lifecycle.Ephemeral.
+func Apply(ctx *pulumi.Context, projectID pulumi.StringOutput, cfg Config, deps []pulumi.Resource, opts ...lifecycle.Option) (*Outputs, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
+	}
+
+	deletionPolicy := "PREVENT"
+	if lifecycle.IsEphemeral(opts...) {
+		deletionPolicy = "DELETE"
 	}
 
 	repo, err := artifactregistry.NewRepository(ctx, cfg.ID, &artifactregistry.RepositoryArgs{
@@ -25,7 +35,9 @@ func Apply(ctx *pulumi.Context, projectID pulumi.StringOutput, cfg Config, deps 
 		RepositoryId: pulumi.String(cfg.ID),
 		Format:       pulumi.String(cfg.Format),
 		Description:  pulumi.String(cfg.Description),
-	}, pulumi.DependsOn(deps))
+
+		DeletionPolicy: pulumi.String(deletionPolicy),
+	}, pulumi.DependsOn(deps), lifecycle.Protect(opts...))
 	if err != nil {
 		return nil, fmt.Errorf("create registry %s: %w", cfg.ID, err)
 	}
