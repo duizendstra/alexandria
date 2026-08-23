@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/runner/v0.2.0...go/iac/pulumi/runner/v0.2.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **pulumi/runner:** keep config values out of log file names and errors ([#252](https://github.com/duizendstra/alexandria/issues/252)) ([#272](https://github.com/duizendstra/alexandria/issues/272)) ([2e53f60](https://github.com/duizendstra/alexandria/commit/2e53f60ba04931749e36605bacef6a6e25afb91c))
+
 ## [0.2.0](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/runner/v0.1.0...go/iac/pulumi/runner/v0.2.0) (2026-08-22)
 
 

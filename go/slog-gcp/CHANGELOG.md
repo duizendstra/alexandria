@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/duizendstra/alexandria/compare/go/slog-gcp/v0.1.0...go/slog-gcp/v0.1.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **slog-gcp:** emit trace/spanId/insertId at the payload root under WithGroup ([#256](https://github.com/duizendstra/alexandria/issues/256)) ([#274](https://github.com/duizendstra/alexandria/issues/274)) ([2a464fb](https://github.com/duizendstra/alexandria/commit/2a464fb55a16473c1886c11b56c07f67d92c7025))
+
 ## [0.1.0](https://github.com/duizendstra/alexandria/compare/go/slog-gcp/v0.0.3...go/slog-gcp/v0.1.0) (2026-08-21)
 
 

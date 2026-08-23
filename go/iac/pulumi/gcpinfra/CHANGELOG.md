@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/gcpinfra/v1.0.0...go/iac/pulumi/gcpinfra/v1.0.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **gcpinfra:** reject config values that would repeat a Pulumi logical name ([#248](https://github.com/duizendstra/alexandria/issues/248)) ([#282](https://github.com/duizendstra/alexandria/issues/282)) ([a3b5fbd](https://github.com/duizendstra/alexandria/commit/a3b5fbd667acd531f1684a8a914af488bbe0e4d9))
+
 ## [1.0.0](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/gcpinfra/v0.7.0...go/iac/pulumi/gcpinfra/v1.0.0) (2026-08-21)
 
 
