@@ -14,13 +14,13 @@ summary: >
   add-on powered by Gemini AI, progressing from a zero-setup Apps Script prototype
   to a production Go Alternate Runtime on Cloud Run.
 audience: [public]
-tags: [ "workshop", "calendar", "add-on", "apps-script", "go", "gemini-ai", "flossk" ]
+tags: [ "workshop", "calendar", "add-on", "apps-script", "go", "gemini-ai" ]
 relations: []
 ---
 
 # Workshop: Building an AI-Powered Google Calendar Time Tracker
 
-This guide provides the complete curriculum and technical runbook for a hands-on workshop (designed for FLOSSK and student developer communities) teaching how to build an intelligent Google Calendar Add-on for time tracking and time writing.
+This guide provides the complete curriculum and technical runbook for a hands-on workshop (designed for community user groups and student developer societies) teaching how to build an intelligent Google Calendar Add-on for time tracking and time writing.
 
 ---
 
