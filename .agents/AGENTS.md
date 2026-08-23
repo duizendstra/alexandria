@@ -33,16 +33,21 @@ modifications in another).
 
 ## 6. OKF Conventions
 - `docs/` subdirectories use `index.md` (OKF reserved filename)
-- `docs/` root uses `README.md` (GitHub rendering convention)
+- `docs/` root carries both `index.md` (the OKF bundle-root index) and
+  `README.md` (GitHub rendering convention)
 - All other top-level directories use `README.md`
-- Every `docs/` markdown file must have the full Alexandria frontmatter schema
-  (see `docs/08-reference/okf-profile.md`)
+- Every `docs/` **concept document** must have the full Alexandria frontmatter
+  schema (see `docs/08-reference/okf-profile.md`)
+- The reserved filenames `index.md` and `log.md` are not concept documents:
+  they carry no frontmatter at all, the one exception being the bundle-root
+  `docs/index.md`, which declares `okf_version` and nothing else
 
 ## 7. CI Link Checker Awareness
 The CI docs job scans all `.md` files for markdown links and verifies targets
-exist. Avoid writing example markdown link syntax (text in brackets, URL in
-parens) in documentation — the grep pattern will match it as a real link. Use
-prose descriptions or backtick-escaped syntax instead.
+exist. Links inside fenced code blocks are skipped — sample markdown shown to
+the reader points at placeholders by design. Outside a fence, example link
+syntax (text in brackets, URL in parens) is read as a real link: put it in a
+fence, or use prose instead.
 
 ## 8. Go Module Tagging
 - Use path-prefixed annotated tags: `git tag -a go/<module>/v<semver> -m "<message>"`

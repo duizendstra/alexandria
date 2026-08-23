@@ -10,7 +10,7 @@ owner: "@duizendstra"
 summary: Entry point to the Alexandria documentation vault — the arctic vault of shared engineering knowledge.
 uuid: bfa87686-2f8c-48d3-8729-9a2288591d95
 created_at: "2026-06-28T11:41:03Z"
-updated_at: "2026-07-19T12:00:00Z"
+updated_at: "2026-08-23T07:35:03Z"
 tags: [ "vault", "overview" ]
 relations: []
 ---
@@ -34,8 +34,8 @@ relations: []
 
 ## Conventions
 
-- **[OKF](https://okf.md)** — This vault is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) bundle. See the [Alexandria OKF Profile](08-reference/okf-profile.md) for how we extend the spec.
+- **[OKF](https://okf.md)** — This vault is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) v0.2 bundle. See the [Alexandria OKF Profile](08-reference/okf-profile.md) for how we extend the spec, and [`index.md`](index.md) for the bundle-root listing.
 - **Numbered prefixes** enforce consistent directory ordering across tools and IDEs.
-- **`index.md`** in each directory maps folder-local documents (OKF reserved filename).
-- **YAML frontmatter** on every document ensures machine-readability for agentic consumption.
+- **`index.md`** in each directory lists that directory's documents. It is an OKF reserved filename and carries no frontmatter — only the bundle-root index declares `okf_version`.
+- **YAML frontmatter** on every concept document ensures machine-readability for agentic consumption.
 - **ADRs** follow the MADR format — one decision per file in `04-decisions/`.
