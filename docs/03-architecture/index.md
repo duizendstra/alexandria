@@ -2,6 +2,8 @@
 
 This folder documents the technical design principles and structural patterns shared across all Alexandria modules.
 
+How these modules reach a downstream repository — and how a package from one ascends into Alexandria — is the [Ascension & Consumption Protocol](../07-playbooks/ascension-and-consumption.md).
+
 ## What Belongs Here
 
 - **Package Design Patterns** — Conventions for public API surface, internal packages, and option functions.

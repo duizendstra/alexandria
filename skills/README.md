@@ -21,6 +21,7 @@ Consumer repos inherit skills via `skills.json`:
 
 | Skill | Description |
 |---|---|
+| [alexandria-consumer](alexandria-consumer/) | Ascension & consumption protocol for repositories that depend on Alexandria modules or stage packages for ascension |
 | [dialectical-review](dialectical-review/) | Adversarial expert review using thesis/antithesis/mediator pattern |
 | [diffract-review](diffract-review/) | Structured 9-lens review with parallel agents and CHECK mediator |
 | [ko-build](ko-build/) | ko container build setup for Go services targeting GCP Cloud Run |
