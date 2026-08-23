@@ -1,20 +1,3 @@
----
-title: Reference
-domain: reference
-type: index
-diataxis_quadrant: reference
-status: active
-maturity: standard
-audience: [public]
-owner: "@duizendstra"
-summary: OKF specification and external API references.
-uuid: f83b91ac-d6e1-488d-a4e5-86e7e8d4174c
-created_at: "2026-06-28T11:41:03Z"
-updated_at: "2026-08-22T09:00:00Z"
-tags: [ "index", "reference" ]
-relations: []
----
-
 # 08 — Reference
 
 This folder contains look-up material — specifications, API references, and standards that other documents point to.
@@ -27,28 +10,20 @@ This folder contains look-up material — specifications, API references, and st
 
 ## Contents
 
-| Document | Description |
-|---|---|
-| [Alexandria OKF Profile](okf-profile.md) | How Alexandria uses and extends the Open Knowledge Format. |
-| [Glossary](glossary.md) | The canonical lexicon of terms and Ubiquitous Language establishing architectural patterns. |
+* [Alexandria OKF Profile](okf-profile.md) - How Alexandria uses and extends the Open Knowledge Format (OKF) for its documentation vault.
+* [Platform Glossary & Ubiquitous Language](glossary.md) - The canonical lexicon of terms, architectural concepts, and protocols establishing the Ubiquitous Language of Alexandria.
 
 ## Engineering Lessons
 
-Short, symptom/cause/rule/how-to-test reference pages distilled from
-production engineering work, generalized so no client or project specifics
-are included.
+Short, symptom/cause/rule/how-to-test reference pages distilled from production engineering work, generalized so no client or project specifics are included.
 
-| Document | Description |
-|---|---|
-| [Don't Decorate Shared Adapters Used by Evidence-Producing Code](retry-wrapping-shared-adapters.md) | Why retry/error-wrapping helpers belong at the caller, not on a shared adapter method other code depends on for exact error text. |
-| [Cross-Process Coordination on a Shared Remote Resource](cross-process-locks-shared-remote-resources.md) | Per-process mutexes don't protect a remote resource mutated by multiple processes; use an advisory file lock and treat the API's conflict response as transient. |
-| [Concurrency-Safe Lazy Initialization: Mutex vs. sync.Once](concurrency-safe-lazy-initialization.md) | The poisoned-failure trap of `sync.Once` for lazy init that can fail, and the retryable mutex-based alternative. |
-| [macOS Shell Pitfalls for Agent-Driven Automation](macos-shell-pitfalls-for-agents.md) | zsh word-splitting, colon modifiers, and the frozen macOS bash 3.2 — why multi-step shell automation should be a script, not an inline command. |
-| [Go Proxy Tag Lag and Workspace Drift](go-proxy-tag-lag-and-workspace-drift.md) | Verifying a freshly tagged module version directly instead of trusting the proxy's version-list endpoint, and pinning `GOWORK=off` in scripts that must match CI. |
+* [Don't Decorate Shared Adapters Used by Evidence-Producing Code](retry-wrapping-shared-adapters.md) - Retry and error-wrapping helpers rewrite the error text they pass through; adding one to a shared adapter method silently changes any downstream string comparison, including verifier and audit-evidence output.
+* [Cross-Process Coordination on a Shared Remote Resource](cross-process-locks-shared-remote-resources.md) - A per-process mutex does not protect a remote resource that several processes mutate concurrently; use an advisory file lock around the mutating window, and treat the remote API's conflict response as transient only when the mutation is idempotent.
+* [Concurrency-Safe Lazy Initialization: Mutex vs. sync.Once](concurrency-safe-lazy-initialization.md) - sync.Once guarantees its function runs exactly once, not exactly once on success — a first-call failure during lazy initialization is permanent for the life of the process unless a retryable mutex-based pattern is used instead.
+* [macOS Shell Pitfalls for Agent-Driven Automation](macos-shell-pitfalls-for-agents.md) - zsh word-splitting and colon modifiers, plus macOS's frozen bash 3.2, make ad hoc multi-step shell commands unreliable for automated workflows on macOS; write such steps as an explicit bash script instead.
+* [Go Proxy Tag Lag and Workspace Drift](go-proxy-tag-lag-and-workspace-drift.md) - The Go module proxy's version-list endpoint can lag behind a freshly pushed tag, and an ambient local go.work file masks version-resolution bugs that only appear in CI; verify a tagged version directly and pin GOWORK=off in build scripts that must match CI.
 
 ## Repository Assets Outside the Vault
 
-| Asset | Description |
-|---|---|
-| [`skills/`](../../skills/README.md) | Antigravity AI skills shareable across workspaces (dialectical-review, diffract-review, ko-build, release-review); consumer repos inherit them via `skills.json`. |
-| [`blueprints/`](../../blueprints/README.md) | Golden configuration templates: the `service/` Go Cloud Run ko build config, the `githooks/` Conventional Commits + quality-gate hook set, and the `golangci/` library/consumer lint profiles. |
+* [`skills/`](../../skills/README.md) - Antigravity AI skills shareable across workspaces (dialectical-review, diffract-review, ko-build, release-review); consumer repos inherit them via `skills.json`.
+* [`blueprints/`](../../blueprints/README.md) - Golden configuration templates: the `service/` Go Cloud Run ko build config, the `githooks/` Conventional Commits + quality-gate hook set, and the `golangci/` library/consumer lint profiles.

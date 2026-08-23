@@ -8,7 +8,7 @@ status: "accepted"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-03-03T09:00:00Z"
-updated_at: "2026-07-19T12:00:00Z"
+updated_at: "2026-08-23T07:35:03Z"
 summary: >
   Establishes a unified, OKF-compliant documentation vault to organize
   architectural, governance, and operational knowledge.
@@ -20,7 +20,10 @@ relations: []
 
 ## Status
 
-Accepted
+Accepted. Clauses 2 and 3 are amended by
+[ADR-0003](adr-0003-reserved-filenames-carry-no-frontmatter.md): the metadata
+schema below binds concept documents, and the OKF-reserved filenames
+`index.md` and `log.md` follow OKF §8 and §9 instead.
 
 ## Context
 

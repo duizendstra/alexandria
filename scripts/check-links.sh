@@ -33,9 +33,14 @@ findings=0
 # of nested brackets in the link text, so `[see [note] here](t.md)` and
 # badge links `[![img](i.png)](t.md)` resolve their real target rather
 # than being skipped or reporting the inner image URL.
+#
+# Fenced code blocks are stripped first: a link inside a fence is sample
+# markdown being shown to the reader, not a link the document makes, and
+# its target is a placeholder that resolves to nothing by design.
 find . -name '*.md' -not -path './.git/*' | sort > "$TMP/files"
 while IFS= read -r file; do
-  grep -oE '\[([^][]|\[[^]]*\])*\]\([^)]*\)' "$file" 2>/dev/null \
+  awk '/^[[:space:]]*(```|~~~)/ { fence = !fence; next } !fence' "$file" \
+    | grep -oE '\[([^][]|\[[^]]*\])*\]\([^)]*\)' 2>/dev/null \
     | sed -E 's/^\[([^][]|\[[^]]*\])*\]\(//; s/\)$//' > "$TMP/targets" || true
   while IFS= read -r link; do
     # Skip URLs, mail, pure anchors, and \<template placeholders\>.
