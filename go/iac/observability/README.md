@@ -70,7 +70,7 @@ Run URI) and stripped to its host.
 | `statusClasses` | no | Accepted response classes (default `["2xx","3xx"]` — 3xx covers the IAP sign-in redirect) |
 
 ```json
-[{ "displayName": "iris dev frontend", "stackRef": "organization/blm-gcp-frontend/iris-dev" }]
+[{ "displayName": "example dev frontend", "stackRef": "organization/example-gcp-frontend/example-dev" }]
 ```
 
 ## Exports
