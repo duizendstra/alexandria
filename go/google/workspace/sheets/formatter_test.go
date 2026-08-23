@@ -93,10 +93,10 @@ func TestBuildFormatRequests_ColumnBoundsAndMax(t *testing.T) {
 	tbl := NewTable("LongColumn", "ShortColumn", "FixedBounded")
 	// Col 0 has very long text (over 100 chars).
 	tbl.AddRowValues("https://example.com/very/long/url/path/with/lots/of/parameters?query=value&another=something_extremely_verbose", "hi", "normal")
-	tbl.SetColumnBounds(0, 50, 220) // Col 0: bounded to max 220px.
+	tbl.SetColumnBounds(0, 50, 220)  // Col 0: bounded to max 220px.
 	tbl.SetColumnBounds(1, 140, 500) // Col 1: bounded to min 140px.
-	tbl.SetColumnWidth(2, 400) // Col 2: fixed 400.
-	tbl.SetColumnBounds(2, 0, 250) // Col 2: max 250 (should clamp the 400 down to 250).
+	tbl.SetColumnWidth(2, 400)       // Col 2: fixed 400.
+	tbl.SetColumnBounds(2, 0, 250)   // Col 2: max 250 (should clamp the 400 down to 250).
 
 	spec := TabSpec{
 		Title: "BoundedTab",
@@ -210,5 +210,3 @@ func TestBuildRichLinkRequests(t *testing.T) {
 		t.Errorf("expected fields %q, got %q", fieldMaskTextFormatRuns, up.Fields)
 	}
 }
-
-

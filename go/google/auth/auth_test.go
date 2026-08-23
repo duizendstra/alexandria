@@ -366,7 +366,6 @@ func TestDWDValidator_ValidateAccessAs(t *testing.T) {
 	})
 }
 
-
 // writeFakeServiceAccountKey writes a syntactically valid service account key
 // file (with a freshly generated RSA key) and returns its path. Credential
 // detection parses the file without any network calls.
@@ -522,4 +521,3 @@ func TestOpenBrowserSafety(t *testing.T) {
 		}
 	})
 }
-

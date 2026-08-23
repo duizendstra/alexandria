@@ -192,5 +192,3 @@ func TestTable_SetColumnBoundsByName(t *testing.T) {
 		t.Errorf("col 1: got %+v, want min=150 max=500", c1)
 	}
 }
-
-
