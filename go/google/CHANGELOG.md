@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.3 (2026-08-23)
+
+Re-anchoring release: the first `go/google` version tagged against the current
+commit history. `v0.2.0`–`v0.4.2` are withdrawn by a `retract` directive in
+`go.mod` — they were published from a history that has since been rewritten and
+their tags no longer exist here, so they cannot be reproduced from source. The
+compare links in the entries below this one point at those deleted tags.
+
+
+### Bug Fixes
+
+* **google/workspace/sheets:** use a generic placeholder in the runnable `ReplaceTab` example ([#302](https://github.com/duizendstra/alexandria/issues/302)) ([77ae4da](https://github.com/duizendstra/alexandria/commit/77ae4da21cec1319ceed7486bb3435290112d59d))
+
 ## [0.4.2](https://github.com/duizendstra/alexandria/compare/go/google/v0.4.1...go/google/v0.4.2) (2026-08-22)
 
 
