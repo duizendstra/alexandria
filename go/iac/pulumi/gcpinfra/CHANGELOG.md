@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/gcpinfra/v1.0.1...go/iac/pulumi/gcpinfra/v1.1.0) (2026-08-23)
+
+
+### Bug Fixes
+
+* **gcpinfra:** protect data-bearing resources by default, with an Ephemeral opt-out ([#285](https://github.com/duizendstra/alexandria/issues/285)) ([#295](https://github.com/duizendstra/alexandria/issues/295)) ([dbd4643](https://github.com/duizendstra/alexandria/commit/dbd4643059843405cc234a83d130493a3c995e4e))
+
+
+### Documentation
+
+* **gcpinfra:** add runnable examples for the Ephemeral opt-out ([#296](https://github.com/duizendstra/alexandria/issues/296)) ([c79479d](https://github.com/duizendstra/alexandria/commit/c79479df79b18cf2a69dfbe94001d9dc69c7ad26))
+
 ## [1.0.1](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/gcpinfra/v1.0.0...go/iac/pulumi/gcpinfra/v1.0.1) (2026-08-22)
 
 
