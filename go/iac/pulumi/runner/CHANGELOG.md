@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/runner/v0.2.1...go/iac/pulumi/runner/v0.2.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **pulumi/runner:** write the fake pulumi stubs once from TestMain ([#291](https://github.com/duizendstra/alexandria/issues/291)) ([#293](https://github.com/duizendstra/alexandria/issues/293)) ([66d92c2](https://github.com/duizendstra/alexandria/commit/66d92c2e705132760bd10ad8d7dabd57e2d94b0c))
+
 ## [0.2.1](https://github.com/duizendstra/alexandria/compare/go/iac/pulumi/runner/v0.2.0...go/iac/pulumi/runner/v0.2.1) (2026-08-22)
 
 

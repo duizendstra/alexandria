@@ -45,8 +45,8 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 | [platform/web](go/platform/web/) | `github.com/duizendstra/alexandria/go/platform/web` | v0.1.1 | Project-agnostic HTTP server, client, and response utilities |
 | [platform/workflow](go/platform/workflow/) | `github.com/duizendstra/alexandria/go/platform/workflow` | v0.2.0 | Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks |
 | [governance](go/governance/) | `github.com/duizendstra/alexandria/go/governance` | v1.0.1 | Pure-Go governance domain model (scope, tiers, hierarchy, classification) |
-| [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v1.0.1 | Pulumi adapter packages for Google Cloud infrastructure |
-| [iac/pulumi/runner](go/iac/pulumi/runner/) | `github.com/duizendstra/alexandria/go/iac/pulumi/runner` | v0.2.1 | Programmatic Pulumi CLI automation engine built on procrun |
+| [iac/pulumi/gcpinfra](go/iac/pulumi/gcpinfra/) | `github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra` | v1.1.0 | Pulumi adapter packages for Google Cloud infrastructure |
+| [iac/pulumi/runner](go/iac/pulumi/runner/) | `github.com/duizendstra/alexandria/go/iac/pulumi/runner` | v0.2.2 | Programmatic Pulumi CLI automation engine built on procrun |
 | [iac/pulumi/stackref](go/iac/pulumi/stackref/) | `github.com/duizendstra/alexandria/go/iac/pulumi/stackref` | v0.1.0 | Typed readers for Pulumi stack reference outputs |
 | [iac/delivery](go/iac/delivery/) | `github.com/duizendstra/alexandria/go/iac/delivery` | v0.1.2 | Configuration-driven Pulumi blueprint provisioning a CI/CD project (registry, Git connection, build triggers, consumer grants) |
 | [iac/finops](go/iac/finops/) | `github.com/duizendstra/alexandria/go/iac/finops` | v0.1.1 | Configuration-driven Pulumi blueprint provisioning a FinOps project (billing dataset, org budget with alerts) |
