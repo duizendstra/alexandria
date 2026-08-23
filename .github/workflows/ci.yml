@@ -144,6 +144,17 @@ jobs:
           done < <(find go/ -name go.mod -exec dirname {} \;)
           exit $status
 
+      - name: Require go/README module-index coverage for every module
+        run: |
+          status=0
+          while IFS= read -r dir; do
+            if ! grep -qF -- "(${dir#go/}/)" go/README.md; then
+              echo "::error file=go/README.md::Module $dir is missing from the go/README.md module index table."
+              status=1
+            fi
+          done < <(find go/ -name go.mod -exec dirname {} \;)
+          exit $status
+
       - name: Require coverage baseline for every module
         run: |
           status=0
