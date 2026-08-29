@@ -33,6 +33,7 @@ drift out of date.
 | [platform/gcpenv](platform/gcpenv/) | Canonical GCP project ID resolution (env vars + metadata service) |
 | [platform/passstore](platform/passstore/) | Deploy-time secret retrieval from the local pass store |
 | [platform/procrun](platform/procrun/) | Run external commands under a controlled environment (scrubbed env, fixed PATH, output to file) |
+| [platform/retry](platform/retry/) | Exponential backoff/jitter retries and transient HTTP roundtrip retries |
 | [platform/runstate](platform/runstate/) | Per-subject run lock and short-lived, fingerprint-bound leases on disk |
 | [platform/web](platform/web/) | Project-agnostic HTTP server, client, and response utilities |
 | [platform/workflow](platform/workflow/) | Context-aware sequential step procedure engine with panic recovery, skip predicates, and lifecycle hooks |

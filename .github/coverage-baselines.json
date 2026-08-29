@@ -24,6 +24,7 @@
   "go/platform/gcpenv": 89,
   "go/platform/passstore": 78,
   "go/platform/procrun": 92,
+  "go/platform/retry": 96,
   "go/platform/runstate": 84,
   "go/platform/web": 75,
   "go/platform/workflow": 95,
