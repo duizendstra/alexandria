@@ -1,184 +1,82 @@
+// Package retry provides backward-compatible forwarding shims for [github.com/duizendstra/alexandria/go/platform/retry].
+//
+// Deprecated: Use [github.com/duizendstra/alexandria/go/platform/retry] instead.
 package retry
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"math/rand/v2"
+	"net/http"
 	"time"
+
+	"github.com/duizendstra/alexandria/go/platform/retry"
 )
 
-const (
-	// backoffBase is the base duration for exponential backoff.
-	backoffBase = 100 * time.Millisecond
+// Sentinel errors forwarded from the platform/retry package.
+var (
+	// Deprecated: Use [retry.ErrNonRewindableBody] from [github.com/duizendstra/alexandria/go/platform/retry].
+	ErrNonRewindableBody = retry.ErrNonRewindableBody
 
-	// maxBackoff caps the exponential backoff duration before jitter.
-	maxBackoff = 5 * time.Second
-
-	// jitterFraction determines the jitter range (1/5 = 20%).
-	jitterFraction = 5
-
-	// maxAttemptShift caps the bit shift to prevent integer overflow.
-	maxAttemptShift = 30
+	// Deprecated: Use [retry.ErrRetriesExceeded] from [github.com/duizendstra/alexandria/go/platform/retry].
+	ErrRetriesExceeded = retry.ErrRetriesExceeded
 )
 
-// PermanentError can be implemented by errors to signal that they are permanent
-// and should not be retried.
-type PermanentError interface {
-	Permanent() bool
-}
+// PermanentError can be implemented by errors to signal that they are permanent and should not be retried.
+//
+// Deprecated: Use [retry.PermanentError] from [github.com/duizendstra/alexandria/go/platform/retry].
+type PermanentError = retry.PermanentError
 
-type permanentError struct {
-	error
-}
-
-func (e permanentError) Unwrap() error {
-	return e.error
-}
-
-func (e permanentError) Permanent() bool {
-	return true
-}
-
-// Permanent wraps an error to mark it as permanent so Do or Transport
-// will not retry it.
+// Permanent wraps an error to mark it as permanent so Do or Transport will not retry it.
+//
+// Deprecated: Use [retry.Permanent] from [github.com/duizendstra/alexandria/go/platform/retry].
 func Permanent(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	return permanentError{err}
+	return retry.Permanent(err)
 }
 
-// IsPermanent checks if an error is wrapped as a permanent error or
-// implements a Permanent() bool method returning true.
+// IsPermanent checks if an error is wrapped as a permanent error or implements PermanentError.
+//
+// Deprecated: Use [retry.IsPermanent] from [github.com/duizendstra/alexandria/go/platform/retry].
 func IsPermanent(err error) bool {
-	if err == nil {
-		return false
-	}
-	var pe PermanentError
-
-	return errors.As(err, &pe) && pe.Permanent()
+	return retry.IsPermanent(err)
 }
 
-// BackoffWithConfig returns an exponential delay for the given attempt (0-indexed)
-// parameterized by base delay and maximum backoff cap, plus 0–20% jitter.
-func BackoffWithConfig(attempt int, base, maxCap time.Duration) time.Duration {
-	if base <= 0 {
-		base = backoffBase
-	}
-	if maxCap <= 0 {
-		maxCap = maxBackoff
-	}
-	shift := min(max(attempt, 0), maxAttemptShift)
-	b := min(time.Duration(int64(1)<<uint(shift))*base, maxCap)
-	jit := jitter(b / jitterFraction)
-
-	return b + jit
-}
-
-// Backoff returns an exponential delay for the given attempt (0-indexed).
+// Backoff returns an exponential backoff duration with randomized jitter for the given attempt.
 //
-// The delay is 2^attempt × 100ms, capped at 5s, plus 0–20% jitter from
-// math/rand/v2. Attempt 0 returns ~100ms, attempt 5 returns ~3.2s,
-// attempt 6+ returns ~5s.
+// Deprecated: Use [retry.Backoff] from [github.com/duizendstra/alexandria/go/platform/retry].
 func Backoff(attempt int) time.Duration {
-	return BackoffWithConfig(attempt, backoffBase, maxBackoff)
+	return retry.Backoff(attempt)
 }
 
-// Do calls fn up to maxAttempts times. Between failures it waits using
-// [Backoff]. It returns immediately if ctx is canceled or if fn returns
-// an error marked as permanent via [Permanent] or by implementing [PermanentError].
+// BackoffWithConfig returns an exponential delay for the given attempt with custom parameters.
 //
-// Terminal semantics: when all attempts are exhausted, Do returns the last
-// error from fn unchanged — a non-nil result always means failure, so no
-// extra sentinel is needed. The [Transport] counterpart likewise returns a
-// non-nil error on exhaustion, but wraps [ErrRetriesExceeded] (optionally
-// alongside the final retryable response), because an HTTP response with a
-// retryable status would otherwise be indistinguishable from success.
-//
-//	err := retry.Do(ctx, 3, func() error {
-//	    return client.Ping()
-//	})
-func Do(ctx context.Context, maxAttempts int, fn func() error) error {
-	_, err := DoVal(ctx, maxAttempts, func() (struct{}, error) {
-		return struct{}{}, fn()
-	})
+// Deprecated: Use [retry.BackoffWithConfig] from [github.com/duizendstra/alexandria/go/platform/retry].
+func BackoffWithConfig(attempt int, base, maxCap time.Duration) time.Duration {
+	return retry.BackoffWithConfig(attempt, base, maxCap)
+}
 
-	return err
+// Do calls fn up to maxAttempts times, waiting between failures using exponential backoff.
+//
+// Deprecated: Use [retry.Do] from [github.com/duizendstra/alexandria/go/platform/retry].
+func Do(ctx context.Context, maxAttempts int, fn func() error) error {
+	return retry.Do(ctx, maxAttempts, fn)
 }
 
 // DoVal calls fn up to maxAttempts times and returns the resulting value and error.
-// Between failures it waits using [Backoff]. It returns immediately if ctx is
-// canceled or if fn returns an error marked as permanent via [Permanent] or by
-// implementing [PermanentError].
 //
-// On success, DoVal returns the value produced by fn and nil error.
-// On failure, DoVal returns the zero value of T and the terminal error.
-//
-//	val, err := retry.DoVal(ctx, 3, func() (string, error) {
-//	    return client.FetchID()
-//	})
+// Deprecated: Use [retry.DoVal] from [github.com/duizendstra/alexandria/go/platform/retry].
 func DoVal[T any](ctx context.Context, maxAttempts int, fn func() (T, error)) (T, error) {
-	var zero T
-	if maxAttempts < 1 {
-		maxAttempts = 1
-	}
-
-	var (
-		val     T
-		lastErr error
-		timer   *time.Timer
-	)
-	defer func() {
-		if timer != nil {
-			timer.Stop()
-		}
-	}()
-
-	for attempt := range maxAttempts {
-		val, lastErr = fn()
-		if lastErr == nil {
-			return val, nil
-		}
-
-		if IsPermanent(lastErr) {
-			break
-		}
-
-		// Don't sleep after the last attempt.
-		if attempt == maxAttempts-1 {
-			break
-		}
-
-		delay := Backoff(attempt)
-		if timer == nil {
-			timer = time.NewTimer(delay)
-		} else {
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-			timer.Reset(delay)
-		}
-
-		select {
-		case <-timer.C:
-		case <-ctx.Done():
-			return zero, fmt.Errorf("retry: %w", ctx.Err())
-		}
-	}
-
-	return zero, lastErr
+	return retry.DoVal(ctx, maxAttempts, fn)
 }
 
-// jitter returns a random duration in [0, ceiling) using math/rand/v2.
-func jitter(ceiling time.Duration) time.Duration {
-	if ceiling <= 0 {
-		return 0
-	}
+// Transport returns an http.RoundTripper that retries requests.
+//
+// Deprecated: Use [retry.Transport] from [github.com/duizendstra/alexandria/go/platform/retry].
+func Transport(maxAttempts int, shouldRetry func(statusCode int) bool, base http.RoundTripper) http.RoundTripper {
+	return retry.Transport(maxAttempts, shouldRetry, base)
+}
 
-	return time.Duration(rand.Int64N(int64(ceiling))) // #nosec G404
+// RetryAfterDelay parses a Retry-After header value in either delta-seconds form or HTTP-date form.
+//
+// Deprecated: Use [retry.RetryAfterDelay] from [github.com/duizendstra/alexandria/go/platform/retry].
+func RetryAfterDelay(header string, now time.Time) (time.Duration, bool) {
+	return retry.RetryAfterDelay(header, now)
 }

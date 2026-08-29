@@ -14,8 +14,8 @@ drift out of date.
 
 | Module | Description |
 |---|---|
-| [retry](retry/) | Exponential backoff/jitter retries and transient HTTP roundtrip retries |
-| [retry/gcp](retry/gcp/) | GCP/Google API error classification and retry utilities |
+| [retry](retry/) | (Deprecated) Forwarding shims for go/platform/retry |
+| [retry/gcp](retry/gcp/) | (Deprecated) Forwarding shims for go/platform/retry/gcp |
 | [slog-gcp](slog-gcp/) | `slog.Handler` decorator for GCP Cloud Logging (trace URLs, error reporting) |
 | [slog-gcp/otelgcp](slog-gcp/otelgcp/) | OpenTelemetry trace-context bridge for slog-gcp |
 | [google](google/) | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |

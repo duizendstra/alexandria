@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/duizendstra/alexandria/go/retry/gcp"
+	"github.com/duizendstra/alexandria/go/platform/retry/gcp"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"

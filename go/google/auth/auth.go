@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/auth/credentials/impersonate"
-	"github.com/duizendstra/alexandria/go/retry"
-	"github.com/duizendstra/alexandria/go/retry/gcp"
+	"github.com/duizendstra/alexandria/go/platform/retry"
+	"github.com/duizendstra/alexandria/go/platform/retry/gcp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"

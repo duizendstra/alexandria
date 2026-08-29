@@ -4,8 +4,8 @@ go 1.26
 
 require (
 	cloud.google.com/go/auth v0.23.1
-	github.com/duizendstra/alexandria/go/retry v0.1.0
-	github.com/duizendstra/alexandria/go/retry/gcp v0.1.0
+	github.com/duizendstra/alexandria/go/platform/retry v0.1.0
+	github.com/duizendstra/alexandria/go/platform/retry/gcp v0.1.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.293.0
 )

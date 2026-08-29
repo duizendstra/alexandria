@@ -22,8 +22,8 @@ Alexandria owns the shared knowledge, libraries, contracts, and tooling of the
 
 | Module | Import Path | Status | Description |
 |---|---|---|---|
-| [retry](go/retry/) | `github.com/duizendstra/alexandria/go/retry` | v1.1.0 | Exponential backoff/jitter retries and transient HTTP roundtrip retries |
-| [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v1.1.1 | GCP/Google API error classification and retry utilities |
+| [retry](go/retry/) | `github.com/duizendstra/alexandria/go/retry` | v1.1.0 | (Deprecated) Forwarding shims for go/platform/retry |
+| [retry/gcp](go/retry/gcp/) | `github.com/duizendstra/alexandria/go/retry/gcp` | v1.1.1 | (Deprecated) Forwarding shims for go/platform/retry/gcp |
 | [slog-gcp](go/slog-gcp/) | `github.com/duizendstra/alexandria/go/slog-gcp` | v0.1.1 | `slog.Handler` decorator for GCP Cloud Logging (trace URLs, error reporting) |
 | [slog-gcp/otelgcp](go/slog-gcp/otelgcp/) | `github.com/duizendstra/alexandria/go/slog-gcp/otelgcp` | v0.1.0 | OpenTelemetry trace-context bridge for slog-gcp |
 | [google](go/google/) | `github.com/duizendstra/alexandria/go/google` | v0.4.3 | Google Workspace authenticator builders, client factories, CRM & Service Usage clients |

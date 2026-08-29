@@ -29,8 +29,8 @@
   "go/platform/runstate": 84,
   "go/platform/web": 75,
   "go/platform/workflow": 95,
-  "go/retry": 86,
-  "go/retry/gcp": 84,
+  "go/retry": 98,
+  "go/retry/gcp": 98,
   "go/slog-gcp": 60,
   "go/slog-gcp/otelgcp": 83
 }

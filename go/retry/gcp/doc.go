@@ -1,26 +1,25 @@
-// Package gcp provides GCP/Google API specific error-classification and retry utilities.
+// Package gcp provides backward-compatible forwarding shims for [github.com/duizendstra/alexandria/go/platform/retry/gcp].
+//
+// Deprecated: This package is deprecated. New code should import
+// [github.com/duizendstra/alexandria/go/platform/retry/gcp] directly.
 //
 // # What
 //
-// An error classification evaluator and execution wrapper that understands both
-// REST-based googleapi.Error responses and standard gRPC status codes.
+// An error classification evaluator and execution wrapper forwarding to the canonical
+// platform gcp retry package.
 //
 // # Who
 //
-// Used by GCP clients, Google Workspace integrations (like Google Drive or Admin SDK),
-// and pipeline migrations to evaluate failures and perform backoffs.
+// Retained exclusively for backward compatibility with existing downstream consumers.
 //
 // # When
 //
-// Wrap long-running API operations (like fetching directories, streaming logs, or scanning
-// file trees) to protect against transient GCP server glitches (5xx) or rate limits (429).
+// Migrate all consumer imports to github.com/duizendstra/alexandria/go/platform/retry/gcp.
 //
 // # Why
 //
-// GCP API failures can be caused by transient issues, rate limits, or permanent access denials.
-// Centralizing this classification ensures client logic fails fast on authentication errors
-// but gracefully handles network dropouts.
+// Relocated under go/platform/retry/gcp to standardize multi-module taxonomy.
 //
-// Domain:  Retry
-// Concern: How do we retry Google APIs safely?
+// Domain:  Platform
+// Concern: Backward-compatible forwarding shims for GCP retry.
 package gcp
