@@ -1,0 +1,137 @@
+name: Content scan
+
+# This repository is public. It must never contain client-, organization-,
+# or product-specific information. This workflow is the automated half of
+# that rule (the other half is contributor discipline, documented in
+# CONTRIBUTING.md).
+#
+# Two independent checks run on every pull request and every push to main:
+#
+#   secret-scan     - a standard secret scanner over the diff. Needs no
+#                      repository secret.
+#   denylist-scan   - matches the diff against a list of regex patterns
+#                      supplied at run time via the CONTENT_DENYLIST_PATTERNS
+#                      repository secret. The list itself is never committed
+#                      here and this workflow never prints its contents; a
+#                      reader of this file (or of any log this workflow
+#                      produces) cannot learn what is on the list.
+#
+# denylist-scan intentionally FAILS (not skips) whenever the secret is
+# unavailable, rather than passing silently. That happens in two cases:
+#   - the secret has not been configured yet, or
+#   - the run is a pull_request from a fork - GitHub never exposes
+#     repository secrets to fork pull_request runs, by platform design.
+# In both cases only the secret-scan half actually ran, and a maintainer
+# must re-run the denylist half from a context that has the secret before
+# the change can be treated as fully scanned (see CONTRIBUTING.md).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  denylist-scan:
+    name: denylist-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determine diff range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check diff against the private-identifier denylist
+        env:
+          DENYLIST_PATTERNS: ${{ secrets.CONTENT_DENYLIST_PATTERNS }}
+          BASE_SHA: ${{ steps.range.outputs.base }}
+          HEAD_SHA: ${{ steps.range.outputs.head }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DENYLIST_PATTERNS:-}" ]; then
+            {
+              echo "## Denylist scan: DEGRADED MODE"
+              echo ""
+              echo "The \`CONTENT_DENYLIST_PATTERNS\` secret was not available to this run."
+              echo "This is expected for pull requests opened from a fork (GitHub never"
+              echo "exposes repository secrets to fork pull_request runs) and for any run"
+              echo "before the secret has been configured."
+              echo ""
+              echo "Only the secret-scan check ran for this change. This check is failing"
+              echo "closed rather than passing silently: it does not certify that the"
+              echo "denylist half ran. A maintainer with write access must re-run the"
+              echo "denylist half from a context that has the secret before this change"
+              echo "is treated as fully scanned (see CONTRIBUTING.md)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::CONTENT_DENYLIST_PATTERNS is unavailable in this run - failing closed to secret-scan-only mode. A maintainer rerun with secret access is required before merge."
+            exit 1
+          fi
+
+          added_file="$(mktemp)"
+          pattern_file="$(mktemp)"
+          trap 'rm -f "$added_file" "$pattern_file"' EXIT
+
+          # Only lines the diff ADDS are checked - this gate blocks new
+          # content from introducing a match, it does not re-flag content
+          # that already existed before this change.
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            git show "$HEAD_SHA" | grep -E '^\+[^+]' | sed 's/^\+//' > "$added_file" || true
+          else
+            git diff "$BASE_SHA" "$HEAD_SHA" | grep -E '^\+[^+]' | sed 's/^\+//' > "$added_file" || true
+          fi
+
+          printf '%s\n' "$DENYLIST_PATTERNS" > "$pattern_file"
+
+          matched=0
+          pattern_no=0
+          while IFS= read -r pattern; do
+            pattern_no=$((pattern_no + 1))
+            [ -z "$pattern" ] && continue
+            case "$pattern" in
+              \#*) continue ;;
+            esac
+            if grep -qE -- "$pattern" "$added_file"; then
+              echo "::error::Denylist pattern #$pattern_no matched content added by this change."
+              matched=1
+            fi
+          done < "$pattern_file"
+
+          if [ "$matched" -ne 0 ]; then
+            {
+              echo "## Denylist scan: FAILED"
+              echo ""
+              echo "One or more denylisted patterns matched content added by this change."
+              echo "See the job log above for the matching pattern number(s). Pattern"
+              echo "contents and matched text are intentionally not printed here."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "## Denylist scan: passed" >> "$GITHUB_STEP_SUMMARY"

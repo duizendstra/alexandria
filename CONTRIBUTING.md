@@ -162,6 +162,37 @@ Before publishing a new Go module:
 - [ ] Output examples must match actual handler output
 - [ ] No internal company, project, or team names in source or tests
 
+## Content Scan (CI Gate)
+
+This repository is public. Every pull request and every push to `main` runs
+an automated content scan (`.github/workflows/content-scan.yml`) in addition
+to author discipline and the checklist above:
+
+- **`secret-scan`** runs a standard secret scanner over the diff. This
+  applies to every pull request, including ones opened from a fork.
+- **`denylist-scan`** matches the diff against a list of patterns that must
+  never appear in this repository. The list itself is not published here —
+  it is supplied to the workflow at run time as a repository secret, so
+  reading this repository does not tell you what it contains.
+
+If `denylist-scan` fails with a "DEGRADED MODE" message, the denylist half
+did not run for that change (this is expected for fork pull requests, since
+GitHub never exposes repository secrets to fork `pull_request` runs) — only
+the secret scan covered it. A maintainer with write access needs to re-run
+the denylist half from a context that has the secret (for example, by
+pushing the reviewed branch to this repository) before the change can be
+treated as fully scanned.
+
+If either check fails on your PR:
+
+1. Read the job log/summary for which check failed and, for the secret
+   scanner, which file and line.
+2. Remove the offending content and force-push the fix; do not attempt to
+   "fix" it with a follow-up commit that leaves the original commit in
+   history — squash or amend it out.
+3. If you believe a finding is a false positive, say so in the PR and ask a
+   maintainer to review; do not modify the workflow to silence it.
+
 ## Issues & Pull Requests
 
 - **Issues**: Welcome. Use the templates provided.
