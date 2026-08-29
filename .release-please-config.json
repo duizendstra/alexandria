@@ -82,6 +82,9 @@
     "go/platform/retry": {
       "package-name": "go/platform/retry"
     },
+    "go/platform/retry/gcp": {
+      "package-name": "go/platform/retry/gcp"
+    },
     "go/platform/runstate": {
       "package-name": "go/platform/runstate"
     },
