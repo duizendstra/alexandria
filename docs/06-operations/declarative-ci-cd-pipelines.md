@@ -63,6 +63,7 @@ Therefore, we enforce **path-prefixed multi-module semantic versioning**. Each s
 4.  **Contracts** (`contracts`) — Runs `buf lint`, `buf breaking` against `main`, and a generated-code drift check so `go/contracts` never goes stale relative to `contracts/proto/`.
 5.  **Docs Link Check** — Verifies that relative markdown links across the repository resolve to existing files.
 6.  **Release Please Automation** (`.github/workflows/release.yml`) — On pushes to `main`, executes Google's `release-please` in manifest mode (`.release-please-config.json` and `.release-please-manifest.json`), maintaining release PRs with changelogs and cutting path-prefixed tags (`go/<module>/vX.Y.Z`) on merge.
+7.  **Content Scan** (`.github/workflows/content-scan.yml`) — Runs a standard secret scanner over the diff, and separately matches the diff against a denylist supplied at run time via a repository secret (never committed here — see [CONTRIBUTING.md](../../CONTRIBUTING.md#content-scan-ci-gate)). The denylist half fails closed (rather than passing silently) whenever the secret is unavailable to the run, which is always true for pull requests opened from a fork.
 
 ## Planned (Not Yet Enforced)
 
