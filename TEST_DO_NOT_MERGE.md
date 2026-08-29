@@ -8,8 +8,14 @@ merging once the failure is observed.
 
 ## Synthetic credential-shaped token (exercises `secret-scan`)
 
+The string below is a freshly, randomly generated placeholder created only
+for this test — it was never issued by GitHub, never used by anyone, and is
+not derived from or connected to any real credential. It is
+credential-**shaped** (matches the GitHub personal-access-token format) so
+the scanner treats it as a real finding, which is the point of this test:
+
 ```
-github_test_token = "ghp_FAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKE"
+github_test_token = "ghp_oRAiaYg3zaiyeiI3vmadhKxL8WSFK8mjzryj"
 ```
 
 ## Synthetic placeholder for the denylist half (exercises `denylist-scan`)
