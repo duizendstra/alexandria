@@ -3,9 +3,9 @@ module github.com/duizendstra/alexandria/go/iac/delivery
 go 1.26
 
 require (
-	github.com/duizendstra/alexandria/go/governance v0.2.0
-	github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra v0.7.0
-	github.com/pulumi/pulumi-gcp/sdk/v9 v9.34.1
+	github.com/duizendstra/alexandria/go/governance v1.0.2
+	github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra v1.1.0
+	github.com/pulumi/pulumi-gcp/sdk/v9 v9.35.1
 	github.com/pulumi/pulumi/sdk/v3 v3.259.0
 )
 
