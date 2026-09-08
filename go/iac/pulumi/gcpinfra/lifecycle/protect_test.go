@@ -11,7 +11,9 @@ import (
 
 	"github.com/duizendstra/alexandria/go/governance/classification"
 	"github.com/duizendstra/alexandria/go/governance/hierarchy"
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/cloudsql"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/datasets"
+	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/datastream"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/firestore"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/folders"
 	"github.com/duizendstra/alexandria/go/iac/pulumi/gcpinfra/lifecycle"
@@ -47,6 +49,12 @@ var (
 		"gcp:artifactregistry/repository:Repository::images":               true,
 		"gcp:secretmanager/secret:Secret::api-key":                         true,
 		"gcp:secretmanager/secretVersion:SecretVersion::api-key-v1":        false,
+		"gcp:sql/databaseInstance:DatabaseInstance::postgres":              true,
+		"gcp:sql/database:Database::app":                                   true,
+		"gcp:sql/user:User::replicator":                                    false,
+		"gcp:datastream/connectionProfile:ConnectionProfile::cdc-source":   false,
+		"gcp:datastream/connectionProfile:ConnectionProfile::cdc-sink":     false,
+		"gcp:datastream/stream:Stream::app-cdc":                            true,
 	}
 )
 
@@ -151,9 +159,73 @@ func applyAll(ctx *pulumi.Context, opts ...lifecycle.Option) error {
 		return err
 	}
 
-	return secrets.Apply(ctx, projectID, []secrets.Secret{
+	if err := secrets.Apply(ctx, projectID, []secrets.Secret{
 		{Name: "api-key", Value: "v"},
+	}, nil, opts...); err != nil {
+		return err
+	}
+
+	return applyReplication(ctx, projectID, opts...)
+}
+
+// applyReplication is the Cloud SQL and Datastream half of the fixture, split
+// out so applyAll stays inside the function-length limit.
+func applyReplication(ctx *pulumi.Context, projectID pulumi.StringOutput, opts ...lifecycle.Option) error {
+	instance, err := cloudsql.ApplyInstance(ctx, projectID, cloudsql.InstanceConfig{
+		Name:            "postgres",
+		Region:          region,
+		DatabaseVersion: "POSTGRES_18",
+		Tier:            "db-custom-1-3840",
+		DiskSizeGB:      10,
 	}, nil, opts...)
+	if err != nil {
+		return err
+	}
+
+	if err := cloudsql.ApplyDatabases(ctx, projectID, instance.Name, []cloudsql.DatabaseConfig{
+		{Name: "app"},
+	}, nil, opts...); err != nil {
+		return err
+	}
+
+	if err := cloudsql.ApplyUsers(ctx, projectID, instance.Name, []cloudsql.UserConfig{
+		{Name: "replicator", Password: "p"},
+	}, nil, opts...); err != nil {
+		return err
+	}
+
+	source, err := datastream.ApplyPostgresProfile(ctx, projectID, datastream.PostgresProfileConfig{
+		ID:          "cdc-source",
+		DisplayName: "CDC source",
+		Location:    region,
+		Hostname:    "198.51.100.10",
+		Username:    "replicator",
+		Database:    "app",
+		Password:    "p",
+	}, nil, opts...)
+	if err != nil {
+		return err
+	}
+
+	sink, err := datastream.ApplyBigQueryProfile(ctx, projectID, datastream.BigQueryProfileConfig{
+		ID:          "cdc-sink",
+		DisplayName: "CDC sink",
+		Location:    region,
+	}, nil, opts...)
+	if err != nil {
+		return err
+	}
+
+	_, err = datastream.ApplyStream(ctx, projectID, source.ID, sink.ID, datastream.StreamConfig{
+		StreamID:        "app-cdc",
+		DisplayName:     "App CDC",
+		Location:        region,
+		Publication:     "app_pub",
+		ReplicationSlot: "app_slot",
+		DatasetID:       "warehouse",
+	}, nil, opts...)
+
+	return err
 }
 
 func runStack(t *testing.T, opts ...lifecycle.Option) map[string]bool {

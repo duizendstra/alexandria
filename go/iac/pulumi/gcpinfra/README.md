@@ -27,6 +27,8 @@ resources.
 | `tables` | BigQuery tables, native (schema, optional DAY partitioning) and external (e.g. Google Sheets) | `tables.Config` / `ExternalConfig` |
 | `dataform` | Dataform repositories with Git remotes, release and workflow configs, P4SA enablement | `dataform.RepositoryConfig` / `ReleaseConfig` / `WorkflowConfig` |
 | `uptimechecks` | HTTPS uptime checks with a failure alert policy (IAP-aware; caller-supplied notification channels) | `uptimechecks.Config` |
+| `cloudsql` | Cloud SQL for PostgreSQL instances, their databases and their built-in and IAM users | `cloudsql.InstanceConfig` / `DatabaseConfig` / `UserConfig` |
+| `datastream` | Datastream change-data-capture from PostgreSQL into BigQuery: source and destination connection profiles, and the stream joining them | `datastream.PostgresProfileConfig` / `BigQueryProfileConfig` / `StreamConfig` |
 
 More building blocks (networking, …) will be added as they are
 generalized.
