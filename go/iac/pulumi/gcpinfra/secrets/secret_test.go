@@ -7,7 +7,7 @@ import (
 )
 
 func TestValidateValid(t *testing.T) {
-	s := secrets.Secret{Name: "api-key", Value: "secret123"}
+	s := secrets.Secret{Name: secretName, Value: "secret123"}
 	if err := s.Validate(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

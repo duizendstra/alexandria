@@ -12,7 +12,7 @@ resources.
 | `folders` | Organizational folder hierarchies | [`governance/hierarchy`](../../../governance/hierarchy/) |
 | `tagkeys` | Classification dimensions as org-level tag keys | [`governance/classification`](../../../governance/classification/) |
 | `projects` | GCP projects with API enablement | `projects.Config` |
-| `secrets` | Secret Manager secrets seeded with caller-supplied values | `secrets.Secret` |
+| `secrets` | Secret Manager secrets seeded with caller-supplied values, and containers for values the stack must never hold | `secrets.Secret` / `secrets.Container` |
 | `serviceaccounts` | Service accounts in a project | `serviceaccounts.Account` |
 | `iambindings` | Project-level and service-account-level IAM member bindings | `iambindings.Binding` / `DynamicBinding` / `SAIamBinding` |
 | `budgets` | Billing budgets with threshold alerts and email notification channels | `budgets.Config` |
@@ -74,12 +74,23 @@ Every block that creates a data-bearing resource sets both by default:
 | `firestore` | database | `deleteProtectionState: ENABLED`, `deletionPolicy: PREVENT` | yes |
 | `firestore` | seeded document | — | yes |
 | `registries` | repository | `deletionPolicy: PREVENT` | yes |
-| `secrets` | secret | `deletionPolicy: PREVENT`, `deletionProtection: true` | yes |
+| `secrets` | secret and container | `deletionPolicy: PREVENT`, `deletionProtection: true` | yes |
+| `cloudsql` | instance | `deletionProtection: true`, `settings.deletionProtectionEnabled: true` | yes |
+| `cloudsql` | database | — | yes |
+| `datastream` | stream | — | yes |
 
 Deliberately unprotected: `tables` external tables (the rows live in the
 source, not the table), `secrets` versions (rotation *is* replacing one),
-`serviceaccounts` and `iambindings` (config is the source of truth), and
-`projects` API enablements.
+`serviceaccounts` and `iambindings` (config is the source of truth),
+`projects` API enablements, `cloudsql` users (removing one is how access is
+withdrawn), and `datastream` connection profiles (they hold nothing).
+
+A `datastream` stream is protected even though it holds no rows: it holds a
+position in the source write-ahead log, and a replacement stream either
+backfills the whole source again or starts from the moment it was created,
+leaving a gap nothing downstream reports. A `secrets` container is protected
+even though the stack never held its value — that is what makes the loss
+unrecoverable rather than reparable.
 
 `cloudrun` ignores container image changes and `firestore` ignores document
 field changes after creation — both are managed outside the stack at runtime

@@ -49,6 +49,7 @@ var (
 		"gcp:artifactregistry/repository:Repository::images":               true,
 		"gcp:secretmanager/secret:Secret::api-key":                         true,
 		"gcp:secretmanager/secretVersion:SecretVersion::api-key-v1":        false,
+		"gcp:secretmanager/secret:Secret::cdc-password":                    true,
 		"gcp:sql/databaseInstance:DatabaseInstance::postgres":              true,
 		"gcp:sql/database:Database::app":                                   true,
 		"gcp:sql/user:User::replicator":                                    false,
@@ -161,6 +162,15 @@ func applyAll(ctx *pulumi.Context, opts ...lifecycle.Option) error {
 
 	if err := secrets.Apply(ctx, projectID, []secrets.Secret{
 		{Name: "api-key", Value: "v"},
+	}, nil, opts...); err != nil {
+		return err
+	}
+
+	// A container is protected on the same terms as a secret, even though the
+	// stack never held its value — precisely because nothing here can put it
+	// back.
+	if err := secrets.ApplyContainers(ctx, projectID, []secrets.Container{
+		{Name: "cdc-password"},
 	}, nil, opts...); err != nil {
 		return err
 	}

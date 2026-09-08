@@ -7,7 +7,7 @@ import (
 )
 
 func ExampleSecret_Validate() {
-	s := secrets.Secret{Name: "api-key", Value: "secret"}
+	s := secrets.Secret{Name: secretName, Value: "secret"}
 	fmt.Println(s.Validate())
 	// Output:
 	// <nil>

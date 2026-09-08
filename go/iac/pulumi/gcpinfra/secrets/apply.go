@@ -62,3 +62,56 @@ func Apply(ctx *pulumi.Context, projectID pulumi.StringOutput, ss []Secret, deps
 
 	return nil
 }
+
+// ApplyContainers creates secrets and no versions.
+//
+// The secret is protected exactly as Apply protects one, and for the same
+// reason: what a delete destroys is the version history and the IAM granted
+// outside the stack, neither of which the stack can put back. That the stack
+// never held the value makes the loss worse, not smaller — nothing here can
+// recreate it.
+//
+// A container and a secret must not name the same secret. Pulumi would see two
+// resources claiming one name, and whichever ran second would take the first
+// one's version policy with it.
+func ApplyContainers(
+	ctx *pulumi.Context,
+	projectID pulumi.StringOutput,
+	containers []Container,
+	deps []pulumi.Resource,
+	opts ...lifecycle.Option,
+) error {
+	if err := ValidateContainers(containers); err != nil {
+		return err
+	}
+
+	ephemeral := lifecycle.IsEphemeral(opts...)
+
+	deletionPolicy := "PREVENT"
+	if ephemeral {
+		deletionPolicy = "DELETE"
+	}
+
+	for _, c := range containers {
+		labels := make(pulumi.StringMap, len(c.Labels))
+		for k, v := range c.Labels {
+			labels[k] = pulumi.String(v)
+		}
+
+		_, err := secretmanager.NewSecret(ctx, c.Name, &secretmanager.SecretArgs{
+			Project:  projectID,
+			SecretId: pulumi.String(c.Name),
+			Replication: &secretmanager.SecretReplicationArgs{
+				Auto: &secretmanager.SecretReplicationAutoArgs{},
+			},
+			Labels:             labels,
+			DeletionPolicy:     pulumi.String(deletionPolicy),
+			DeletionProtection: pulumi.Bool(!ephemeral),
+		}, pulumi.DependsOn(deps), lifecycle.Protect(opts...))
+		if err != nil {
+			return fmt.Errorf("create secret container %s: %w", c.Name, err)
+		}
+	}
+
+	return nil
+}
