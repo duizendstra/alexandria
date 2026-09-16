@@ -79,6 +79,9 @@
     "go/platform/procrun": {
       "package-name": "go/platform/procrun"
     },
+    "go/platform/retry": {
+      "package-name": "go/platform/retry"
+    },
     "go/platform/runstate": {
       "package-name": "go/platform/runstate"
     },

@@ -226,6 +226,15 @@ updates:
           - "*"
 
   - package-ecosystem: "gomod"
+    directory: "/go/platform/retry/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gomod"
     directory: "/go/platform/runstate/"
     schedule:
       interval: "weekly"
