@@ -22,6 +22,11 @@ jobs:
       - id: find
         name: Find Go modules
         run: |
+          # Deliberately rooted at go/, not the repository root. Modules under
+          # blueprints/ are teaching scaffolds that get copied and adapted rather
+          # than imported, and they are held to no CI gate at all -- not build,
+          # vet, test, lint or gofmt. See blueprints/README.md. Widening this root
+          # is a decision, not a cleanup: every gate below inherits it.
           modules=$(find go/ -name 'go.mod' -printf '%h\n' 2>/dev/null | jq -R -s -c 'split("\n") | map(select(. != ""))')
           if [ "$modules" = "[]" ] || [ -z "$modules" ]; then
             echo "has_modules=false" >> "$GITHUB_OUTPUT"

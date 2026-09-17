@@ -14,5 +14,10 @@ Thumbs.db
 go.work
 go.work.sum
 
+# A `go build .` inside a module directory writes an executable named after that
+# directory. This blueprint's directory is literally named `go`, so the artifact
+# collides with a plausible source path -- anchor the rule, never match bare `go`.
+/blueprints/google-addon/go/go
+
 # Test
 coverage.out
