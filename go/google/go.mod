@@ -7,7 +7,7 @@ require (
 	github.com/duizendstra/alexandria/go/retry v1.1.0
 	github.com/duizendstra/alexandria/go/retry/gcp v1.1.1
 	golang.org/x/oauth2 v0.37.0
-	google.golang.org/api v0.297.0
+	google.golang.org/api v0.298.0
 )
 
 require (
