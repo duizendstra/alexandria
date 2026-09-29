@@ -1,0 +1,15 @@
+{
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/calendar.addons.execute"
+  ],
+  "addOns": {
+    "common": {
+      "name": "AI Time Tracker (Go)",
+      "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/schedule_black_24dp.png",
+      "homepageTrigger": {
+        "runFunction": "SERVICE_URL"
+      }
+    },
+    "calendar": {}
+  }
+}

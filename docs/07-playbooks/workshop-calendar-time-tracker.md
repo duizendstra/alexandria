@@ -8,7 +8,7 @@ status: "active"
 maturity: "standard"
 owner: "@duizendstra"
 created_at: "2026-08-22T08:00:00Z"
-updated_at: "2026-08-22T08:00:00Z"
+updated_at: "2026-09-29T12:00:00Z"
 summary: >
   Step-by-step hands-on workshop guide for building a Google Calendar time writing
   add-on powered by Gemini AI, progressing from a zero-setup Apps Script prototype
@@ -196,13 +196,14 @@ function onAnalyzeNote(e) {
   const note = e.formInputs && e.formInputs.work_note ? e.formInputs.work_note[0].trim() : '';
   const apiKey = PropertiesService.getUserProperties().getProperty(SCRIPT_PROP_KEY);
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(apiKey);
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
   const prompt = `Extract time entry JSON from this note: "${note}".
 Return ONLY raw JSON with: client (string), project (string), duration_hours (number), title (string), summary (string).`;
 
   const response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
+    headers: { 'X-Goog-Api-Key': apiKey },
     payload: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
@@ -358,21 +359,63 @@ curl -X POST http://localhost:8080/ \
 
 ## Part 4: Cloud Run Deployment with ko
 
-Alexandria uses [ko](https://ko.build) for zero-Docker containerization on Cloud Run:
+Alexandria uses [ko](https://ko.build) for zero-Docker containerization on Cloud Run. Run these from `blueprints/google-addon/go`. The service is private: only the add-on's own service account may call it, and the Gemini key lives in Secret Manager, never on a command line or in the service's plain environment.
 
 ```bash
-# 1. Set container registry
-export KO_DOCKER_REPO=europe-west1-docker.pkg.dev/YOUR_PROJECT_ID/services
+export PROJECT_ID=your-project-id
+export REGION=europe-west1
+gcloud config set project "$PROJECT_ID"
 
-# 2. Build and deploy to Cloud Run
+# 1. APIs: Cloud Run, Artifact Registry, Secret Manager, and Workspace add-ons.
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
+  secretmanager.googleapis.com gsuiteaddons.googleapis.com
+
+# 2. A registry for ko to push to, and Docker credentials for it.
+gcloud artifacts repositories create services \
+  --repository-format=docker --location="$REGION"
+gcloud auth configure-docker "$REGION-docker.pkg.dev"
+export KO_DOCKER_REPO="$REGION-docker.pkg.dev/$PROJECT_ID/services"
+
+# 3. The Gemini key, into Secret Manager. read -s shows nothing as you paste.
+read -rs GEMINI_API_KEY
+printf %s "$GEMINI_API_KEY" | gcloud secrets create gemini-api-key --data-file=-
+unset GEMINI_API_KEY
+
+# 4. A runtime identity that can read that secret and nothing else.
+gcloud iam service-accounts create time-tracker
+export RUNTIME_SA="time-tracker@$PROJECT_ID.iam.gserviceaccount.com"
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role=roles/secretmanager.secretAccessor
+
+# 5. Build with ko and deploy. No unauthenticated access.
 gcloud run deploy calendar-time-tracker \
-  --image=$(ko build .) \
-  --region=europe-west1 \
-  --allow-unauthenticated \
-  --set-env-vars="GEMINI_API_KEY=your-gemini-key"
+  --image="$(ko build .)" \
+  --region="$REGION" \
+  --service-account="$RUNTIME_SA" \
+  --set-secrets=GEMINI_API_KEY=gemini-api-key:latest \
+  --no-allow-unauthenticated
+
+# 6. Let the add-on, and only the add-on, invoke the service.
+export ADDON_SA=$(gcloud workspace-add-ons get-authorization \
+  --format='value(serviceAccountEmail)')
+gcloud run services add-iam-policy-binding calendar-time-tracker \
+  --region="$REGION" \
+  --member="serviceAccount:$ADDON_SA" \
+  --role=roles/run.invoker
+
+# 7. Point an add-on deployment at the service and install it for yourself.
+export SERVICE_URL=$(gcloud run services describe calendar-time-tracker \
+  --region="$REGION" --format='value(status.url)')
+sed "s#SERVICE_URL#$SERVICE_URL#" deployment.json > deployment.local.json
+gcloud workspace-add-ons deployments create time-tracker \
+  --deployment-file=deployment.local.json
+gcloud workspace-add-ons deployments install time-tracker
 ```
 
-Once deployed, copy the Cloud Run HTTPS service URL and register it as the HTTP endpoint for your Google Workspace Add-on deployment.
+Open Google Calendar and the add-on appears in the side panel. Each call carries an ID token for the add-on's service account, with the service URL as its audience; Cloud Run checks it before the request reaches Go. The service's button calls back the same URL, so every call passes the same check.
+
+After a code change, re-run step 5 only; the URL, the grants and the add-on deployment stay as they are.
 
 ---
 
