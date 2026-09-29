@@ -2,7 +2,7 @@
  * Time Tracker AI — Google Calendar Add-on (Level 1: Apps Script)
  *
  * Scaffolds an AI-powered time writing sidebar directly inside Google Calendar.
- * Uses Google AI Studio (Gemini 1.5/2.0 Flash) with zero external infrastructure.
+ * Uses Google AI Studio (Gemini 3.8 Flash, `gemini-3.8-flash`) with zero external infrastructure.
  */
 
 const SCRIPT_PROP_KEY = 'GEMINI_API_KEY';
@@ -164,7 +164,8 @@ function makeTimeEntry(client, project, hours, title, summary) {
  * Calls Google AI Studio Gemini API with JSON instruction.
  */
 function callGeminiExtract(note, apiKey) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(apiKey);
+  // The key travels in a header, never in the URL: a URL ends up in logs and error text.
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
 
   const prompt = `You are a professional time-tracking assistant.
 Analyze the following work note and extract:
@@ -200,19 +201,35 @@ Respond with ONLY raw JSON matching this schema, without markdown formatting:
   const response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
+    headers: { 'X-Goog-Api-Key': apiKey },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   });
 
   const statusCode = response.getResponseCode();
   if (statusCode !== 200) {
-    throw new Error('Gemini API error (HTTP ' + statusCode + '): ' + response.getContentText());
+    // The whole body goes to the execution log; the sidebar gets a short message only.
+    console.error('Gemini API error (HTTP ' + statusCode + '): ' + response.getContentText());
+    throw new Error(geminiErrorMessage(statusCode));
   }
 
   const resJson = JSON.parse(response.getContentText());
   const rawText = resJson.candidates[0].content.parts[0].text;
   const parsed = JSON.parse(rawText);
   return makeTimeEntry(parsed.client, parsed.project, parsed.duration_hours, parsed.title, parsed.summary);
+}
+
+/**
+ * A short, user-facing message for a failed Gemini call. Never the response body.
+ */
+function geminiErrorMessage(statusCode) {
+  if (statusCode === 400 || statusCode === 401 || statusCode === 403) {
+    return 'Gemini refused the request (HTTP ' + statusCode + '). Check your API key.';
+  }
+  if (statusCode === 429) {
+    return 'Gemini\'s free-tier limit was reached. Wait a minute and try again.';
+  }
+  return 'Gemini is unavailable (HTTP ' + statusCode + '). Try again shortly.';
 }
 
 /**

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -73,7 +76,7 @@ func TestCallGeminiExtract_TransportErrorDoesNotLeakAPIKey(t *testing.T) {
 	srv.Close()
 
 	restore := geminiEndpoint
-	geminiEndpoint = srv.URL + "/v1beta/models/gemini-1.5-flash:generateContent"
+	geminiEndpoint = srv.URL + "/v1beta/models/gemini-3.8-flash:generateContent"
 	defer func() { geminiEndpoint = restore }()
 
 	// The production entry point, so that reintroducing the key anywhere between
@@ -83,7 +86,7 @@ func TestCallGeminiExtract_TransportErrorDoesNotLeakAPIKey(t *testing.T) {
 		t.Fatal("want a transport error from a closed listener, got nil")
 	}
 	if strings.Contains(err.Error(), apiKey) {
-		t.Errorf("API key leaked into the error, which is logged and written to the response: %v", err)
+		t.Errorf("API key leaked into the error, which is logged: %v", err)
 	}
 
 	// Control: the same failure with the key in the query string must leak it.
@@ -120,6 +123,81 @@ func TestCallGeminiExtract_SendsKeyAsHeader(t *testing.T) {
 	}
 	if gotQuery != "" {
 		t.Errorf("key travelled in the query string as %q", gotQuery)
+	}
+}
+
+// captureLogs routes the default logger into a buffer for the rest of the test.
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+func analyzeRequest(t *testing.T) *http.Request {
+	t.Helper()
+	body := `{"commonEventObject": {"hostApp": "CALENDAR",
+		"parameters": {"action": "analyze"},
+		"formInputs": {"work_note": {"stringInputs": {"value": ["2h on the workshop"]}}}}}`
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
+func TestHandleAnalyzeNote_UpstreamErrorStaysInTheLog(t *testing.T) {
+	const marker = "UPSTREAM-DETAIL-7f3a"
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"message":"` + marker + `"}}`))
+	}))
+	defer srv.Close()
+
+	restore := geminiEndpoint
+	geminiEndpoint = srv.URL
+	defer func() { geminiEndpoint = restore }()
+	t.Setenv("GEMINI_API_KEY", "AIzaSyFAKE-not-a-real-key-0000000")
+	logs := captureLogs(t)
+
+	rec := httptest.NewRecorder()
+	HandleCalendarTrigger(rec, analyzeRequest(t))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 so the sidebar renders the card", rec.Code)
+	}
+	var resp CardResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("response is not a card response: %v\n%s", err, rec.Body.String())
+	}
+	if len(resp.RenderActions.Action.Navigations) != 1 || resp.RenderActions.Action.Navigations[0].PushCard == nil {
+		t.Fatalf("want one pushCard navigation, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Gemini could not analyze the note") {
+		t.Errorf("response lacks the short message: %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), marker) {
+		t.Errorf("upstream body reached the response: %s", rec.Body.String())
+	}
+	// Control: the detail is not lost, it is in the log.
+	if !strings.Contains(logs.String(), marker) {
+		t.Errorf("upstream body missing from the log, so the test cannot tell it was dropped from the response on purpose:\n%s", logs.String())
+	}
+}
+
+func TestHandleAnalyzeNote_MissingKeyIsACard(t *testing.T) {
+	t.Setenv("GEMINI_API_KEY", "")
+	_ = captureLogs(t)
+
+	rec := httptest.NewRecorder()
+	HandleCalendarTrigger(rec, analyzeRequest(t))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `"pushCard"`) || !strings.Contains(rec.Body.String(), "no Gemini API key") {
+		t.Errorf("want an error card naming the missing key, got %s", rec.Body.String())
 	}
 }
 

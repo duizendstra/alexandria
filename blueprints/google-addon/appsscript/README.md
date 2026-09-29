@@ -1,6 +1,6 @@
 # Google Calendar Time Tracker Add-on (Level 1: Apps Script)
 
-Zero-friction, zero-infrastructure Google Calendar Add-on for logging project time using free Google AI Studio (Gemini 1.5/2.0 Flash) and Google Apps Script.
+Zero-friction, zero-infrastructure Google Calendar Add-on for logging project time using free Google AI Studio (Gemini 3.8 Flash, `gemini-3.8-flash`) and Google Apps Script.
 
 ## What It Does
 

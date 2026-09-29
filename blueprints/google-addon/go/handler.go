@@ -234,14 +234,15 @@ func handleAnalyzeNote(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
 		slog.ErrorContext(ctx, "GEMINI_API_KEY environment variable is not configured")
-		http.Error(w, "GEMINI_API_KEY not configured", http.StatusInternalServerError)
+		writeErrorCard(w, "The service has no Gemini API key configured.")
 		return
 	}
 
 	entry, err := callGeminiExtract(ctx, note, apiKey)
 	if err != nil {
+		// The detail, including any upstream body, stays in the log.
 		slog.ErrorContext(ctx, "failed to extract time entry with Gemini", slog.Any("err", err))
-		http.Error(w, fmt.Sprintf("AI extraction failed: %v", err), http.StatusInternalServerError)
+		writeErrorCard(w, "Gemini could not analyze the note. Try again shortly.")
 		return
 	}
 	entry.Sanitize()
@@ -294,15 +295,33 @@ func handleAnalyzeNote(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	web.EncodeJSON(w, http.StatusOK, resp)
 }
 
+// writeErrorCard answers a failed action with a card carrying a short message.
+// The sidebar shows a card; a bare HTTP error would show only a generic failure,
+// and its text would reach the user unfiltered.
+func writeErrorCard(w http.ResponseWriter, message string) {
+	var resp CardResponse
+	resp.RenderActions.Action.Navigations = []NavigationAction{
+		{PushCard: &CardV2{
+			Header: &CardHeader{Title: "Something went wrong"},
+			Sections: []CardSection{
+				{Widgets: []Widget{{TextParagraph: &TextParagraphWidget{Text: message}}}},
+			},
+		}},
+	}
+	web.EncodeJSON(w, http.StatusOK, resp)
+}
+
 // callGeminiExtract calls Google AI Studio Gemini API with JSON response format.
 // The key travels in a header, never in this URL. A transport failure yields a
-// *url.Error carrying the whole URL, and callGeminiExtractAt's errors are both
-// logged and written into the HTTP response.
+// *url.Error carrying the whole URL, and callGeminiExtractAt's errors are logged.
 // A var, not a const, so a test can exercise callGeminiExtract itself rather than
 // only the helper beneath it.
 //
 //nolint:gochecknoglobals // Test seam: lets the key-leak regression test drive callGeminiExtract itself.
-var geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+var geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
+
+// maxErrorBody caps how much of a failed Gemini response is kept for the log.
+const maxErrorBody = 4 << 10
 
 func callGeminiExtract(ctx context.Context, note, apiKey string) (*TimeEntry, error) {
 	return callGeminiExtractAt(ctx, geminiEndpoint, note, apiKey)
@@ -355,7 +374,8 @@ Work note: %q`, note)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		// For the log only: the handler never writes an error's text to the response.
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
 		return nil, fmt.Errorf("gemini API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
