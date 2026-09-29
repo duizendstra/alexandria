@@ -122,3 +122,23 @@ func TestCallGeminiExtract_SendsKeyAsHeader(t *testing.T) {
 		t.Errorf("key travelled in the query string as %q", gotQuery)
 	}
 }
+
+func TestHandleHomepage_ButtonCallsTheServiceURL(t *testing.T) {
+	body := `{"commonEventObject": {"hostApp": "CALENDAR"}}`
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "https://tracker-abc.a.run.app/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	HandleCalendarTrigger(rec, req)
+
+	got := rec.Body.String()
+	if !strings.Contains(got, `"function":"https://tracker-abc.a.run.app"`) {
+		t.Errorf("button action does not call the service URL: %s", got)
+	}
+	if !strings.Contains(got, `"parameters":[{"key":"action","value":"analyze"}]`) {
+		t.Errorf("button parameters are not a key/value list: %s", got)
+	}
+	if strings.Contains(got, "functionName") {
+		t.Errorf("functionName is an Apps Script field, not an HTTP one: %s", got)
+	}
+}

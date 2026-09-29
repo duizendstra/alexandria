@@ -117,10 +117,18 @@ type ButtonAction struct {
 	Action *ActionSpec `json:"action,omitempty"`
 }
 
-// ActionSpec specifies the action name and parameters to send back.
+// ActionSpec names the endpoint to call and the parameters to send back. For an
+// HTTP add-on, Function is a URL, and the parameters arrive in the next event as
+// commonEventObject.parameters.
 type ActionSpec struct {
-	FunctionName string            `json:"functionName"`
-	Parameters   map[string]string `json:"parameters,omitempty"`
+	Function   string            `json:"function"`
+	Parameters []ActionParameter `json:"parameters,omitempty"`
+}
+
+// ActionParameter is one key/value pair of an ActionSpec.
+type ActionParameter struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // HandleCalendarTrigger routes incoming Google Workspace HTTP requests.
@@ -147,15 +155,22 @@ func HandleCalendarTrigger(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "analyze":
-		handleAnalyzeNote(ctx, w, event)
+		handleAnalyzeNote(ctx, w, r, event)
 	default:
 		// Default: Return Homepage Card
-		handleHomepage(w)
+		handleHomepage(w, r)
 	}
 }
 
+// selfURL is this service's own URL, which a button's action calls back. It is
+// the URL the add-on deployment names, so the add-on's ID token carries the
+// same audience on every call. Cloud Run serves HTTPS only.
+func selfURL(r *http.Request) string {
+	return "https://" + r.Host
+}
+
 // handleHomepage returns the initial sidebar UI card.
-func handleHomepage(w http.ResponseWriter) {
+func handleHomepage(w http.ResponseWriter, r *http.Request) {
 	var resp CardResponse
 	homepageCard := &CardV2{
 		Header: &CardHeader{
@@ -186,9 +201,9 @@ func handleHomepage(w http.ResponseWriter) {
 									Text: "✨ Analyze & Structure with AI",
 									OnClick: ButtonAction{
 										Action: &ActionSpec{
-											FunctionName: "onAnalyzeNote",
-											Parameters: map[string]string{
-												"action": "analyze",
+											Function: selfURL(r),
+											Parameters: []ActionParameter{
+												{Key: "action", Value: "analyze"},
 											},
 										},
 									},
@@ -209,10 +224,10 @@ func handleHomepage(w http.ResponseWriter) {
 }
 
 // handleAnalyzeNote calls Gemini AI with structured schema and returns confirmation card.
-func handleAnalyzeNote(ctx context.Context, w http.ResponseWriter, event AddOnEvent) {
+func handleAnalyzeNote(ctx context.Context, w http.ResponseWriter, r *http.Request, event AddOnEvent) {
 	note := event.FormInputValue("work_note")
 	if note == "" {
-		handleHomepage(w)
+		handleHomepage(w, r)
 		return
 	}
 
