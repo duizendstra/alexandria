@@ -94,8 +94,7 @@ The workshop follows a two-stage progression:
   "addOns": {
     "common": {
       "name": "Time Tracker AI",
-      "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/schedule_black_24dp.png",
-      "useLocaleFromApp": true
+      "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/schedule_black_24dp.png"
     },
     "calendar": {
       "homepageTrigger": {
