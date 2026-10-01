@@ -164,7 +164,7 @@ function makeTimeEntry(client, project, hours, title, summary) {
  * Calls Google AI Studio Gemini API with JSON instruction.
  */
 function callGeminiExtract(note, apiKey) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(apiKey);
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
   const prompt = `You are a professional time-tracking assistant.
 Analyze the following work note and extract:
@@ -200,6 +200,7 @@ Respond with ONLY raw JSON matching this schema, without markdown formatting:
   const response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
+    headers: { 'X-Goog-Api-Key': apiKey },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   });

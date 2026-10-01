@@ -196,13 +196,14 @@ function onAnalyzeNote(e) {
   const note = e.formInputs && e.formInputs.work_note ? e.formInputs.work_note[0].trim() : '';
   const apiKey = PropertiesService.getUserProperties().getProperty(SCRIPT_PROP_KEY);
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(apiKey);
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
   const prompt = `Extract time entry JSON from this note: "${note}".
 Return ONLY raw JSON with: client (string), project (string), duration_hours (number), title (string), summary (string).`;
 
   const response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
+    headers: { 'X-Goog-Api-Key': apiKey },
     payload: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
