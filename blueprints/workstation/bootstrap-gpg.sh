@@ -6,11 +6,21 @@
 # and encrypted-state tooling work without pinentry prompts.
 #
 # Usage:
-#   ./bootstrap-gpg.sh [passphrase]
+#   ./bootstrap-gpg.sh                       # prompts, without echo
+#   <command that prints it> | ./bootstrap-gpg.sh
+#   ./bootstrap-gpg.sh [passphrase]          # still accepted; warns (below)
+#
+# A passphrase given as an argument is readable by every user on the machine,
+# through the process list, for as long as this runs, and it stays in shell
+# history. Prompt or pipe instead.
 
 set -euo pipefail
 
 PASSPHRASE="${1:-}"
+
+if [ -n "$PASSPHRASE" ]; then
+  echo "⚠ The passphrase argument is visible to every user in the process list while this runs, and it stays in shell history. Pipe it on stdin instead." >&2
+fi
 
 # 1. Ensure allow-preset-passphrase is in agent config
 mkdir -p "$HOME/.gnupg"
@@ -36,7 +46,7 @@ if [ -z "$PASSPHRASE" ]; then
     exit 0
   fi
   # Otherwise, prompt the user
-  read -rs -p "Enter PGP private key passphrase: " PASSPHRASE
+  IFS= read -rs -p "Enter PGP private key passphrase: " PASSPHRASE
   echo
 fi
 
@@ -78,7 +88,7 @@ fi
 # 6. Preset all keygrips
 echo "Caching passphrase for ${#KEYGRIPS[@]} keygrips..."
 for grip in "${KEYGRIPS[@]}"; do
-  echo "$PASSPHRASE" | "$PRESET_BIN" --preset "$grip"
+  printf '%s\n' "$PASSPHRASE" | "$PRESET_BIN" --preset "$grip"
 done
 
 echo "✔ GPG Agent cached all keys successfully!"
